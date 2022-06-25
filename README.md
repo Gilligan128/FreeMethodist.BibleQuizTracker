@@ -11,10 +11,10 @@ Install .Net 6 SDK.
 This project is written in F# in order to minimize errors and boilerplate code.
 
 ## Blazor 
-This project uses the Blazor framewor, a WebAssembly based language that let's use write code in C# on the browser.
+This project uses the Blazor framework, a WebAssembly based language that let's use write code in C# on the browser.
 
 ## Bolero
 This project uses the Bolero framework in order to make easier writing Blazor in F#. 
 
-## Deployment
+# Deployment
 The application is deployed to this [Azure Subscription](https://portal.azure.com/#@gilligan128gmail.onmicrosoft.com/resource/subscriptions/57d74b02-3296-4a96-b65f-ae75cc2d7382/overview)
