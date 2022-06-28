@@ -4,6 +4,7 @@ open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
+open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open Bolero
 open Bolero.Remoting.Server
@@ -42,6 +43,7 @@ type Startup() =
                 endpoints.UseHotReload()
 #endif
                 endpoints.MapBlazorHub() |> ignore
+                endpoints.MapHub<QuizHub.Hub>(PathString "/quizhub") |> ignore
                 endpoints.MapFallbackToBolero(Index.page) |> ignore)
         |> ignore
 
