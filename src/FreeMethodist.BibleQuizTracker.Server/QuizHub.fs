@@ -1,7 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizHub
 
 open Microsoft.AspNetCore.SignalR
-open Types
+open QuizzingDomain
 open System.Threading.Tasks
 
 type QuizRoomCLient =
