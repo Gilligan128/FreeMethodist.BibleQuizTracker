@@ -36,10 +36,6 @@
               The <a href="/counter">Counter</a> page demonstrates event handlers and data binding in
               <a target="_blank" href="https://fsbolero.github.io/docs/Templating">HTML templates</a>.
             </li>
-            <li>
-              The <a href="/data">Download data</a> page demonstrates the use of
-              <a target="_blank" href="https://fsbolero.github.io/docs/Remoting">remote functions</a>.
-            </li>
           </ul>
           <p>Enjoy writing awesome apps!</p>
         </div>
@@ -56,34 +52,6 @@
           The counter's value is: ${Value}
         </p>
       </template>
-
-      <template id="Data">
-        <h1 class="title">
-          Download data
-          <button class="button" onclick="${Reload}">Reload</button>
-        </h1>
-        <p>
-          Signed in as ${Username}.
-          <button class="button" onclick="${SignOut}">Sign out</button>
-        </p>
-        <table class="table is-fullwidth">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Author</th>
-              <th>Published</th>
-              <th>ISBN</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${Rows}
-            <template id="EmptyData">
-              <tr><td colspan="4">Downloading book list...</td></tr>
-            </template>
-          </tbody>
-        </table>
-      </template>
-
       <template id="SignIn">
         <h1 class="title">Sign in</h1>
         <form onsubmit="${SignIn}">

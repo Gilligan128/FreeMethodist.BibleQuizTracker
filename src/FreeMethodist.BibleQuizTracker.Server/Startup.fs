@@ -23,10 +23,9 @@ type Startup() =
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie()
                 .Services
-            .AddRemoting<BookService>()
-            .AddBoleroHost()
+            .AddBoleroHost(server = true)
 #if DEBUG
-            .AddHotReload(templateDir = __SOURCE_DIRECTORY__ + "/../FreeMethodist.BibleQuizTracker.Client")
+            .AddHotReload(templateDir = __SOURCE_DIRECTORY__ + "/")
 #endif
         |> ignore
 
