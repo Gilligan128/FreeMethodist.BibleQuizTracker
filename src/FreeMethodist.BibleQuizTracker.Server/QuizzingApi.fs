@@ -71,6 +71,7 @@ type EnterQuizError =
     | ThereIsAlreadyACaptain of Quizzer
     | QuizNotFound of QuizCode
     | QuizNotTeamQuiz of QuizCode
+    | QuizIsCompleted of QuizCode
 
 type QuizzerEntered =
     { Quizzer: Quizzer
