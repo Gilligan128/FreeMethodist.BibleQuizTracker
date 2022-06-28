@@ -35,3 +35,10 @@ We intend to automate:
 - developer work environment provisioning
 - production provisioning.
 - data migrations/versioning
+
+# Architecture
+Some links, to  be organized later:
+
+Testing and dependency management: https://fsharpforfunandprofit.com/posts/dependencies/
+
+Following the Workflows - Pipelines pattern here: https://www.amazon.com/Domain-Modeling-Made-Functional-Domain-Driven/dp/1680502549
