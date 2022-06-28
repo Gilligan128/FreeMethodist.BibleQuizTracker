@@ -120,6 +120,7 @@ let view model dispatch =
             concat {
                 menuItem model Home "Home"
                 menuItem model Counter "Counter"
+                menuItem model Quiz "Quiz"
             }
         )
         .Body(
