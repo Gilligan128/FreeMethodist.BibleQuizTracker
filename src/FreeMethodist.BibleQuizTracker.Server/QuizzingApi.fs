@@ -21,32 +21,46 @@ type WithinQuizCommand<'data> =
     { Data: 'data
       Quiz: QuizCode
       User: User }
-    
+
 //Create Quiz Workflow
-type UnvalidatedQuiz =
+type UnvalidatedTeamQuiz =
     { Code: QuizCode
       TeamOne: TeamName
       TeamTwo: TeamName }
-type CreateTeamQuizCommand = {
-  Data: UnvalidatedQuiz
-}
-type PreparingTeam =
+
+type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
+
+type TeamScore = int //increments of 20
+type QuestionNumber = int
+
+type CompletedQuestion = { answeringPlayer: Quizzer option }
+
+type ParticipationState =
+    | In
+    | Out
+
+type QuizzerState =
+    { Player: Quizzer
+      Participation: ParticipationState
+      Score: TeamScore }
+
+type QuizQuestion =
+    | Completed of CompletedQuestion
+    | Upcoming
+
+type QuizTeamState =
     { Name: TeamName
-      QuizzerOne: Quizzer option
-      QuizzerTwo: Quizzer option
-      QuizzerThree: Quizzer option
-      SubstituteOne: Quizzer option
-      SubstituteTwo: Quizzer option
-      Captain: Quizzer option }
+      Quizzers: QuizzerState list
+      captain: Quizzer option }
 
-type PreparingTeamQuiz =
-    { Code: QuizCode
-      TeamOne: PreparingTeam
-      TeamTwo: PreparingTeam }
+type RunningTeamQuiz =
+    { code: QuizCode
+      questions: QuizQuestion list
+      teamOne: QuizTeamState
+      teamTwo: QuizTeamState }
 
-type TeamQuizCreated = {
-    Quiz: PreparingTeamQuiz
-}
+type TeamQuizCreated = { Quiz: RunningTeamQuiz }
+
 type CreateTeamQuizError =
     | QuizWithThatCodeAlreadyExists of QuizCode
     | TeamNamesAreSame of TeamName

@@ -2,6 +2,7 @@
 
 open System
 open System.ComponentModel.DataAnnotations
+open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 open Microsoft.FSharp.Core
 open QuizzingApi
 
@@ -9,56 +10,55 @@ open QuizzingApi
 
 //Domain Model
 
-type TeamScore = int //increments of 20
 
-
-type QuestionNumber = int
-
-type ParticipationState =
-    | In
-    | Out
 
 type QuizRoomState =
     | Open
     | Closed
 
-type CompletedQuestion = { answeringPlayer: Quizzer option }
 
-type QuizQuestion =
-    | Completed of CompletedQuestion
-    | Upcoming
+type CompletedQuizzer = {
+    Name: Quizzer
+    Score: int
+}
 
-type CompletedQuiz =
+type CompletedTeam = {
+    Name: TeamName
+    Score: int
+    Quizzers: Quizzer list
+}
+
+type CompletedTeamQuiz =
     { code: QuizCode
-      winningTeam: TeamName
-      losingTeam: TeamName
+      winningTeam: CompletedTeam
+      losingTeam: CompletedTeam
       completedQuestions: CompletedQuestion list }
 
-type PlayerQuizState =
-    { player: Quizzer
-      participation: ParticipationState
-      score: TeamScore }
-
-type QuizTeamState =
-    { name: TeamName
-      quizzerOne: PlayerQuizState
-      quizzerTwo: PlayerQuizState
-      quizzerThree: PlayerQuizState option
-      substituteOne: PlayerQuizState option
-      substituteTwo: PlayerQuizState option
-      captain: Quizzer }
-
-type RunningQuiz =
-    { code: QuizCode
-      questions: QuizQuestion list
-      teamOne: QuizTeamState
-      teamTwo: QuizTeamState }
+type OfficialQuizzer = {
+    Name: Quizzer
+    Score: TeamScore
+}
+type OfficialTeam = {
+    Name: TeamName
+    Score: TeamScore
+    QuizzerOne: OfficialQuizzer
+    QuizzerTwo: OfficialQuizzer
+    QuizzerThree: OfficialQuizzer option
+    QuizzerFour: OfficialQuizzer option
+    QuizzerFive: OfficialQuizzer option
+}
+type OfficialTeamQuiz = {
+    Code: QuizCode
+    WinningTeam: OfficialTeam
+    LosingTeam: OfficialTeam
+    CompletedQuestions: CompletedQuestion list 
+}
 
 type TeamQuiz =
-    | Unvalidated of UnvalidatedQuiz
-    | Preparing of PreparingTeamQuiz
-    | Running of RunningQuiz
-    | Completed of CompletedQuiz
+    | Unvalidated of UnvalidatedTeamQuiz
+    | Running of RunningTeamQuiz
+    | Completed of CompletedTeamQuiz
+    | Official of OfficialTeamQuiz
 
 type Quiz =
     | TeamQuiz of TeamQuiz

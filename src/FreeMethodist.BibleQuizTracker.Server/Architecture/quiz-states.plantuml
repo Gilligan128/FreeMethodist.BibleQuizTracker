@@ -1,0 +1,11 @@
+﻿@startuml
+title Quiz States
+[*] --> Running: [Quizmaster] Create Quiz 
+Running --> Running: [Quizzer] Jumps
+Running: Could be a real or practice quiz
+Running --> Running: [Quizmaster] Record events
+Running --> Completed: [Quizmaster] Completes
+Completed --> Running: [Quizmaster] Resumes Quiz 
+Completed --> Official: [System] Validates score, events and participation
+Official: Only if a real quiz
+@enduml

@@ -10,13 +10,37 @@ open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Core
 open Elmish
 
+type ConnectionStatus = 
+    | Connected
+    | Disconnected of DateTimeOffset
+type QuizzerModel = {
+    Name: string
+    Score: int
+    ConnectionStatus: ConnectionStatus
+}
+type TeamModel = {
+    Name: string
+    Score: int
+    Quizzers: QuizzerModel list
+}
+
 type Model =
     { CurrentQuizzer: Quizzer
-      JoiningQuizzer: string }
+      JoiningQuizzer: string
+      Code: string
+      TeamOne: TeamModel
+      TeamTwo: TeamModel
+      JumpOrder : string list
+     }
 
 let initModel =
     { CurrentQuizzer = ""
-      JoiningQuizzer = "" }
+      JoiningQuizzer = ""
+      Code = "TEST"
+      TeamOne = { Name = "LEFT"; Score = 0; Quizzers = [] }
+      TeamTwo = { Name = "RIGHT"; Score = 0; Quizzers = [] }
+      JumpOrder = []
+      }
 
 type Message =
     | SetJoiningQuizzer of string
@@ -53,7 +77,8 @@ let update (hubConnection: HubConnection) msg model =
 
 let page (model: Model) (dispatch: Dispatch<Message>) : Node =
     div {
-         attr.``class`` "column"
+        attr.``class`` "column"
+        
         p { $"Quizzer: {model.CurrentQuizzer}" }
 
         input {
