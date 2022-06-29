@@ -12,13 +12,11 @@ open Microsoft.AspNetCore.SignalR.Client
 /// Routing endpoints definition.
 type Page =
     | [<EndPoint "/">] Home
-    | [<EndPoint "/counter">] Counter
     | [<EndPoint "/quiz">] Quiz
 
 /// The Elmish application's model.
 type Model =
     { page: Page
-      counter: int
       error: string option
       quiz: QuizPage.Model }
 
@@ -30,39 +28,12 @@ and Book =
 
 let initModel =
     { page = Home
-      counter = 0
       error = None
       quiz = QuizPage.initModel }
-
-/// Remote service definition.
-type BookService =
-    { /// Get the list of all books in the collection.
-      getBooks: unit -> Async<Book []>
-
-      /// Add a book in the collection.
-      addBook: Book -> Async<unit>
-
-      /// Remove a book from the collection, identified by its ISBN.
-      removeBookByIsbn: string -> Async<unit>
-
-      /// Sign into the application.
-      signIn: string * string -> Async<option<string>>
-
-      /// Get the user's name, or None if they are not authenticated.
-      getUsername: unit -> Async<string>
-
-      /// Sign out from the application.
-      signOut: unit -> Async<unit> }
-
-    interface IRemoteService with
-        member this.BasePath = "/books"
 
 /// The Elmish application's update messages.
 type Message =
     | SetPage of Page
-    | Increment
-    | Decrement
-    | SetCounter of int
     | ClearError
     | QuizMessage of QuizPage.Message
 
@@ -75,9 +46,6 @@ let hubConnection =
 let update message model =
     match message with
     | SetPage page -> { model with page = page }, Cmd.none
-    | Increment -> { model with counter = model.counter + 1 }, Cmd.none
-    | Decrement -> { model with counter = model.counter - 1 }, Cmd.none
-    | SetCounter value -> { model with counter = value }, Cmd.none
     | ClearError -> { model with error = None }, Cmd.none
     | QuizMessage quizMsg ->
         let (quizModel, quizCommand) =
@@ -92,14 +60,6 @@ let router =
 type Main = Template<"wwwroot/main.html">
 
 let homePage model dispatch = Main.Home().Elt()
-
-let counterPage model dispatch =
-    Main
-        .Counter()
-        .Decrement(fun _ -> dispatch Decrement)
-        .Increment(fun _ -> dispatch Increment)
-        .Value(model.counter, (fun v -> dispatch (SetCounter v)))
-        .Elt()
 
 let menuItem (model: Model) (page: Page) (text: string) =
     Main
@@ -119,7 +79,6 @@ let view model dispatch =
         .Menu(
             concat {
                 menuItem model Home "Home"
-                menuItem model Counter "Counter"
                 menuItem model Quiz "Quiz"
             }
         )
@@ -127,7 +86,6 @@ let view model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | Counter -> counterPage model dispatch
                 | Quiz -> QuizPage.page model.quiz (fun quizMsg -> dispatch (QuizMessage quizMsg))
         )
         .Error(
@@ -147,13 +105,13 @@ let subscription model =
     Cmd.batch [
         Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection model.quiz)
     ]
-
+    
+hubConnection.StartAsync() |> ignore
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
                                                                     
     override this.Program =
         Program.mkProgram (fun _ ->
-            hubConnection.StartAsync() |> ignore
             initModel, Cmd.none) update view
         |> Program.withRouter router
         |> Program.withSubscription subscription
