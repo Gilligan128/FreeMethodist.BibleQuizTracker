@@ -7,6 +7,8 @@ open Bolero.Html
 open Bolero.Remoting
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
+open Microsoft.AspNetCore.Components
+open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR.Client
 
 /// Routing endpoints definition.
@@ -37,13 +39,9 @@ type Message =
     | ClearError
     | QuizMessage of QuizPage.Message
 
-let hubConnection =
-    HubConnectionBuilder()
-        .WithUrl("http://localhost:5000/QuizHub")
-        .WithAutomaticReconnect()
-        .Build()
 
-let update message model =
+
+let update hubConnection message model =
     match message with
     | SetPage page -> { model with page = page }, Cmd.none
     | ClearError -> { model with error = None }, Cmd.none
@@ -101,17 +99,27 @@ let view model dispatch =
         )
         .Elt()
 
-let subscription model =
+let subscription hubConnection model =
     Cmd.batch [
         Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection model.quiz)
     ]
     
-hubConnection.StartAsync() |> ignore
+
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
-                                                                    
+    
+    [<Inject>]
+    member val Navigator = Unchecked.defaultof<NavigationManager> with get, set
+    
     override this.Program =
+        let hubConnection = HubConnectionBuilder()
+                                .WithUrl($"{this.Navigator.BaseUri}QuizHub")
+                                .WithAutomaticReconnect()
+                                .Build() 
+        let update = update hubConnection
+        let subscription = subscription hubConnection
         Program.mkProgram (fun _ ->
+            hubConnection.StartAsync() |> ignore
             initModel, Cmd.none) update view
         |> Program.withRouter router
         |> Program.withSubscription subscription
