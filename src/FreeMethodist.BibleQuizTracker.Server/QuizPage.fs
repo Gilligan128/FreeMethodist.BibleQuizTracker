@@ -53,6 +53,7 @@ let update (hubConnection: HubConnection) msg model =
 
 let page (model: Model) (dispatch: Dispatch<Message>) : Node =
     div {
+         attr.``class`` "column"
         p { $"Quizzer: {model.CurrentQuizzer}" }
 
         input {

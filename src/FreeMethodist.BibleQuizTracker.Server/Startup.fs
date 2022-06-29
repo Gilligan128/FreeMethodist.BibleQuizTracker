@@ -34,7 +34,6 @@ type Startup() =
     member this.Configure(app: IApplicationBuilder, env: IWebHostEnvironment) =
         app
             .UseAuthentication()
-            .UseRemoting()
             .UseStaticFiles()
             .UseRouting()
             .UseBlazorFrameworkFiles()
