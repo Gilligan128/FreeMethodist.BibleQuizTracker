@@ -10,19 +10,19 @@ open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Core
 open Elmish
 
-type ConnectionStatus = 
+type ConnectionStatus =
     | Connected
     | Disconnected of DateTimeOffset
-type QuizzerModel = {
-    Name: string
-    Score: int
-    ConnectionStatus: ConnectionStatus
-}
-type TeamModel = {
-    Name: string
-    Score: int
-    Quizzers: QuizzerModel list
-}
+
+type QuizzerModel =
+    { Name: string
+      Score: int
+      ConnectionStatus: ConnectionStatus }
+
+type TeamModel =
+    { Name: string
+      Score: int
+      Quizzers: QuizzerModel list }
 
 type Model =
     { CurrentQuizzer: Quizzer
@@ -30,17 +30,31 @@ type Model =
       Code: string
       TeamOne: TeamModel
       TeamTwo: TeamModel
-      JumpOrder : string list
-     }
+      JumpOrder: string list
+      CurrentQuestion: int
+      CurrentUser: string }
 
 let initModel =
     { CurrentQuizzer = ""
       JoiningQuizzer = ""
       Code = "TEST"
-      TeamOne = { Name = "LEFT"; Score = 0; Quizzers = [] }
-      TeamTwo = { Name = "RIGHT"; Score = 0; Quizzers = [] }
+      TeamOne =
+        { Name = "LEFT"
+          Score = 0
+          Quizzers =
+            [ { Name = "Jim"
+                Score = 20
+                ConnectionStatus = Connected } ] }
+      TeamTwo =
+        { Name = "RIGHT"
+          Score = 0
+          Quizzers =
+            [ { Name = "Jina"
+                Score = 40
+                ConnectionStatus = Connected } ] }
       JumpOrder = []
-      }
+      CurrentQuestion = 3
+      CurrentUser = "Quizmaster" }
 
 type Message =
     | SetJoiningQuizzer of string
@@ -71,23 +85,29 @@ let update (hubConnection: HubConnection) msg model =
         |> ignore
 
         { model with JoiningQuizzer = "" }, Cmd.none
-    | QuizzerEntered quizzerEntered ->
-        { model with CurrentQuizzer = quizzerEntered.Quizzer }, Cmd.none
+    | QuizzerEntered quizzerEntered -> { model with CurrentQuizzer = quizzerEntered.Quizzer }, Cmd.none
 
+type quizPage = Template<"wwwroot/Quiz.html">
 
-let page (model: Model) (dispatch: Dispatch<Message>) : Node =
-    div {
-        attr.``class`` "column"
-        
-        p { $"Quizzer: {model.CurrentQuizzer}" }
-
-        input {
-            attr.placeholder "Joining Quizzer:"
-            bind.input.string model.JoiningQuizzer (fun n -> dispatch (SetJoiningQuizzer n))
-        }
-
-        button {
-            on.click (fun _ -> dispatch (JoinQuiz))
-            "Join"
-        }
-    }
+let page (model: Model) (dispatch: Dispatch<Message>) =
+    quizPage()
+        .CurrentUser(model.CurrentUser)
+        .TeamOne(model.TeamOne.Name)
+        .TeamOneQuizzers(concat {
+            for quizzer in model.TeamOne.Quizzers do
+                quizPage
+                    .quizzer()
+                    .Name(quizzer.Name)
+                    .Score(string quizzer.Score)
+                    .Elt()
+        })
+        .TeamTwo(model.TeamTwo.Name)
+        .TeamTwoQuizzers(concat {
+            for quizzer in model.TeamTwo.Quizzers do
+                quizPage
+                    .quizzer()
+                    .Name(quizzer.Name)
+                    .Score(string quizzer.Score)
+                    .Elt()
+        })
+        .Elt()
