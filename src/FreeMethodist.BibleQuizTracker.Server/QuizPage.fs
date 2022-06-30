@@ -89,25 +89,27 @@ let update (hubConnection: HubConnection) msg model =
 
 type quizPage = Template<"wwwroot/Quiz.html">
 
+let teamView (model: TeamModel) (dispatch: Dispatch<Message>) =
+    quizPage
+        .Team()
+        .Name(model.Name)
+        .Quizzers(
+            concat {
+                for quizzer in model.Quizzers do
+                    quizPage
+                        .Quizzer()
+                        .Name(quizzer.Name)
+                        .Score(string quizzer.Score)
+                        .Elt()
+            }
+        )
+        .Elt()
+
 let page (model: Model) (dispatch: Dispatch<Message>) =
     quizPage()
+        .QuizCode(model.Code)
         .CurrentUser(model.CurrentUser)
-        .TeamOne(model.TeamOne.Name)
-        .TeamOneQuizzers(concat {
-            for quizzer in model.TeamOne.Quizzers do
-                quizPage
-                    .quizzer()
-                    .Name(quizzer.Name)
-                    .Score(string quizzer.Score)
-                    .Elt()
-        })
-        .TeamTwo(model.TeamTwo.Name)
-        .TeamTwoQuizzers(concat {
-            for quizzer in model.TeamTwo.Quizzers do
-                quizPage
-                    .quizzer()
-                    .Name(quizzer.Name)
-                    .Score(string quizzer.Score)
-                    .Elt()
-        })
+        .TeamOne(teamView (model.TeamOne) dispatch)
+        .TeamTwo(teamView model.TeamTwo dispatch)
+        .CurrentQuestion(string model.CurrentQuestion)
         .Elt()

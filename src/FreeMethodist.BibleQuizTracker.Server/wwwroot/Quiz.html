@@ -1,20 +1,36 @@
 ﻿<div class="column">
-    <div class="box">${CurrentUser}</div>
-    <div class="columns is-mobile">
+    <div>Quiz Code: ${QuizCode}</div>
+    <div class="box has-background-primary has-text-centered">You are: <strong>${CurrentUser}</strong></div>
+    <div class="columns ">
         <div class="column">
-            <div class="box">
-                ${TeamOne}
-            </div>
-            ${TeamOneQuizzers}
+            ${TeamOne}
         </div>
         <div class="column">
-            <div class="box">
-                ${TeamTwo}
-            </div>
-            ${TeamTwoQuizzers}
+            ${TeamTwo}
         </div>
     </div>
+    <div class="box has-text-centered">
+        <label>Question:</label>
+        <span class="tag is-info">${CurrentQuestion}</span>
+    </div>
 </div>
-<template id="quizzer">
-    <div class="box">${Name}</div><div>${Score}</div>
+<template id="Team">
+    <div class="card">
+        <div class="card-header ">
+            <div class="card-header-title has-background-info"> Team ${Name}</div>
+        </div>
+        <div class="card-content">
+            ${Quizzers}
+        </div>
+    </div>
+</template>
+<template id="Quizzer">
+    <div class="columns is-mobile is-gapless">
+        <div class="column">
+            <div class="box has-background-white-ter">${Name}</div>
+        </div>
+        <div class="column">
+            <div class="box">${Score}</div>
+        </div>
+    </div>
 </template>

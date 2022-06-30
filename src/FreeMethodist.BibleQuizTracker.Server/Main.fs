@@ -77,7 +77,7 @@ let view model dispatch =
         .Menu(
             concat {
                 menuItem model Home "Home"
-                menuItem model Quiz "Quiz"
+                menuItem model Quiz "Quiz Example"
             }
         )
         .Body(
