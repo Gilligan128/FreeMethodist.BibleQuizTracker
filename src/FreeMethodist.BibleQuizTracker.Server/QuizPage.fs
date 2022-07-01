@@ -27,9 +27,9 @@ type TeamModel =
 type JumpState =
     | Locked
     | Unlocked
+
 type Model =
-    { 
-      JoiningQuizzer: string
+    { JoiningQuizzer: string
       Code: string
       TeamOne: TeamModel
       TeamTwo: TeamModel
@@ -112,18 +112,23 @@ let teamView ((teamModel, jumpOrder): TeamModel * string list) (dispatch: Dispat
         .Quizzers(
             concat {
                 for quizzer in teamModel.Quizzers do
+                    let jumpPosition =
+                        jumpOrder
+                        |> Seq.tryFindIndex (fun q -> q = quizzer.Name)
+                        |> Option.map ((+) 1)
+                        |> function
+                            | Some v -> v
+                            | None -> 0
+
                     quizPage
                         .Quizzer()
                         .Name(quizzer.Name)
                         .Score(string quizzer.Score)
-                        .JumpOrder(
-                            jumpOrder
-                            |> Seq.tryFindIndex (fun q -> q = quizzer.Name)
-                            |> Option.map ((+) 1)
-                            |> function
-                                | Some v -> v
-                                | None -> 0
-                            |> string
+                        .JumpOrder(jumpPosition |> string)
+                        .HiddenClass(
+                            match jumpPosition with
+                            | 0 -> "is-hidden"
+                            | _ -> ""
                         )
                         .Elt()
             }
@@ -138,7 +143,9 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .TeamTwo(teamView (model.TeamTwo, model.JumpOrder) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
         .CurrentQuizzer(model.JumpOrder.Item model.CurrentJumpPosition)
-        .JumpLockToggleAction(match model.JumpState with
-                               | Locked -> "Unlock"
-                               | Unlocked -> "Lock")
+        .JumpLockToggleAction(
+            match model.JumpState with
+            | Locked -> "Unlock"
+            | Unlocked -> "Lock"
+        )
         .Elt()
