@@ -24,6 +24,9 @@ type TeamModel =
       Score: int
       Quizzers: QuizzerModel list }
 
+type JumpState =
+    | Locked
+    | Unlocked
 type Model =
     { CurrentQuizzer: Quizzer
       JoiningQuizzer: string
@@ -32,7 +35,8 @@ type Model =
       TeamTwo: TeamModel
       JumpOrder: string list
       CurrentQuestion: int
-      CurrentUser: string }
+      CurrentUser: string
+      JumpState: JumpState }
 
 let initModel =
     { CurrentQuizzer = "Jim"
@@ -63,7 +67,8 @@ let initModel =
                 ConnectionStatus = Connected } ] }
       JumpOrder = [ "Jim"; "Juni"; "John" ]
       CurrentQuestion = 3
-      CurrentUser = "Quizmaster" }
+      CurrentUser = "Quizmaster"
+      JumpState = Unlocked }
 
 type Message =
     | SetJoiningQuizzer of string
@@ -132,4 +137,7 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .TeamTwo(teamView (model.TeamTwo, model.JumpOrder) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
         .CurrentQuizzer(model.CurrentQuizzer)
+        .JumpLockToggleAction(match model.JumpState with
+                               | Locked -> "Unlock"
+                               | Unlocked -> "Lock")
         .Elt()
