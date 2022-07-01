@@ -13,33 +13,40 @@
             </div>
             <div class="box has-text-centered">
                 <button class="button is-info is-responsive">
-                    <span class="icon is-responsive">
+                    <span class="icon">
                       <i class="fas fa-caret-left"></i>
                     </span>
                 </button>
-                <span class="is-size-4">Question #${CurrentQuestion}</span>
+                <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
                 <button class="button is-info is-responsive">
-                    <span class="icon is-responsive">
+                    <span class="icon">
                       <i class="fas fa-caret-right"></i>
                     </span>
                 </button>
-                <button class="button is-info is-responsive">history</button>
+                <button class="button is-info is-responsive">History</button>
             </div>
             <div class="box has-text-centered">
                 <div class="block">
                     <button class="button is-info is-responsive">
                         Undo
                     </button>
-                    <span class="is-size-4 ">${CurrentQuizzer}'s Turn</span>
+                    <span class="is-size-4 is-size-5-mobile">${CurrentQuizzer}'s Turn</span>
                     <button class="button is-info is-responsive">
                         Next
                     </button>
                 </div>
-                <div class="buttons  is-centered">
+                <div class="buttons is-centered">
                     <button class="button is-info is-responsive">${JumpLockToggleAction} Jumps</button>
                     <button class="button is-primary is-responsive">Correct</button>
                     <button class="button is-danger is-responsive">Incorrect</button>
                     <button class="button is-danger is-responsive">Incorrect Prejump</button>
+                </div>
+            </div>
+            <div class="box">
+                <div class="buttons is-centered">
+                    <span class="is-size-5">Quiz Options:</span>
+                    <button class="button is-primary is-responsive">Complete</button>
+                    <button class="button is-danger is-responsive">Reset</button>
                 </div>
             </div>
         </div>
@@ -51,8 +58,9 @@
                     Team ${Name}
                 </div>
                 <div class="column has-background-info ">
-                    <div class="field">
-                        <div class="control"><input class="input" value="${Score}"/></div>
+                    <div class="field has-addons">
+                        <p class="control"><input class="input" value="${Score}"/></p>
+                        <p class="control"><a class="button is-static">pts</a> </p>
                     </div>
                 </div>
             </div>
@@ -62,17 +70,16 @@
     <template id="Quizzer">
         <div class="box has-background-white-ter">
             <div class="columns is-mobile is-centered">
-                <div class="column">
-                    <span class="tag has-background-grey-light is-medium">${JumpOrder}</span>
+                <div class="column is-2">
+                    <span class="tag has-background-grey-light is-medium is-rounded">${JumpOrder}</span>
                 </div>
-                <div class="column">
+                <div class="column is-half">
                     ${Name}
                 </div>
                 <div class="column">
-                    <div class="field">
-                        <div class="control">
-                            <input class="input" value="${Score}"/>
-                        </div>
+                    <div class="field has-addons ">
+                        <p class="control"><input class="input " value="${Score}"/></p>
+                        <p class="control"><a class="button is-statice is-hidden-mobile">pts</a> </p>
                     </div>
                 </div>
             </div>

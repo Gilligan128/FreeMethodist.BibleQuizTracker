@@ -28,7 +28,7 @@ type JumpState =
     | Locked
     | Unlocked
 type Model =
-    { CurrentQuizzer: Quizzer
+    { 
       JoiningQuizzer: string
       Code: string
       TeamOne: TeamModel
@@ -36,11 +36,11 @@ type Model =
       JumpOrder: string list
       CurrentQuestion: int
       CurrentUser: string
-      JumpState: JumpState }
+      JumpState: JumpState
+      CurrentJumpPosition: int }
 
 let initModel =
-    { CurrentQuizzer = "Jim"
-      JoiningQuizzer = ""
+    { JoiningQuizzer = ""
       Code = "TEST"
       TeamOne =
         { Name = "LEFT"
@@ -68,7 +68,8 @@ let initModel =
       JumpOrder = [ "Jim"; "Juni"; "John" ]
       CurrentQuestion = 3
       CurrentUser = "Quizmaster"
-      JumpState = Unlocked }
+      JumpState = Unlocked
+      CurrentJumpPosition = 0 }
 
 type Message =
     | SetJoiningQuizzer of string
@@ -99,7 +100,7 @@ let update (hubConnection: HubConnection) msg model =
         |> ignore
 
         { model with JoiningQuizzer = "" }, Cmd.none
-    | QuizzerEntered quizzerEntered -> { model with CurrentQuizzer = quizzerEntered.Quizzer }, Cmd.none
+    | QuizzerEntered quizzerEntered -> model, Cmd.none
 
 type quizPage = Template<"wwwroot/Quiz.html">
 
@@ -136,7 +137,7 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .TeamOne(teamView (model.TeamOne, model.JumpOrder) dispatch)
         .TeamTwo(teamView (model.TeamTwo, model.JumpOrder) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
-        .CurrentQuizzer(model.CurrentQuizzer)
+        .CurrentQuizzer(model.JumpOrder.Item model.CurrentJumpPosition)
         .JumpLockToggleAction(match model.JumpState with
                                | Locked -> "Unlock"
                                | Unlocked -> "Lock")
