@@ -1,36 +1,62 @@
-﻿<div class="column">
-    <div>Quiz Code: ${QuizCode}</div>
-    <div class="box has-background-primary has-text-centered">You are: <strong>${CurrentUser}</strong></div>
-    <div class="columns ">
+﻿<div class="column is-two-fifths">
+    <div class="columns">
         <div class="column">
-            ${TeamOne}
-        </div>
-        <div class="column">
-            ${TeamTwo}
+            <div>Quiz Code: ${QuizCode}</div>
+            <div class="box has-background-grey-light has-text-centered">You are: <strong>${CurrentUser}</strong></div>
+            <div class="columns">
+                <div class="column">
+                    ${TeamOne}
+                </div>
+                <div class="column">
+                    ${TeamTwo}
+                </div>
+            </div>
+            <div class="box has-text-centered">
+                <button class="button is-info is-light">
+                    <span class="icon is-responsive">
+                      <i class="fas fa-caret-left"></i>
+                    </span>
+                </button>
+                <span class="is-size-4">Question #${CurrentQuestion}</span>
+                <button class="button is-info is-light">
+                    <span class="icon is-responsive">
+                      <i class="fas fa-caret-right"></i>
+                    </span>
+                </button>
+                <button class="button is-info">history</button>
+            </div>
+            <div class="box">
+                <div>Current Quizzer: ${CurrentQuizzer}</div>
+                <div></div>
+            </div>
         </div>
     </div>
-    <div class="box has-text-centered">
-        <label>Question:</label>
-        <span class="tag is-info">${CurrentQuestion}</span>
-    </div>
-</div>
-<template id="Team">
-    <div class="card">
-        <div class="card-header ">
-            <div class="card-header-title has-background-info"> Team ${Name}</div>
-        </div>
-        <div class="card-content">
+    <template id="Team">
+        <div class="box">
+            <div class="columns is-mobile ">
+                <div class="column has-background-info is-gapless">
+                    Team ${Name}
+                </div>
+                <div class="column has-background-info is-gapless">
+                    <div class="field">
+                        <div class="control"><input class="input" value="${Score}"/></div>
+                    </div>
+                </div>
+            </div>
             ${Quizzers}
         </div>
-    </div>
-</template>
-<template id="Quizzer">
-    <div class="columns is-mobile is-gapless">
-        <div class="column">
-            <div class="box has-background-white-ter">${Name}</div>
+    </template>
+    <template id="Quizzer">
+        <div>
+            <div class="columns is-mobile">
+                <div class="column is-two-thirds">
+                    <div class="box has-background-white-ter">${Name}</div>
+                </div>
+                <div class="column">
+                    <div class="box">${Score}</div>
+                </div>
+            </div>
         </div>
-        <div class="column">
-            <div class="box">${Score}</div>
-        </div>
-    </div>
-</template>
+    </template>
+</div>
+</div>

@@ -40,17 +40,23 @@ let initModel =
       Code = "TEST"
       TeamOne =
         { Name = "LEFT"
-          Score = 0
+          Score = 20
           Quizzers =
             [ { Name = "Jim"
                 Score = 20
+                ConnectionStatus = Connected }
+              { Name = "John"
+                Score = 0
                 ConnectionStatus = Connected } ] }
       TeamTwo =
         { Name = "RIGHT"
-          Score = 0
+          Score = 40
           Quizzers =
             [ { Name = "Jina"
                 Score = 40
+                ConnectionStatus = Connected }
+              { Name = "Juni"
+                Score = 0
                 ConnectionStatus = Connected } ] }
       JumpOrder = []
       CurrentQuestion = 3
@@ -93,6 +99,7 @@ let teamView (model: TeamModel) (dispatch: Dispatch<Message>) =
     quizPage
         .Team()
         .Name(model.Name)
+        .Score(string model.Score)
         .Quizzers(
             concat {
                 for quizzer in model.Quizzers do
@@ -112,4 +119,5 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .TeamOne(teamView (model.TeamOne) dispatch)
         .TeamTwo(teamView model.TeamTwo dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
+        .CurrentQuizzer(model.CurrentQuizzer)
         .Elt()

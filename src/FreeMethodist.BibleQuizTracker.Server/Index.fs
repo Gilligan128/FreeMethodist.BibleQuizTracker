@@ -31,5 +31,9 @@ let page = doctypeHtml {
         }
         div { attr.id "main"; rootComp<Main.MyApp> }
         boleroScript
+        script {
+            attr.defer ""
+            attr.src "https://use.fontawesome.com/releases/v5.3.1/js/all.js"
+        }
     }
 }
