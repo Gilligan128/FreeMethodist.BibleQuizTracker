@@ -25,19 +25,32 @@
                 </button>
                 <button class="button is-info">history</button>
             </div>
-            <div class="box">
-                <div>Current Quizzer: ${CurrentQuizzer}</div>
-                <div></div>
+            <div class="box has-text-centered">
+                <div class="block">
+                    <button class="button is-info">
+                        Undo
+                    </button>
+                    <span class="is-size-4">${CurrentQuizzer}'s Turn</span>
+                    <button class="button is-info is-light">
+                        Next
+                    </button>
+                </div>
+                <div>
+                    <button class="button is-info">Lock/Unlock Jumps</button>
+                    <button class="button is-primary">Correct</button>
+                    <button class="button is-danger">Incorrect</button>
+                    <button class="button is-danger">Incorrect Prejump</button>
+                </div>
             </div>
         </div>
     </div>
     <template id="Team">
         <div class="box">
             <div class="columns is-mobile ">
-                <div class="column has-background-info is-gapless">
+                <div class="column has-background-info ">
                     Team ${Name}
                 </div>
-                <div class="column has-background-info is-gapless">
+                <div class="column has-background-info ">
                     <div class="field">
                         <div class="control"><input class="input" value="${Score}"/></div>
                     </div>
@@ -47,13 +60,20 @@
         </div>
     </template>
     <template id="Quizzer">
-        <div>
+        <div class="box has-background-white-ter">
             <div class="columns is-mobile">
-                <div class="column is-two-thirds">
-                    <div class="box has-background-white-ter">${Name}</div>
+                <div class="column">
+                    <span class="tag has-background-grey-light is-medium">${JumpOrder}</span>
                 </div>
                 <div class="column">
-                    <div class="box">${Score}</div>
+                    ${Name}
+                </div>
+                <div class="column">
+                    <div class="field">
+                        <div class="control">
+                            <input class="input" value="${Score}"/>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

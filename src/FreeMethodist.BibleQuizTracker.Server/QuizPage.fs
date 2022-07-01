@@ -35,7 +35,7 @@ type Model =
       CurrentUser: string }
 
 let initModel =
-    { CurrentQuizzer = ""
+    { CurrentQuizzer = "Jim"
       JoiningQuizzer = ""
       Code = "TEST"
       TeamOne =
@@ -46,6 +46,9 @@ let initModel =
                 Score = 20
                 ConnectionStatus = Connected }
               { Name = "John"
+                Score = 0
+                ConnectionStatus = Connected }
+              { Name = "Kinda Long Name"
                 Score = 0
                 ConnectionStatus = Connected } ] }
       TeamTwo =
@@ -58,7 +61,7 @@ let initModel =
               { Name = "Juni"
                 Score = 0
                 ConnectionStatus = Connected } ] }
-      JumpOrder = []
+      JumpOrder = [ "Jim"; "Juni"; "John" ]
       CurrentQuestion = 3
       CurrentUser = "Quizmaster" }
 
@@ -95,18 +98,27 @@ let update (hubConnection: HubConnection) msg model =
 
 type quizPage = Template<"wwwroot/Quiz.html">
 
-let teamView (model: TeamModel) (dispatch: Dispatch<Message>) =
+let teamView ((teamModel, jumpOrder): TeamModel * string list) (dispatch: Dispatch<Message>) =
     quizPage
         .Team()
-        .Name(model.Name)
-        .Score(string model.Score)
+        .Name(teamModel.Name)
+        .Score(string teamModel.Score)
         .Quizzers(
             concat {
-                for quizzer in model.Quizzers do
+                for quizzer in teamModel.Quizzers do
                     quizPage
                         .Quizzer()
                         .Name(quizzer.Name)
                         .Score(string quizzer.Score)
+                        .JumpOrder(
+                            jumpOrder
+                            |> Seq.tryFindIndex (fun q -> q = quizzer.Name)
+                            |> Option.map ((+) 1)
+                            |> function
+                                | Some v -> v
+                                | None -> 0
+                            |> string
+                        )
                         .Elt()
             }
         )
@@ -116,8 +128,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
     quizPage()
         .QuizCode(model.Code)
         .CurrentUser(model.CurrentUser)
-        .TeamOne(teamView (model.TeamOne) dispatch)
-        .TeamTwo(teamView model.TeamTwo dispatch)
+        .TeamOne(teamView (model.TeamOne, model.JumpOrder) dispatch)
+        .TeamTwo(teamView (model.TeamTwo, model.JumpOrder) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
         .CurrentQuizzer(model.CurrentQuizzer)
         .Elt()
