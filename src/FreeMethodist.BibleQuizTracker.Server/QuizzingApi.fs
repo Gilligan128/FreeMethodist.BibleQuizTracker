@@ -30,16 +30,21 @@ type UnvalidatedTeamQuiz =
 
 type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
 
-type  TeamScore  = private TeamScore of int //increments of 20
+type TeamScore = private TeamScore of int //increments of 20
 
 [<RequireQualifiedAccess>]
 module TeamScore =
-     
+
     let create score =
         let scoreMod = score % 20
-        if scoreMod = 0 then Ok score else Error "Score not divisible by 20"
-        
-    
+
+        if scoreMod = 0 then
+            Ok(TeamScore score)
+        else
+            Error "Score not divisible by 20"
+
+    let value (TeamScore score) = score
+
 type QuestionNumber = int
 
 type CompletedQuestion = { answeringPlayer: Quizzer option }

@@ -21,15 +21,19 @@ let validateTeamScore: ValidateTeamScore =
 
         let validateTeamQuiz (teamQuiz: RunningTeamQuiz) =
             if (teamQuiz.TeamOne.Name = unvalidatedScore.Team
-               || teamQuiz.TeamTwo.Name = unvalidatedScore.Team) then
+                || teamQuiz.TeamTwo.Name = unvalidatedScore.Team) then
                 Ok
                     { Quiz = code
                       Team = unvalidatedScore.Team
                       Score = unvalidatedScore.NewScore }
             else
-                Result.Error (OverrideTeamScore.Error.TeamNotInQuiz unvalidatedScore.Team)
+                Result.Error(OverrideTeamScore.Error.TeamNotInQuiz unvalidatedScore.Team)
 
         match quizResult with
         | TeamQuiz teamQuiz ->
             match teamQuiz with
-            | TeamQuiz.Running running ->  running |> validateTeamQuiz
+            | TeamQuiz.Running running -> running |> validateTeamQuiz
+            | TeamQuiz.Completed c -> Error(OverrideTeamScore.Error.WrongQuizState(c.GetType()))
+            | TeamQuiz.Official o -> Error(OverrideTeamScore.Error.WrongQuizType(o.GetType()))
+            | TeamQuiz.Unvalidated u -> Error(OverrideTeamScore.Error.WrongQuizType(u.GetType()))
+        | IndividualQuiz -> Error(OverrideTeamScore.Error.WrongQuizType (quizResult.GetType()) )
