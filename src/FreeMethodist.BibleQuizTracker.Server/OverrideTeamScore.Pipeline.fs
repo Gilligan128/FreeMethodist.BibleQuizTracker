@@ -3,6 +3,7 @@
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Api
 open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+open Microsoft.FSharp.Core
 
 
 type ValidatedTeamScore =
@@ -13,7 +14,7 @@ type ValidatedTeamScore =
 type ValidateTeamScore =
     GetQuiz -> QuizCode -> UnvalidatedTeamScore -> Result<ValidatedTeamScore, OverrideTeamScore.Error>
 
-type CreateEvent = ValidateTeamScore -> TeamScoreChanged
+type CreateEvent = ValidatedTeamScore -> TeamScoreChanged
 
 let validateTeamScore: ValidateTeamScore =
     fun getQuiz code unvalidatedScore ->
@@ -36,4 +37,13 @@ let validateTeamScore: ValidateTeamScore =
             | TeamQuiz.Completed c -> Error(OverrideTeamScore.Error.WrongQuizState(c.GetType()))
             | TeamQuiz.Official o -> Error(OverrideTeamScore.Error.WrongQuizType(o.GetType()))
             | TeamQuiz.Unvalidated u -> Error(OverrideTeamScore.Error.WrongQuizType(u.GetType()))
-        | IndividualQuiz -> Error(OverrideTeamScore.Error.WrongQuizType (quizResult.GetType()) )
+        | IndividualQuiz -> Error(OverrideTeamScore.Error.WrongQuizType(quizResult.GetType()))
+
+let createEvent score =
+    { Team = score.Team
+      Score = score.Score
+      Quiz = score.Quiz }
+
+let overrideTeamScore getQuiz (command: OverrideTeamScore.Command) =
+    validateTeamScore getQuiz command.Quiz command.Data
+    |> Result.map createEvent
