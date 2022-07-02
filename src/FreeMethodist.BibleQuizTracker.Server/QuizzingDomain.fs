@@ -11,7 +11,6 @@ open QuizzingApi
 //Domain Model
 
 
-
 type QuizRoomState =
     | Open
     | Closed

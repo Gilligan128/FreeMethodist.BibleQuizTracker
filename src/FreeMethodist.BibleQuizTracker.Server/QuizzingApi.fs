@@ -30,7 +30,16 @@ type UnvalidatedTeamQuiz =
 
 type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
 
-type TeamScore = int //increments of 20
+type  TeamScore  = private TeamScore of int //increments of 20
+
+[<RequireQualifiedAccess>]
+module TeamScore =
+     
+    let create score =
+        let scoreMod = score % 20
+        if scoreMod = 0 then Ok score else Error "Score not divisible by 20"
+        
+    
 type QuestionNumber = int
 
 type CompletedQuestion = { answeringPlayer: Quizzer option }
@@ -56,8 +65,8 @@ type QuizTeamState =
 type RunningTeamQuiz =
     { code: QuizCode
       questions: QuizQuestion list
-      teamOne: QuizTeamState
-      teamTwo: QuizTeamState }
+      TeamOne: QuizTeamState
+      TeamTwo: QuizTeamState }
 
 type TeamQuizCreated = { Quiz: RunningTeamQuiz }
 
@@ -109,6 +118,7 @@ type JumpError =
 
 type PlayerJumpsWorkflow = JumpCommand -> Result<JumpOrderChanged, JumpError>
 
+
 //Full documentation for commands while quiz is running.
 //This is sort of a "to do list" of API
 type RunTeamQuizCommands =
@@ -121,7 +131,7 @@ type RunTeamQuizCommands =
     | SelectQuestion
     | LockJumps
     | ClearJumps
-    | OverrideScore
+    | OverrideTeamScore
     | MarkQuizzerIn
     | MarkQuizzerOut
     | SubstituteQuizzer

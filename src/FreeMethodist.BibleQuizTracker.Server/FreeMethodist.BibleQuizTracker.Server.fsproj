@@ -6,6 +6,8 @@
   <ItemGroup>
     <Compile Include="QuizzingApi.fs" />
     <Compile Include="QuizzingDomain.fs" />
+    <Compile Include="OverrideTeamScore.Api.fs" />
+    <Compile Include="OverrideTeamScore.Pipeline.fs" />
     <Compile Include="QuizHub.fs" />
     <Compile Include="EnterQuizPipeline.fs" />
     <Compile Include="JumpPipeline.fs" />
