@@ -64,6 +64,7 @@ type QuizQuestion =
 
 type QuizTeamState =
     { Name: TeamName
+      Score: TeamScore
       Quizzers: QuizzerState list
       captain: Quizzer option }
 

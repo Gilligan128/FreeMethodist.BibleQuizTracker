@@ -5,45 +5,53 @@ open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
 open Microsoft.FSharp.Core
 
+type TeamBeingUpdated =
+    | TeamOne
+    | TeamTwo
 
-type ValidatedTeamScore =
-    { Quiz: QuizCode
-      Team: TeamName
-      Score: TeamScore }
+type ValidTeamScore =
+    { Score: TeamScore
+      TeamBeingUpdated: TeamBeingUpdated }
 
-type ValidateTeamScore =
-    GetQuiz -> QuizCode -> UnvalidatedTeamScore -> Result<ValidatedTeamScore, OverrideTeamScore.Error>
+type ValidateQuiz = GetQuiz -> QuizCode -> Result<RunningTeamQuiz, OverrideTeamScore.Error>
 
-type CreateEvent = ValidatedTeamScore -> TeamScoreChanged
+type ValidateTeamScore = RunningTeamQuiz -> UnvalidatedTeamScore -> Result<ValidTeamScore, OverrideTeamScore.Error>
+type UpdateQuizScore = RunningTeamQuiz -> ValidTeamScore -> RunningTeamQuiz
+type CreateEvent = RunningTeamQuiz -> ValidTeamScore -> TeamScoreChanged
 
-let validateTeamScore: ValidateTeamScore =
-    fun getQuiz code unvalidatedScore ->
+let validateQuiz: ValidateQuiz =
+    fun getQuiz code ->
         let quizResult = getQuiz code
-
-        let validateTeamQuiz (teamQuiz: RunningTeamQuiz) =
-            if (teamQuiz.TeamOne.Name = unvalidatedScore.Team
-                || teamQuiz.TeamTwo.Name = unvalidatedScore.Team) then
-                Ok
-                    { Quiz = code
-                      Team = unvalidatedScore.Team
-                      Score = unvalidatedScore.NewScore }
-            else
-                Result.Error(OverrideTeamScore.Error.TeamNotInQuiz unvalidatedScore.Team)
 
         match quizResult with
         | TeamQuiz teamQuiz ->
             match teamQuiz with
-            | TeamQuiz.Running running -> running |> validateTeamQuiz
+            | TeamQuiz.Running running -> Ok running
             | TeamQuiz.Completed c -> Error(OverrideTeamScore.Error.WrongQuizState(c.GetType()))
             | TeamQuiz.Official o -> Error(OverrideTeamScore.Error.WrongQuizType(o.GetType()))
             | TeamQuiz.Unvalidated u -> Error(OverrideTeamScore.Error.WrongQuizType(u.GetType()))
         | IndividualQuiz -> Error(OverrideTeamScore.Error.WrongQuizType(quizResult.GetType()))
 
-let createEvent score =
-    { Team = score.Team
-      Score = score.Score
-      Quiz = score.Quiz }
+let validateTeamScore: ValidateTeamScore =
+    fun teamQuiz unvalidatedScore ->
+        if (teamQuiz.TeamOne.Name = unvalidatedScore.Team) then
+            Ok
+                { Score = unvalidatedScore.NewScore
+                  TeamBeingUpdated = TeamOne }
+        else
+            Result.Error(OverrideTeamScore.Error.TeamNotInQuiz unvalidatedScore.Team)
 
-let overrideTeamScore getQuiz (command: OverrideTeamScore.Command) =
-    validateTeamScore getQuiz command.Quiz command.Data
-    |> Result.map createEvent
+let UpdateQuizScore: UpdateQuizScore =
+    fun quiz score ->
+        match score.TeamBeingUpdated with
+        | TeamOne -> { quiz with TeamOne = { quiz.TeamOne with Score = score.Score } }
+        | TeamTwo -> { quiz with TeamTwo = { quiz.TeamTwo with Score = score.Score } }
+
+let createEvent: CreateEvent =
+    fun quiz score ->
+        { Team =
+            match score.TeamBeingUpdated with
+            | TeamOne -> quiz.TeamOne.Name
+            | TeamTwo -> quiz.TeamTwo.Name
+          NewScore = score.Score
+          Quiz = quiz.code }
