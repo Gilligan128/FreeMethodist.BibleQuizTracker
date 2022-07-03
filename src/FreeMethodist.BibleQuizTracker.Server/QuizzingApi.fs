@@ -54,7 +54,7 @@ type ParticipationState =
     | Out
 
 type QuizzerState =
-    { Player: Quizzer
+    { Name: Quizzer
       Participation: ParticipationState
       Score: TeamScore }
 
@@ -66,11 +66,11 @@ type QuizTeamState =
     { Name: TeamName
       Score: TeamScore
       Quizzers: QuizzerState list
-      captain: Quizzer option }
+      Captain: Quizzer option }
 
 type RunningTeamQuiz =
-    { code: QuizCode
-      questions: QuizQuestion list
+    { Code: QuizCode
+      Questions: QuizQuestion list
       TeamOne: QuizTeamState
       TeamTwo: QuizTeamState }
 

@@ -13,8 +13,7 @@ type ValidTeamScore =
     { Score: TeamScore
       TeamBeingUpdated: TeamBeingUpdated }
 
-type ValidateQuiz = GetQuiz -> QuizCode -> Result<RunningTeamQuiz, OverrideTeamScore.Error>
-
+type ValidateQuiz = GetTeamQuiz -> QuizCode -> Result<RunningTeamQuiz, OverrideTeamScore.Error>
 type ValidateTeamScore = RunningTeamQuiz -> UnvalidatedTeamScore -> Result<ValidTeamScore, OverrideTeamScore.Error>
 type UpdateQuizScore = RunningTeamQuiz -> ValidTeamScore -> RunningTeamQuiz
 type CreateEvent = RunningTeamQuiz -> ValidTeamScore -> TeamScoreChanged
@@ -24,13 +23,10 @@ let validateQuiz: ValidateQuiz =
         let quizResult = getQuiz code
 
         match quizResult with
-        | TeamQuiz teamQuiz ->
-            match teamQuiz with
-            | TeamQuiz.Running running -> Ok running
-            | TeamQuiz.Completed c -> Error(OverrideTeamScore.Error.WrongQuizState(c.GetType()))
-            | TeamQuiz.Official o -> Error(OverrideTeamScore.Error.WrongQuizType(o.GetType()))
-            | TeamQuiz.Unvalidated u -> Error(OverrideTeamScore.Error.WrongQuizType(u.GetType()))
-        | IndividualQuiz -> Error(OverrideTeamScore.Error.WrongQuizType(quizResult.GetType()))
+        | TeamQuiz.Running running -> Ok running
+        | TeamQuiz.Completed c -> Error(OverrideTeamScore.Error.WrongQuizState(c.GetType()))
+        | TeamQuiz.Official o -> Error(OverrideTeamScore.Error.WrongQuizState(o.GetType()))
+        | TeamQuiz.Unvalidated u -> Error(OverrideTeamScore.Error.WrongQuizState(u.GetType()))
 
 let validateTeamScore: ValidateTeamScore =
     fun teamQuiz unvalidatedScore ->
@@ -41,7 +37,7 @@ let validateTeamScore: ValidateTeamScore =
         else
             Result.Error(OverrideTeamScore.Error.TeamNotInQuiz unvalidatedScore.Team)
 
-let UpdateQuizScore: UpdateQuizScore =
+let updateQuizScore: UpdateQuizScore =
     fun quiz score ->
         match score.TeamBeingUpdated with
         | TeamOne -> { quiz with TeamOne = { quiz.TeamOne with Score = score.Score } }
@@ -54,4 +50,16 @@ let createEvent: CreateEvent =
             | TeamOne -> quiz.TeamOne.Name
             | TeamTwo -> quiz.TeamTwo.Name
           NewScore = score.Score
-          Quiz = quiz.code }
+          Quiz = quiz.Code }
+
+let overrideTeamScore getQuiz saveQuiz : OverrideTeamScore.Workflow =
+    fun command ->
+        result {
+            let! quiz = validateQuiz getQuiz command.Quiz
+            let! score = validateTeamScore quiz command.Data
+            let quiz = updateQuizScore quiz score
+            let event = createEvent quiz score
+            saveQuiz quiz
+            return event
+        }
+    

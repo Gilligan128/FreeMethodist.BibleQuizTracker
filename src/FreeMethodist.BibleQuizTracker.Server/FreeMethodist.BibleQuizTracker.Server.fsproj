@@ -4,9 +4,10 @@
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Result.fs" />
     <Compile Include="QuizzingApi.fs" />
     <Compile Include="QuizzingDomain.fs" />
-    <Compile Include="OverrideTeamScore.Api.fs" />
+    <Compile Include="OverrideTeamScore.Workflow.fs" />
     <Compile Include="OverrideTeamScore.Pipeline.fs" />
     <Compile Include="QuizHub.fs" />
     <Compile Include="EnterQuizPipeline.fs" />

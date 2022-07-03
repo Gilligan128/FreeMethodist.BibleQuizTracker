@@ -65,7 +65,7 @@ type Quiz =
 
 
 //Common Dependencies
-type GetQuiz = QuizCode -> Quiz
+type GetTeamQuiz = QuizCode -> TeamQuiz
 
 
 

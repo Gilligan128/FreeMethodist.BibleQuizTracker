@@ -31,7 +31,7 @@ and Book =
 let initModel =
     { page = Home
       error = None
-      quiz = QuizPage.initModel }
+      quiz = QuizPage.initModel  }
 
 /// The Elmish application's update messages.
 type Message =
