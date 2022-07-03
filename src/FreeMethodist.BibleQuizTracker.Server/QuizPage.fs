@@ -10,12 +10,14 @@ open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
 open Microsoft.AspNetCore.SignalR.Client
+open Microsoft.FSharp.Control
 open Microsoft.FSharp.Core
 open Elmish
 
 type ConnectionStatus =
     | Connected
     | Disconnected of DateTimeOffset
+    | Unknown
 
 type QuizzerModel =
     { Name: string
@@ -45,8 +47,8 @@ type Model =
 type Message =
     | SetJoiningQuizzer of string
     | JoinQuiz
-    | QuizzerEntered of QuizzerEntered
     | OverrideScore of int * TeamName
+    | RefreshQuiz of QuizCode
 
 let exampleQuiz code =
 
@@ -84,7 +86,28 @@ let exampleQuiz code =
               Questions = [] }
     }
 
-let getQuizStub (quiz) = fun code -> quiz
+let private getQuizStub (quiz) = fun code -> quiz
+
+let private refreshModel (quiz: RunningTeamQuiz) =
+    let refreshQuizzer (quizzer: QuizzerState) =
+        { Name = quizzer.Name
+          Score = TeamScore.value quizzer.Score
+          ConnectionStatus = Unknown }
+
+    let refreshTeam (team: QuizTeamState) =
+        { Name = team.Name
+          Score = TeamScore.value team.Score
+          Quizzers = team.Quizzers |> List.map refreshQuizzer }
+
+    { Code = quiz.Code
+      TeamOne = quiz.TeamOne |> refreshTeam
+      TeamTwo = quiz.TeamTwo |> refreshTeam
+      CurrentQuestion = 3
+      CurrentJumpPosition = 1
+      CurrentUser = "Quizmaster"
+      JoiningQuizzer = ""
+      JumpOrder = [ "Jim"; "Juni"; "John" ]
+      JumpState = Unlocked }
 
 let initModel =
 
@@ -100,47 +123,24 @@ let initModel =
           CurrentJumpPosition = 0 }
 
     match exampleQuiz "TEST" with
-    | Ok quiz ->
-        { JoiningQuizzer = ""
-          Code = "TEST"
-          TeamOne =
-            { Name = "LEFT"
-              Score = 20
-              Quizzers =
-                [ { Name = "Jim"
-                    Score = 20
-                    ConnectionStatus = Connected }
-                  { Name = "John"
-                    Score = 0
-                    ConnectionStatus = Connected }
-                  { Name = "Kinda Long Name"
-                    Score = 0
-                    ConnectionStatus = Connected } ] }
-          TeamTwo =
-            { Name = "RIGHT"
-              Score = 40
-              Quizzers =
-                [ { Name = "Jina"
-                    Score = 40
-                    ConnectionStatus = Connected }
-                  { Name = "Juni"
-                    Score = 0
-                    ConnectionStatus = Connected } ] }
-          JumpOrder = [ "Jim"; "Juni"; "John" ]
-          CurrentQuestion = 3
-          CurrentUser = "Quizmaster"
-          JumpState = Unlocked
-          CurrentJumpPosition = 0 }
+    | Ok quiz -> refreshModel quiz
     | Error message -> emptyModel
 
 
 let subscribe (signalRConnection: HubConnection) initial =
     let sub dispatch =
         signalRConnection.On<QuizzerEntered>(
-            "EnteredQuiz",
-            (fun msg -> dispatch (Message.QuizzerEntered msg) |> ignore)
+             "EnteredQuiz",
+            (fun (msg:QuizzerEntered) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
         )
         |> ignore
+
+        signalRConnection.On<TeamScoreChanged>(
+            (typedefof<TeamScoreChanged>).Name,
+            (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
+        )
+        |> ignore
+
 
     Cmd.ofSub sub
 
@@ -148,14 +148,14 @@ type OverrideScoreErrors =
     | DomainError of OverrideTeamScore.Error
     | FormError of string
 
-let overrideScore (model: Model) (score: int) (team: TeamName) =
+let private overrideScore (model: Model) (score: int) (team: TeamName) =
     result {
         let! exampleQuiz =
             exampleQuiz model.Code
             |> Result.mapError (FormError)
 
         let getQuiz =
-            getQuizStub ( Running exampleQuiz)
+            getQuizStub (Running exampleQuiz)
 
         let! newScore =
             TeamScore.create score
@@ -180,19 +180,24 @@ let update (hubConnection: HubConnection) msg model =
               Quizzer = model.JoiningQuizzer
               Quiz = "123" }
 
-        hubConnection.InvokeAsync("EnterQuiz", hubMessage)
+        hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.EnterQuiz, hubMessage)
         |> ignore
 
         { model with JoiningQuizzer = "" }, Cmd.none
-    | QuizzerEntered quizzerEntered -> model, Cmd.none
     | OverrideScore (score, teamName) ->
         let result =
             overrideScore model score teamName
-
         match result with
-        | Ok event -> { model with TeamOne = { model.TeamOne with Score = model.TeamOne.Score }}, Cmd.none
+        | Ok event ->
+            hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.TeamScoreChanged, event) |> Async.AwaitTask |> Async.Ignore |> ignore
+            model, Cmd.none
         | Error error -> model, Cmd.none
-
+    | RefreshQuiz quizCode -> exampleQuiz quizCode
+                              |> Result.map refreshModel
+                              |> function 
+                                 | Ok refreshedModel -> refreshedModel, Cmd.none
+                                 | Error _ -> model, Cmd.none
+                                             
 
 type quizPage = Template<"wwwroot/Quiz.html">
 

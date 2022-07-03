@@ -125,22 +125,3 @@ type JumpError =
 type PlayerJumpsWorkflow = JumpCommand -> Result<JumpOrderChanged, JumpError>
 
 
-//Full documentation for commands while quiz is running.
-//This is sort of a "to do list" of API
-type RunTeamQuizCommands =
-    | CorrectAnswer
-    | IncorrectAnswer
-    | MarkPrejump
-    | Jump of JumpCommand
-    | ResetQuestion
-    | NextQuestion
-    | SelectQuestion
-    | LockJumps
-    | ClearJumps
-    | OverrideTeamScore
-    | MarkQuizzerIn
-    | MarkQuizzerOut
-    | SubstituteQuizzer
-    | MakeCaptain
-    | CompleteQuiz
-    | EnterQuiz of EnterTeamQuizCommand
