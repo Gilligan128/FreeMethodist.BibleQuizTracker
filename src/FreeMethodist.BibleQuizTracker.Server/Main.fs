@@ -1,6 +1,7 @@
 module FreeMethodist.BibleQuizTracker.Server.Main
 
 open System
+open System.Text.Json.Serialization
 open Elmish
 open Bolero
 open Bolero.Html
@@ -10,6 +11,7 @@ open Bolero.Templating.Client
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR.Client
+open Microsoft.Extensions.DependencyInjection
 
 /// Routing endpoints definition.
 type Page =
@@ -31,7 +33,7 @@ and Book =
 let initModel =
     { page = Home
       error = None
-      quiz = QuizPage.initModel  }
+      quiz = QuizPage.initModel }
 
 /// The Elmish application's update messages.
 type Message =
@@ -41,7 +43,7 @@ type Message =
 
 
 
-let update hubConnection message model =
+let update hubConnection (message: Message) model : Model * Cmd<Message> =
     match message with
     | SetPage page -> { model with page = page }, Cmd.none
     | ClearError -> { model with error = None }, Cmd.none
@@ -49,7 +51,7 @@ let update hubConnection message model =
         let (quizModel, quizCommand) =
             QuizPage.update hubConnection quizMsg model.quiz
 
-        { model with quiz = quizModel }, quizCommand
+        { model with quiz = quizModel }, Cmd.map QuizMessage quizCommand
 
 /// Connects the routing system to the Elmish application.
 let router =
@@ -100,27 +102,34 @@ let view model dispatch =
         .Elt()
 
 let subscription hubConnection model =
-    Cmd.batch [
-        Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection model.quiz)
-    ]
-    
+    Cmd.batch [ Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection model.quiz) ]
+
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
-    
+
     [<Inject>]
     member val Navigator = Unchecked.defaultof<NavigationManager> with get, set
-    
+
     override this.Program =
-        let hubConnection = HubConnectionBuilder()
-                                .WithUrl($"{this.Navigator.BaseUri}QuizHub")
-                                .WithAutomaticReconnect()
-                                .Build() 
+        let hubConnection =
+            HubConnectionBuilder()
+                .WithUrl($"{this.Navigator.BaseUri}QuizHub")
+                .WithAutomaticReconnect()
+                .AddJsonProtocol(fun options -> options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
+                .Build()
+
         let update = update hubConnection
-        let subscription = subscription hubConnection
-        Program.mkProgram (fun _ ->
-            hubConnection.StartAsync() |> ignore
-            initModel, Cmd.none) update view
+
+        let subscription =
+            subscription hubConnection
+
+        Program.mkProgram
+            (fun _ ->
+                hubConnection.StartAsync() |> ignore
+                initModel, Cmd.none)
+            update
+            view
         |> Program.withRouter router
         |> Program.withSubscription subscription
 #if DEBUG

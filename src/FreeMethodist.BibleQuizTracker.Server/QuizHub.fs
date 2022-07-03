@@ -12,7 +12,8 @@ open System.Threading.Tasks
 type Client =
     abstract member EnteredQuiz: QuizzerEntered -> Task
     abstract member Jumped: Quizzer -> Task
-    abstract member HandleQuizEvent: msg:'T -> Task
+    abstract member HandleQuizEvent: 'T -> Task
+
 
 type Hub() =
     inherit Hub<Client>()
@@ -23,5 +24,8 @@ type Hub() =
             this.Clients.Group(msg.Quiz).EnteredQuiz(msg)
         }
         
-     member this.TeamScoreChanged(event)  (msg: TeamScoreChanged) =
-         this.Clients.Group(event.Quiz).HandleQuizEvent msg
+     member this.TeamScoreChanged( msg: TeamScoreChanged) =
+         this.Clients.Group(msg.Quiz).HandleQuizEvent msg
+
+     member this.ConnectToQuiz(code: QuizCode) =
+         this.Groups.AddToGroupAsync(this.Context.ConnectionId, code)

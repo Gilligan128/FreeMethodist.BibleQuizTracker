@@ -49,6 +49,7 @@ type Message =
     | JoinQuiz
     | OverrideScore of int * TeamName
     | RefreshQuiz of QuizCode
+    | DoNothing
 
 let exampleQuiz code =
 
@@ -127,11 +128,11 @@ let initModel =
     | Error message -> emptyModel
 
 
-let subscribe (signalRConnection: HubConnection) initial =
+let subscribe (signalRConnection: HubConnection) (initial: Model) =
     let sub dispatch =
         signalRConnection.On<QuizzerEntered>(
-             "EnteredQuiz",
-            (fun (msg:QuizzerEntered) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
+            "EnteredQuiz",
+            (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
         )
         |> ignore
 
@@ -141,6 +142,9 @@ let subscribe (signalRConnection: HubConnection) initial =
         )
         |> ignore
 
+        signalRConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, initial.Code)
+        |> Async.AwaitTask
+        |> ignore
 
     Cmd.ofSub sub
 
@@ -187,17 +191,20 @@ let update (hubConnection: HubConnection) msg model =
     | OverrideScore (score, teamName) ->
         let result =
             overrideScore model score teamName
+
         match result with
         | Ok event ->
-            hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.TeamScoreChanged, event) |> Async.AwaitTask |> Async.Ignore |> ignore
-            model, Cmd.none
+           let task = (fun _ -> hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.TeamScoreChanged, event) |> Async.AwaitTask)
+           let cmd = Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz event.Quiz) (fun er -> Message.DoNothing)
+           model, cmd
         | Error error -> model, Cmd.none
-    | RefreshQuiz quizCode -> exampleQuiz quizCode
-                              |> Result.map refreshModel
-                              |> function 
-                                 | Ok refreshedModel -> refreshedModel, Cmd.none
-                                 | Error _ -> model, Cmd.none
-                                             
+    | RefreshQuiz quizCode ->
+        exampleQuiz quizCode
+        |> Result.map refreshModel
+        |> function
+            | Ok refreshedModel -> refreshedModel, Cmd.none
+            | Error _ -> model, Cmd.none
+
 
 type quizPage = Template<"wwwroot/Quiz.html">
 
