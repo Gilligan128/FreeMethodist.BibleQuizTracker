@@ -137,7 +137,7 @@ let subscribe (signalRConnection: HubConnection) (initial: Model) =
         |> ignore
 
         signalRConnection.On<TeamScoreChanged>(
-            (typedefof<TeamScoreChanged>).Name,
+            nameof Unchecked.defaultof<QuizHub.Client>.HandleQuizEvent,
             (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
         )
         |> ignore

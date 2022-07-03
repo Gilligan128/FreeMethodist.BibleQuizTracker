@@ -1,10 +1,12 @@
 namespace FreeMethodist.BibleQuizTracker.Server
 
+open System.Text.Json.Serialization
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.SignalR
 open Microsoft.Extensions.DependencyInjection
 open Bolero
 open Bolero.Remoting.Server
@@ -19,15 +21,22 @@ type Startup() =
     member this.ConfigureServices(services: IServiceCollection) =
         services.AddMvc() |> ignore
         services.AddServerSideBlazor() |> ignore
+
         services
             .AddAuthorization()
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie()
-                .Services
-            .AddBoleroHost(server = true)
+            .AddCookie()
+            .Services.AddBoleroHost(server = true)
 #if DEBUG
-            .AddHotReload(templateDir = __SOURCE_DIRECTORY__)
+            .AddHotReload(
+                templateDir = __SOURCE_DIRECTORY__
+            )
 #endif
+        |> ignore
+
+        services.Configure (fun (options: JsonHubProtocolOptions) ->
+            options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter())
+            |> ignore)
         |> ignore
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -42,8 +51,12 @@ type Startup() =
                 endpoints.UseHotReload()
 #endif
                 endpoints.MapBlazorHub() |> ignore
-                endpoints.MapHub<QuizHub.Hub>(PathString "/quizhub") |> ignore
-                endpoints.MapFallbackToBolero(Index.page) |> ignore)
+
+                endpoints.MapHub<QuizHub.Hub>(PathString "/quizhub")
+                |> ignore
+
+                endpoints.MapFallbackToBolero(Index.page)
+                |> ignore)
         |> ignore
 
 module Program =
@@ -56,4 +69,5 @@ module Program =
             .UseStartup<Startup>()
             .Build()
             .Run()
+
         0
