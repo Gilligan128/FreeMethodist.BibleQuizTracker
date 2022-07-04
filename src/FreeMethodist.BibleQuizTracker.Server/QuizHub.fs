@@ -20,8 +20,8 @@ type Hub() =
 
     member this.EnterQuiz(msg: QuizzerEntered) =
         task {
-            this.Groups.AddToGroupAsync(this.Context.ConnectionId, msg.Quiz)
-            this.Clients.Group(msg.Quiz).EnteredQuiz(msg)
+            this.Groups.AddToGroupAsync(this.Context.ConnectionId, msg.Quiz) |> ignore
+            this.Clients.Group(msg.Quiz).EnteredQuiz(msg) |> ignore
         }
         
      member this.TeamScoreChanged( msg: TeamScoreChanged) =

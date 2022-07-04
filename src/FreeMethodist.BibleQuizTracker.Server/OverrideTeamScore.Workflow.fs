@@ -3,20 +3,24 @@
 open System
 open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 
-type UnvalidatedTeamScore = {
-    Team: TeamName
+type TeamPosition =
+    | TeamOne
+    | TeamTwo
+    
+type TeamScore = {
+    Team: TeamPosition
     NewScore: TeamScore
 }
 
 type TeamScoreChanged = {
     Quiz: QuizCode
-    Team: TeamName
+    Team: TeamPosition
     NewScore: TeamScore
 }
 
 [<RequireQualifiedAccess>]
 module OverrideTeamScore =
-    type Command = WithinQuizCommand<UnvalidatedTeamScore>
+    type Command = WithinQuizCommand<TeamScore>
     
     type Error =
         | QuizNotFound of QuizCode

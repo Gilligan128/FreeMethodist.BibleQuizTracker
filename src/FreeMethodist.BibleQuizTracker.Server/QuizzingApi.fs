@@ -62,6 +62,7 @@ type QuizQuestion =
     | Completed of CompletedQuestion
     | Upcoming
 
+
 type QuizTeamState =
     { Name: TeamName
       Score: TeamScore

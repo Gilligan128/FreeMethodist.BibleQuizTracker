@@ -47,7 +47,7 @@ type Model =
 type Message =
     | SetJoiningQuizzer of string
     | JoinQuiz
-    | OverrideScore of int * TeamName
+    | OverrideScore of int * TeamPosition
     | RefreshQuiz of QuizCode
     | DoNothing
 
@@ -137,7 +137,9 @@ let subscribe (signalRConnection: HubConnection) (initial: Model) =
         |> ignore
 
         signalRConnection.On<TeamScoreChanged>(
-            nameof Unchecked.defaultof<QuizHub.Client>.HandleQuizEvent,
+            nameof
+                Unchecked.defaultof<QuizHub.Client>
+                    .HandleQuizEvent,
             (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
         )
         |> ignore
@@ -152,7 +154,7 @@ type OverrideScoreErrors =
     | DomainError of OverrideTeamScore.Error
     | FormError of string
 
-let private overrideScore (model: Model) (score: int) (team: TeamName) =
+let private overrideScore (model: Model) (score: int) (team: TeamPosition) =
     result {
         let! exampleQuiz =
             exampleQuiz model.Code
@@ -188,15 +190,21 @@ let update (hubConnection: HubConnection) msg model =
         |> ignore
 
         { model with JoiningQuizzer = "" }, Cmd.none
-    | OverrideScore (score, teamName) ->
+    | OverrideScore (score, teamPosition) ->
         let result =
-            overrideScore model score teamName
+            overrideScore model score teamPosition
 
         match result with
         | Ok event ->
-           let task = (fun _ -> hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.TeamScoreChanged, event) |> Async.AwaitTask)
-           let cmd = Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz event.Quiz) (fun er -> Message.DoNothing)
-           model, cmd
+            let task =
+                (fun _ ->
+                    hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.TeamScoreChanged, event)
+                    |> Async.AwaitTask)
+
+            let cmd =
+                Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz event.Quiz) (fun er -> Message.DoNothing)
+
+            model, cmd
         | Error error -> model, Cmd.none
     | RefreshQuiz quizCode ->
         exampleQuiz quizCode
@@ -204,15 +212,16 @@ let update (hubConnection: HubConnection) msg model =
         |> function
             | Ok refreshedModel -> refreshedModel, Cmd.none
             | Error _ -> model, Cmd.none
+    | DoNothing -> model, Cmd.none
 
 
 type quizPage = Template<"wwwroot/Quiz.html">
 
-let teamView ((teamModel, jumpOrder): TeamModel * string list) (dispatch: Dispatch<Message>) =
+let teamView position ((teamModel, jumpOrder): TeamModel * string list) (dispatch: Dispatch<Message>) =
     quizPage
         .Team()
         .Name(teamModel.Name)
-        .Score(string teamModel.Score, (fun score -> dispatch (OverrideScore(int score, teamModel.Name))))
+        .Score(string teamModel.Score, (fun score -> dispatch (OverrideScore(int score, position))))
         .Quizzers(
             concat {
                 for quizzer in teamModel.Quizzers do
@@ -243,8 +252,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
     quizPage()
         .QuizCode(model.Code)
         .CurrentUser(model.CurrentUser)
-        .TeamOne(teamView (model.TeamOne, model.JumpOrder) dispatch)
-        .TeamTwo(teamView (model.TeamTwo, model.JumpOrder) dispatch)
+        .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder) dispatch)
+        .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
         .CurrentQuizzer(model.JumpOrder.Item model.CurrentJumpPosition)
         .JumpLockToggleAction(
