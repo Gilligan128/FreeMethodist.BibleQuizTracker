@@ -5,6 +5,7 @@
 
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
+        <IsPublishable>false</IsPublishable >
     </PropertyGroup>
 
     <ItemGroup>
