@@ -8,10 +8,12 @@ open Bolero.Html
 open Bolero.Remoting
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
+open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.FSharp.Control
 
 /// Routing endpoints definition.
 type Page =
@@ -30,10 +32,10 @@ and Book =
       publishDate: DateTime
       isbn: string }
 
-let initModel =
+let initModel initQuizModel =
     { page = Home
       error = None
-      quiz = QuizPage.initModel }
+      quiz = initQuizModel }
 
 /// The Elmish application's update messages.
 type Message =
@@ -43,13 +45,13 @@ type Message =
 
 
 
-let update hubConnection (message: Message) model : Model * Cmd<Message> =
+let update hubConnection getQuiz saveQuiz (message: Message) model : Model * Cmd<Message> =
     match message with
     | SetPage page -> { model with page = page }, Cmd.none
     | ClearError -> { model with error = None }, Cmd.none
     | QuizMessage quizMsg ->
         let (quizModel, quizCommand) =
-            QuizPage.update hubConnection quizMsg model.quiz
+            QuizPage.update hubConnection getQuiz saveQuiz quizMsg model.quiz
 
         { model with quiz = quizModel }, Cmd.map QuizMessage quizCommand
 
@@ -111,6 +113,12 @@ type MyApp() =
     [<Inject>]
     member val Navigator = Unchecked.defaultof<NavigationManager> with get, set
 
+    [<Inject>]
+    member val SaveQuiz = Unchecked.defaultof<SaveTeamQuiz> with get, set
+
+    [<Inject>]
+    member val GetQuiz = Unchecked.defaultof<GetTeamQuiz> with get, set
+
     override this.Program =
         let hubConnection =
             HubConnectionBuilder()
@@ -119,7 +127,8 @@ type MyApp() =
                 .AddJsonProtocol(fun options -> options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                 .Build()
 
-        let update = update hubConnection
+        let update =
+            update hubConnection this.GetQuiz this.SaveQuiz
 
         let subscription =
             subscription hubConnection
@@ -127,7 +136,11 @@ type MyApp() =
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore
-                initModel, Cmd.none)
+
+                let initQuizModel =
+                    QuizPage.initModel this.GetQuiz
+
+                (initModel initQuizModel), Cmd.none)
             update
             view
         |> Program.withRouter router

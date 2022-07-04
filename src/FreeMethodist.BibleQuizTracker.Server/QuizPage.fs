@@ -51,47 +51,7 @@ type Message =
     | RefreshQuiz of QuizCode
     | DoNothing
 
-let exampleQuiz code =
-
-    result {
-        let! teamOneScore = TeamScore.create 20
-        let! teamTwoScore = TeamScore.create 40
-        let! jimScore = TeamScore.create 20
-        let! jinaScore = TeamScore.create 40
-        let! johnScore = TeamScore.create 0
-        let! juniScore = TeamScore.create 0
-
-        return
-            { Code = code
-              TeamOne =
-                { Name = "LEFT"
-                  Score = teamOneScore
-                  Captain = None
-                  Quizzers =
-                    [ { Name = "Jim"
-                        Score = jimScore
-                        Participation = In }
-                      { Name = "John"
-                        Score = johnScore
-                        Participation = In } ] }
-              TeamTwo =
-                { Name = "RIGHT"
-                  Score = teamTwoScore
-                  Captain = None
-                  Quizzers =
-                    [ { Name = "Jina"
-                        Score = jinaScore
-                        Participation = In }
-                      { Name = "Jina"
-                        Score = juniScore
-                        Participation = In } ] }
-
-              Questions = [] }
-    }
-
-let private getQuizStub (quiz) = fun code -> quiz
-
-let private refreshModel (quiz: RunningTeamQuiz) =
+let private refreshModel (quiz: TeamQuiz) =
     let refreshQuizzer (quizzer: QuizzerState) =
         { Name = quizzer.Name
           Score = TeamScore.value quizzer.Score
@@ -101,34 +61,31 @@ let private refreshModel (quiz: RunningTeamQuiz) =
         { Name = team.Name
           Score = TeamScore.value team.Score
           Quizzers = team.Quizzers |> List.map refreshQuizzer }
-
-    { Code = quiz.Code
-      TeamOne = quiz.TeamOne |> refreshTeam
-      TeamTwo = quiz.TeamTwo |> refreshTeam
-      CurrentQuestion = 3
-      CurrentJumpPosition = 1
-      CurrentUser = "Quizmaster"
-      JoiningQuizzer = ""
-      JumpOrder = [ "Jim"; "Juni"; "John" ]
-      JumpState = Unlocked }
-
-let initModel =
-    let quiz = Persistence.getQuiz "TEST"
-
     match quiz with
-    | Running runningQuiz -> refreshModel runningQuiz
-    | Completed _
-    | Official _
-    | Unvalidated _ ->
-        { JoiningQuizzer = ""
-          Code = ""
-          TeamOne = { Name = ""; Score = 0; Quizzers = [] }
-          TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
-          JumpOrder = []
+    | Running runningQuiz ->
+        { Code = runningQuiz.Code
+          TeamOne = runningQuiz.TeamOne |> refreshTeam
+          TeamTwo = runningQuiz.TeamTwo |> refreshTeam
           CurrentQuestion = 3
-          CurrentUser = ""
-          JumpState = Unlocked
-          CurrentJumpPosition = 0 }
+          CurrentJumpPosition = 1
+          CurrentUser = "Quizmaster"
+          JoiningQuizzer = ""
+          JumpOrder = [ "Jim"; "Juni"; "John" ]
+          JumpState = Unlocked }
+    | Completed _ | Official _| Unvalidated _ ->
+          {   JoiningQuizzer = ""
+              Code = ""
+              TeamOne = { Name = ""; Score = 0; Quizzers = [] }
+              TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
+              JumpOrder = []
+              CurrentQuestion = 3
+              CurrentUser = ""
+              JumpState = Unlocked
+              CurrentJumpPosition = 0 }
+
+let initModel getQuiz =
+    let quiz = getQuiz "TEST"
+    refreshModel quiz
 
 let subscribe (signalRConnection: HubConnection) (initial: Model) =
     let sub dispatch =
@@ -149,22 +106,14 @@ let subscribe (signalRConnection: HubConnection) (initial: Model) =
         signalRConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, initial.Code)
         |> Async.AwaitTask
         |> ignore
-
     Cmd.ofSub sub
 
 type OverrideScoreErrors =
     | DomainError of OverrideTeamScore.Error
     | FormError of string
 
-let private overrideScore (model: Model) (score: int) (team: TeamPosition) =
+let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =
     result {
-        let! exampleQuiz =
-            exampleQuiz model.Code
-            |> Result.mapError (FormError)
-
-        let getQuiz =
-            getQuizStub (Running exampleQuiz)
-
         let! newScore =
             TeamScore.create score
             |> Result.mapError (FormError)
@@ -175,11 +124,11 @@ let private overrideScore (model: Model) (score: int) (team: TeamPosition) =
               User = Quizmaster }
 
         return!
-            overrideTeamScore (getQuiz) ignore command
+            overrideTeamScore getQuiz saveQuiz command
             |> Result.mapError (DomainError)
     }
 
-let update (hubConnection: HubConnection) msg model =
+let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
     match msg with
     | SetJoiningQuizzer quizzer -> { model with JoiningQuizzer = quizzer }, Cmd.none
     | JoinQuiz ->
@@ -194,7 +143,7 @@ let update (hubConnection: HubConnection) msg model =
         { model with JoiningQuizzer = "" }, Cmd.none
     | OverrideScore (score, teamPosition) ->
         let result =
-            overrideScore model score teamPosition
+            overrideScore getQuiz saveQuiz model score teamPosition
 
         match result with
         | Ok event ->
@@ -209,11 +158,9 @@ let update (hubConnection: HubConnection) msg model =
             model, cmd
         | Error error -> model, Cmd.none
     | RefreshQuiz quizCode ->
-        exampleQuiz quizCode
-        |> Result.map refreshModel
-        |> function
-            | Ok refreshedModel -> refreshedModel, Cmd.none
-            | Error _ -> model, Cmd.none
+        getQuiz quizCode
+        |> refreshModel
+        |> fun refreshedModel -> refreshedModel, Cmd.none
     | DoNothing -> model, Cmd.none
 
 

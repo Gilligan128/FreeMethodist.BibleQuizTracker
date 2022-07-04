@@ -27,9 +27,27 @@ There are a few reasons why we chose serverside Blazor instead of Clientside Web
 This project uses the Bolero framework (serverside) in order to make easier writing Blazor in F#, as well as to leverage MVU.
 
 # Roadmap
-This is both the functional and technical roadmap
+This is both the functional and technical roadmap.
 
+## Functional Roadmap
+Overall theme here is "do what it takes to get accurate, visible, and persistent scores, then do the rest"
+- [ ] Quizmaster can track and record all pertinent scoring info for a quiz. - IN PROGRESS
+  - includes adding Quizzers to a quiz.
+  - does not include Quizzer being able to "jump"
+- [ ] Tournament Directors, and Regional directors can collect scores after a quiz is done
+- [ ] Spectators can see live scores for a quiz.
+- [ ] Quizzers can participate and "jump" in quizzes.
+- [ ] Quizmasters can see the history of a quiz, and possibly make adjustments.
+- [ ] Quizzers can track "fun" quizzes, scoring how they see fit and not being limited in jumpers.
 
+## Technical Roadmap
+This is more about the technical challenges we are likely to encounter, and setting up architecture to solve them.
+- [X] Anyone who is viewing a running quiz, spectating score can see live updates of that quiz.
+  - This is solved by having a domain-specific SignalR connection (different from Blazor's builtin one) and publishing domain events through it.
+- [ ] Quizzers can jump at roughly the same time without worrying about getting "bad" jump orders
+  - I intend to solve this by making "jumps" a separate blob container from quizzes so that jumps don't override each other.
+- [ ] Differing latencies among quizzers won't affect jump order
+  - This requires either clock syncing between server-client or collecting latency of each user and using that in jump order calculations.
 # Deployment
 The application is deployed to this [Azure Subscription](https://portal.azure.com/#@gilligan128gmail.onmicrosoft.com/resource/subscriptions/57d74b02-3296-4a96-b65f-ae75cc2d7382/overview)
 

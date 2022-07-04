@@ -33,14 +33,14 @@ let createEvent: CreateEvent =
           NewScore = score.NewScore
           Quiz = quiz.Code }
 
-let overrideTeamScore getQuiz saveQuiz : OverrideTeamScore.Workflow =
+let overrideTeamScore getQuiz (saveQuiz:SaveTeamQuiz) : OverrideTeamScore.Workflow =
     fun command ->
         result {
             let! quiz = validateQuiz getQuiz command.Quiz
             let score = command.Data
             let quiz = updateQuizScore quiz score
             let event = createEvent quiz score
-            saveQuiz  quiz
+            saveQuiz (Running quiz)
             return event
         }
     

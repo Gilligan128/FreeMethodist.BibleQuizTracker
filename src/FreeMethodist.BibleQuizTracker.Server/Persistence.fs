@@ -50,4 +50,4 @@ let getQuiz: GetTeamQuiz =
     fun _ -> exampleQuiz
 
 let saveQuiz: SaveTeamQuiz =
-    fun quiz -> exampleQuiz = quiz |> ignore
+    fun quiz ->  exampleQuiz <- quiz 

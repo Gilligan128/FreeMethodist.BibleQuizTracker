@@ -1,6 +1,7 @@
 namespace FreeMethodist.BibleQuizTracker.Server
 
 open System.Text.Json.Serialization
+open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
@@ -33,7 +34,10 @@ type Startup() =
             )
 #endif
         |> ignore
-
+        services.AddSingleton<SaveTeamQuiz>(Persistence.saveQuiz)
+                .AddSingleton<GetTeamQuiz>(Persistence.getQuiz) |> ignore 
+        
+        //So that Discriminated unions can bd serialized/deserialized
         services.Configure (fun (options: JsonHubProtocolOptions) ->
             options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter())
             |> ignore)
