@@ -49,6 +49,8 @@ This is more about the technical challenges we are likely to encounter, and sett
 - [ ] Differing latencies among quizzers won't affect jump order
   - This requires either clock syncing between server-client or collecting latency of each user and using that in jump order calculations.
 # Deployment
+Application url: https://freemethodist-bible-quizzing.azurewebsites.net
+
 The application is deployed to this [Azure Subscription](https://portal.azure.com/#@gilligan128gmail.onmicrosoft.com/resource/subscriptions/57d74b02-3296-4a96-b65f-ae75cc2d7382/overview)
 
 ## Automation
