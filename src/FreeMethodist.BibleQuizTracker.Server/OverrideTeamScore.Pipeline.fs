@@ -7,9 +7,9 @@ open Microsoft.FSharp.Core
 
 
 type ValidateQuiz = GetTeamQuiz -> QuizCode -> Result<RunningTeamQuiz, OverrideTeamScore.Error>
-type ValidateTeamScore = RunningTeamQuiz -> TeamScore -> Result<TeamScore, OverrideTeamScore.Error>
-type UpdateQuizScore = RunningTeamQuiz -> TeamScore -> RunningTeamQuiz
-type CreateEvent = RunningTeamQuiz -> TeamScore -> TeamScoreChanged
+type ValidateTeamScore = RunningTeamQuiz -> OverrideTeamScoreData -> Result<TeamScore, OverrideTeamScore.Error>
+type UpdateQuizScore = RunningTeamQuiz -> OverrideTeamScoreData -> RunningTeamQuiz
+type CreateEvent = RunningTeamQuiz -> OverrideTeamScoreData -> TeamScoreChanged
 
 let validateQuiz: ValidateQuiz =
     fun getQuiz code ->
@@ -40,7 +40,7 @@ let overrideTeamScore getQuiz saveQuiz : OverrideTeamScore.Workflow =
             let score = command.Data
             let quiz = updateQuizScore quiz score
             let event = createEvent quiz score
-            saveQuiz quiz
+            saveQuiz  quiz
             return event
         }
     

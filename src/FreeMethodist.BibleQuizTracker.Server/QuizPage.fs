@@ -58,6 +58,8 @@ let exampleQuiz code =
         let! teamTwoScore = TeamScore.create 40
         let! jimScore = TeamScore.create 20
         let! jinaScore = TeamScore.create 40
+        let! johnScore = TeamScore.create 0
+        let! juniScore = TeamScore.create 0
 
         return
             { Code = code
@@ -69,8 +71,8 @@ let exampleQuiz code =
                     [ { Name = "Jim"
                         Score = jimScore
                         Participation = In }
-                      { Name = "Jim"
-                        Score = jimScore
+                      { Name = "John"
+                        Score = johnScore
                         Participation = In } ] }
               TeamTwo =
                 { Name = "RIGHT"
@@ -81,7 +83,7 @@ let exampleQuiz code =
                         Score = jinaScore
                         Participation = In }
                       { Name = "Jina"
-                        Score = jinaScore
+                        Score = juniScore
                         Participation = In } ] }
 
               Questions = [] }
@@ -111,8 +113,13 @@ let private refreshModel (quiz: RunningTeamQuiz) =
       JumpState = Unlocked }
 
 let initModel =
+    let quiz = Persistence.getQuiz "TEST"
 
-    let emptyModel =
+    match quiz with
+    | Running runningQuiz -> refreshModel runningQuiz
+    | Completed _
+    | Official _
+    | Unvalidated _ ->
         { JoiningQuizzer = ""
           Code = ""
           TeamOne = { Name = ""; Score = 0; Quizzers = [] }
@@ -122,11 +129,6 @@ let initModel =
           CurrentUser = ""
           JumpState = Unlocked
           CurrentJumpPosition = 0 }
-
-    match exampleQuiz "TEST" with
-    | Ok quiz -> refreshModel quiz
-    | Error message -> emptyModel
-
 
 let subscribe (signalRConnection: HubConnection) (initial: Model) =
     let sub dispatch =

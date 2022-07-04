@@ -7,7 +7,7 @@ type TeamPosition =
     | TeamOne
     | TeamTwo
     
-type TeamScore = {
+type OverrideTeamScoreData = {
     Team: TeamPosition
     NewScore: TeamScore
 }
@@ -20,7 +20,7 @@ type TeamScoreChanged = {
 
 [<RequireQualifiedAccess>]
 module OverrideTeamScore =
-    type Command = WithinQuizCommand<TeamScore>
+    type Command = WithinQuizCommand<OverrideTeamScoreData>
     
     type Error =
         | QuizNotFound of QuizCode

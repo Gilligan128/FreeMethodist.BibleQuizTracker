@@ -26,6 +26,10 @@ There are a few reasons why we chose serverside Blazor instead of Clientside Web
 ## Bolero
 This project uses the Bolero framework (serverside) in order to make easier writing Blazor in F#, as well as to leverage MVU.
 
+# Roadmap
+This is both the functional and technical roadmap
+
+
 # Deployment
 The application is deployed to this [Azure Subscription](https://portal.azure.com/#@gilligan128gmail.onmicrosoft.com/resource/subscriptions/57d74b02-3296-4a96-b65f-ae75cc2d7382/overview)
 

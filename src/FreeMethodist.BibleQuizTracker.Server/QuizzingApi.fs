@@ -44,7 +44,8 @@ module TeamScore =
             Error "Score not divisible by 20"
 
     let value (TeamScore score) = score
-
+    
+    let identity  = TeamScore 0
 type QuestionNumber = int
 
 type CompletedQuestion = { answeringPlayer: Quizzer option }
@@ -61,7 +62,6 @@ type QuizzerState =
 type QuizQuestion =
     | Completed of CompletedQuestion
     | Upcoming
-
 
 type QuizTeamState =
     { Name: TeamName

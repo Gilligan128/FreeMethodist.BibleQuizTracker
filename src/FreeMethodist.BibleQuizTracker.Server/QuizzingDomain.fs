@@ -16,16 +16,12 @@ type QuizRoomState =
     | Closed
 
 
-type CompletedQuizzer = {
-    Name: Quizzer
-    Score: int
-}
+type CompletedQuizzer = { Name: Quizzer; Score: int }
 
-type CompletedTeam = {
-    Name: TeamName
-    Score: int
-    Quizzers: Quizzer list
-}
+type CompletedTeam =
+    { Name: TeamName
+      Score: int
+      Quizzers: Quizzer list }
 
 type CompletedTeamQuiz =
     { code: QuizCode
@@ -33,25 +29,22 @@ type CompletedTeamQuiz =
       losingTeam: CompletedTeam
       completedQuestions: CompletedQuestion list }
 
-type OfficialQuizzer = {
-    Name: Quizzer
-    Score: TeamScore
-}
-type OfficialTeam = {
-    Name: TeamName
-    Score: TeamScore
-    QuizzerOne: OfficialQuizzer
-    QuizzerTwo: OfficialQuizzer
-    QuizzerThree: OfficialQuizzer option
-    QuizzerFour: OfficialQuizzer option
-    QuizzerFive: OfficialQuizzer option
-}
-type OfficialTeamQuiz = {
-    Code: QuizCode
-    WinningTeam: OfficialTeam
-    LosingTeam: OfficialTeam
-    CompletedQuestions: CompletedQuestion list 
-}
+type OfficialQuizzer = { Name: Quizzer; Score: TeamScore }
+
+type OfficialTeam =
+    { Name: TeamName
+      Score: TeamScore
+      QuizzerOne: OfficialQuizzer
+      QuizzerTwo: OfficialQuizzer
+      QuizzerThree: OfficialQuizzer option
+      QuizzerFour: OfficialQuizzer option
+      QuizzerFive: OfficialQuizzer option }
+
+type OfficialTeamQuiz =
+    { Code: QuizCode
+      WinningTeam: OfficialTeam
+      LosingTeam: OfficialTeam
+      CompletedQuestions: CompletedQuestion list }
 
 type TeamQuiz =
     | Unvalidated of UnvalidatedTeamQuiz
@@ -63,12 +56,9 @@ type Quiz =
     | TeamQuiz of TeamQuiz
     | IndividualQuiz
 
-
 //Common Dependencies
 type GetTeamQuiz = QuizCode -> TeamQuiz
-
-
-
+type SaveTeamQuiz = TeamQuiz -> unit
 
 type NotEnoughPlayersError =
     { teamName: TeamName
@@ -76,3 +66,18 @@ type NotEnoughPlayersError =
       minimumPlayerCount: int }
 
 type StartTeamQuizError = NotEnoughPlayers of NotEnoughPlayersError
+
+module RunningTeamQuiz =
+    let identity: RunningTeamQuiz =
+        { Code = ""
+          TeamOne =
+            { Name = ""
+              Score = TeamScore.identity
+              Captain = None
+              Quizzers = [] }
+          TeamTwo =
+            { Name = ""
+              Score = TeamScore.identity
+              Captain = None
+              Quizzers = [] }
+          Questions = [] }
