@@ -5,11 +5,11 @@
 
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
-        <IsPublishable>false</IsPublishable >
+        <IsPublishable>false</IsPublishable>
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="OverrideTeamScore.fs" />
+        <Compile Include="RunQuiz.NextQuestion.fs" />
         <Compile Include="Tests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>

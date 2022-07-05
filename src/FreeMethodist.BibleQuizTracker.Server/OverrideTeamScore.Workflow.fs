@@ -22,10 +22,5 @@ type TeamScoreChanged = {
 module OverrideTeamScore =
     type Command = WithinQuizCommand<OverrideTeamScoreData>
     
-    type Error =
-        | QuizNotFound of QuizCode
-        | TeamNotInQuiz of TeamName
-        | WrongQuizState of Type
-   
-    type Workflow = Command -> Result<TeamScoreChanged, Error>
+    type Workflow = Command -> Result<TeamScoreChanged, QuizStateError>
 

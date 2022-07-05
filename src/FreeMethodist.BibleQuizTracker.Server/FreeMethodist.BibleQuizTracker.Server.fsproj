@@ -5,11 +5,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Result.fs" />
-    <Compile Include="QuizzingApi.fs" />
-    <Compile Include="QuizzingDomain.fs" />
+    <Compile Include="Common.Workflow.fs" />
+    <Compile Include="Common.Pipeline.fs" />
     <Compile Include="Persistence.fs" />
     <Compile Include="OverrideTeamScore.Workflow.fs" />
     <Compile Include="OverrideTeamScore.Pipeline.fs" />
+    <Compile Include="NextQuestion.Workflow.fs" />
+    <Compile Include="NextQuestion.Pipeline.fs" />
     <Compile Include="QuizHub.fs" />
     <Compile Include="EnterQuizPipeline.fs" />
     <Compile Include="JumpPipeline.fs" />

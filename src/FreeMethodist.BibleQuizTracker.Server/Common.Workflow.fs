@@ -1,6 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 
 open System
+open Microsoft.FSharp.Core
 
 //Common
 type NonEmptyString = string
@@ -21,15 +22,6 @@ type WithinQuizCommand<'data> =
     { Data: 'data
       Quiz: QuizCode
       User: User }
-
-//Create Quiz Workflow
-type UnvalidatedTeamQuiz =
-    { Code: QuizCode
-      TeamOne: TeamName
-      TeamTwo: TeamName }
-
-type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
-
 type TeamScore = private TeamScore of int //increments of 20
 
 [<RequireQualifiedAccess>]
@@ -46,7 +38,28 @@ module TeamScore =
     let value (TeamScore score) = score
     
     let identity  = TeamScore 0
-type QuestionNumber = int
+
+type PositiveNumber = PositiveNumber of int
+
+
+[<RequireQualifiedAccess>]
+module PositiveNumber =
+    let create number field =
+        if number > 0 then Ok (PositiveNumber number) else Error $"{field} should be greater than zero"
+    
+    let identity = PositiveNumber 1
+ 
+type QuestionNumber = PositiveNumber
+ 
+//Create Quiz Workflow
+type UnvalidatedTeamQuiz =
+    { Code: QuizCode
+      TeamOne: TeamName
+      TeamTwo: TeamName }
+
+type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
+
+
 
 type CompletedQuestion = { answeringPlayer: Quizzer option }
 
@@ -73,7 +86,8 @@ type RunningTeamQuiz =
     { Code: QuizCode
       Questions: QuizQuestion list
       TeamOne: QuizTeamState
-      TeamTwo: QuizTeamState }
+      TeamTwo: QuizTeamState
+      CurrentQuestion: QuestionNumber }
 
 type TeamQuizCreated = { Quiz: RunningTeamQuiz }
 
@@ -126,3 +140,4 @@ type JumpError =
 type PlayerJumpsWorkflow = JumpCommand -> Result<JumpOrderChanged, JumpError>
 
 
+type QuizStateError = WrongQuizState of Type

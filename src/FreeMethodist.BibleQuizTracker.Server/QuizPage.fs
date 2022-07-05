@@ -109,7 +109,7 @@ let subscribe (signalRConnection: HubConnection) (initial: Model) =
     Cmd.ofSub sub
 
 type OverrideScoreErrors =
-    | DomainError of OverrideTeamScore.Error
+    | DomainError of QuizStateError
     | FormError of string
 
 let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =

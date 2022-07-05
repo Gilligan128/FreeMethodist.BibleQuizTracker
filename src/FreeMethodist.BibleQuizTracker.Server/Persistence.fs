@@ -13,7 +13,7 @@ let mutable private exampleQuiz: TeamQuiz =
             let! jinaScore = TeamScore.create 40
             let! johnScore = TeamScore.create 0
             let! juniScore = TeamScore.create 0
-
+            let! currentQuestion = PositiveNumber.create 3 "CurrentQuestion"
             return
                 { Code = "TEST"
                   TeamOne =
@@ -38,7 +38,7 @@ let mutable private exampleQuiz: TeamQuiz =
                           { Name = "Juni"
                             Score = juniScore
                             Participation = In } ] }
-
+                  CurrentQuestion = currentQuestion
                   Questions = [] }
         }
 
