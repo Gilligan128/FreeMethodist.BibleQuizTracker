@@ -49,8 +49,6 @@ type Model =
       CurrentJumpPosition: int }
 
 type Message =
-    | SetJoiningQuizzer of string
-    | JoinQuiz
     | OverrideScore of int * TeamPosition
     | RefreshQuiz of QuizCode
     | DoNothing
@@ -141,20 +139,11 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
             |> Result.mapError (DomainError)
     }
 
+//let publishEvent hubConnection hubMethod event =
+    
 
 let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
     match msg with
-    | SetJoiningQuizzer quizzer -> { model with JoiningQuizzer = quizzer }, Cmd.none
-    | JoinQuiz ->
-        let hubMessage =
-            { Timestamp = DateTimeOffset.Now
-              Quizzer = model.JoiningQuizzer
-              Quiz = "123" }
-
-        hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.EnterQuiz, hubMessage)
-        |> ignore
-
-        { model with JoiningQuizzer = "" }, Cmd.none
     | OverrideScore (score, teamPosition) ->
         let result =
             overrideScore getQuiz saveQuiz model score teamPosition
@@ -178,16 +167,20 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
     | DoNothing -> model, Cmd.none
     | MoveToDifferentQuestion questionNumber ->
         let workflowResult =
-            PositiveNumber.create questionNumber "QuestionNumber"
-            |> Result.mapError MoveQuestionError.FormError
-            |> Result.bind (fun questionNumber ->
-                (moveQuizToQuestion
-                    getQuiz
-                    saveQuiz
-                    { Quiz = model.Code
-                      User = Quizmaster
-                      Data = { Question = questionNumber } })
-                |> Result.mapError MoveQuestionError.QuizError)
+            result {
+                let! questionNumber =
+                    PositiveNumber.create questionNumber "QuestionNumber"
+                    |> Result.mapError MoveQuestionError.FormError
+
+                return!
+                    moveQuizToQuestion
+                        getQuiz
+                        saveQuiz
+                        { Quiz = model.Code
+                          User = Quizmaster
+                          Data = { Question = questionNumber } }
+                    |> Result.mapError MoveQuestionError.QuizError
+            }
 
         match workflowResult with
         | Ok event ->
@@ -201,7 +194,6 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
 
             model, cmd
         | Error event -> model, Cmd.none
-
 
 type quizPage = Template<"wwwroot/Quiz.html">
 
@@ -243,8 +235,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder) dispatch)
         .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
-        .NextQuestion(fun _ -> dispatch (MoveToDifferentQuestion (model.CurrentQuestion + 1)))
-        .UndoQuestion(fun _ -> dispatch (MoveToDifferentQuestion (Math.Max(model.CurrentQuestion-1,  1))))
+        .NextQuestion(fun _ -> dispatch (MoveToDifferentQuestion(model.CurrentQuestion + 1)))
+        .UndoQuestion(fun _ -> dispatch (MoveToDifferentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
         .CurrentQuizzer(model.JumpOrder.Item model.CurrentJumpPosition)
         .JumpLockToggleAction(
             match model.JumpState with
