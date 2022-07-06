@@ -148,3 +148,4 @@ type MyApp() =
 #if DEBUG
         |> Program.withHotReload
 #endif
+  

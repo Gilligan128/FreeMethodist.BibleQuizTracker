@@ -139,18 +139,18 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
             |> Result.mapError (DomainError)
     }
 
-let publishEvent (hubConnection: HubConnection) (hubMethod) event =
-    let method =
-        hubMethod Unchecked.defaultof<QuizHub.Hub>
+let publishEvent (hubConnection: HubConnection)  methodName event =
 
-    hubConnection.InvokeAsync(nameof method, event, None)
+    hubConnection.InvokeAsync(methodName, event, None)
     |> Async.AwaitTask
 
 let createAsyncCommand task quiz =
     Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz quiz) (fun er -> Message.DoNothing)
 
+let hubStub = Unchecked.defaultof<QuizHub.Hub>
+
 let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
-    let publishEvent = fun event -> publishEvent hubConnection event
+    let publishEvent = fun (event) -> publishEvent hubConnection event
     match msg with
     | OverrideScore (score, teamPosition) ->
         let result =
@@ -159,7 +159,7 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
         match result with
         | Ok event ->
             let task =
-                (fun _ -> publishEvent  (fun hub -> hub.TeamScoreChanged) event)
+                (fun _ -> publishEvent (nameof hubStub.TeamScoreChanged) event)
 
             let cmd = createAsyncCommand task event.Quiz
             model, cmd
@@ -189,7 +189,7 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
         match workflowResult with
         | Ok event ->
             let task =
-                (fun _ -> publishEvent (fun hub -> hub.QuestionChanged) event)
+                 (fun _ -> publishEvent (nameof hubStub.QuestionChanged) event)
 
             let cmd = createAsyncCommand task event.Quiz
 

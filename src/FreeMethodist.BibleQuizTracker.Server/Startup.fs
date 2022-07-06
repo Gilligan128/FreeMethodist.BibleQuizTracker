@@ -14,6 +14,7 @@ open Bolero.Remoting.Server
 open Bolero.Server
 open FreeMethodist.BibleQuizTracker
 open Bolero.Templating.Server
+open Microsoft.Extensions.Logging
 
 type Startup() =
 
