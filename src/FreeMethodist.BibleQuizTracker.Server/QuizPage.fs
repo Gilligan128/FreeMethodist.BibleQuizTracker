@@ -139,10 +139,18 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
             |> Result.mapError (DomainError)
     }
 
-//let publishEvent hubConnection hubMethod event =
-    
+let publishEvent (hubConnection: HubConnection) (hubMethod) event =
+    let method =
+        hubMethod Unchecked.defaultof<QuizHub.Hub>
+
+    hubConnection.InvokeAsync(nameof method, event, None)
+    |> Async.AwaitTask
+
+let createAsyncCommand task quiz =
+    Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz quiz) (fun er -> Message.DoNothing)
 
 let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
+    let publishEvent = fun event -> publishEvent hubConnection event
     match msg with
     | OverrideScore (score, teamPosition) ->
         let result =
@@ -151,13 +159,9 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
         match result with
         | Ok event ->
             let task =
-                (fun _ ->
-                    hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.TeamScoreChanged, event)
-                    |> Async.AwaitTask)
+                (fun _ -> publishEvent  (fun hub -> hub.TeamScoreChanged) event)
 
-            let cmd =
-                Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz event.Quiz) (fun er -> Message.DoNothing)
-
+            let cmd = createAsyncCommand task event.Quiz
             model, cmd
         | Error error -> model, Cmd.none
     | RefreshQuiz quizCode ->
@@ -185,12 +189,9 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
         match workflowResult with
         | Ok event ->
             let task =
-                (fun _ ->
-                    hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.QuestionChanged, event)
-                    |> Async.AwaitTask)
+                (fun _ -> publishEvent (fun hub -> hub.QuestionChanged) event)
 
-            let cmd =
-                Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz event.Quiz) (fun er -> Message.DoNothing)
+            let cmd = createAsyncCommand task event.Quiz
 
             model, cmd
         | Error event -> model, Cmd.none
