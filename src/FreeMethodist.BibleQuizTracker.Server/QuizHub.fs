@@ -1,5 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizHub
 
+open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Api
 open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
@@ -29,3 +30,6 @@ type Hub() =
 
      member this.ConnectToQuiz(code: QuizCode) =
          this.Groups.AddToGroupAsync(this.Context.ConnectionId, code)
+         
+     member this.QuestionChanged(msg: QuestionChanged) =
+         this.Clients.Group(msg.Quiz).HandleQuizEvent msg

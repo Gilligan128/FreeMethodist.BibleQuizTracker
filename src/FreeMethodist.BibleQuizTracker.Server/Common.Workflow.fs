@@ -41,15 +41,17 @@ module TeamScore =
 
 type PositiveNumber = PositiveNumber of int
 
-
+type QuestionNumber = PositiveNumber
 [<RequireQualifiedAccess>]
 module PositiveNumber =
     let create number field =
         if number > 0 then Ok (PositiveNumber number) else Error $"{field} should be greater than zero"
     
     let identity = PositiveNumber 1
+    
+    let value (PositiveNumber number) = number
  
-type QuestionNumber = PositiveNumber
+
  
 //Create Quiz Workflow
 type UnvalidatedTeamQuiz =

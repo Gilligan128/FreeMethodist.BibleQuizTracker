@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.NextQuestion_Workflow
+﻿module FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 
 open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
@@ -6,7 +6,7 @@ open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
 type QuestionChanged = { Quiz: QuizCode; NewQuestion: QuestionNumber; }
  
 [<RequireQualifiedAccess>]
-module NextQuestion = 
+module MoveQuestion = 
 
     type QuestionData = { Question:QuestionNumber }
     type Command = WithinQuizCommand<QuestionData>
