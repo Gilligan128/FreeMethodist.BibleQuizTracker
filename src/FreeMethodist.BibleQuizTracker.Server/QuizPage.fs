@@ -86,7 +86,7 @@ let private refreshModel (quiz: TeamQuiz) =
           TeamOne = { Name = ""; Score = 0; Quizzers = [] }
           TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
           JumpOrder = []
-          CurrentQuestion = 3
+          CurrentQuestion = 1
           CurrentUser = ""
           JumpState = Unlocked
           CurrentJumpPosition = 0 }

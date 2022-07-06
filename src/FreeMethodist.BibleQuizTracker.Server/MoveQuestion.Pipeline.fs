@@ -19,6 +19,6 @@ let moveQuizToQuestion (getQuiz:GetTeamQuiz) (saveQuiz:SaveTeamQuiz) : MoveQuest
             let quiz = getQuiz command.Quiz
             let! runningQuiz = validateQuiz quiz
             let newQuizState = updateQuiz runningQuiz command.Data.Question
-            saveQuiz quiz
+            saveQuiz (Running newQuizState)
             return createEvent newQuizState
         }
