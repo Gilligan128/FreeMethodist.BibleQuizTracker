@@ -139,9 +139,8 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
             |> Result.mapError (DomainError)
     }
 
-let publishEvent (hubConnection: HubConnection)  methodName event =
-
-    hubConnection.InvokeAsync(methodName, event, None)
+let publishEvent (hubConnection: HubConnection)  methodName (event) =
+    hubConnection.InvokeAsync(methodName, event, CancellationToken.None)
     |> Async.AwaitTask
 
 let createAsyncCommand task quiz =

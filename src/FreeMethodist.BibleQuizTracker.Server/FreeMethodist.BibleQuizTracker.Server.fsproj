@@ -6,11 +6,11 @@
   <ItemGroup>
     <Compile Include="Result.fs" />
     <Compile Include="Common.Workflow.fs" />
+    <Compile Include="OverrideTeamScore.Workflow.fs" />
+    <Compile Include="MoveQuestion.Workflow.fs" />
     <Compile Include="Common.Pipeline.fs" />
     <Compile Include="Persistence.fs" />
-    <Compile Include="OverrideTeamScore.Workflow.fs" />
     <Compile Include="OverrideTeamScore.Pipeline.fs" />
-    <Compile Include="MoveQuestion.Workflow.fs" />
     <Compile Include="MoveQuestion.Pipeline.fs" />
     <Compile Include="QuizHub.fs" />
     <Compile Include="EnterQuizPipeline.fs" />
