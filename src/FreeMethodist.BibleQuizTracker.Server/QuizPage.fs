@@ -5,6 +5,7 @@ open System.Threading
 open Bolero
 open Bolero.Html
 open Elmish
+open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Api
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
@@ -96,30 +97,41 @@ let private refreshModel (quiz: TeamQuiz) =
           JumpState = Unlocked
           CurrentJumpPosition = 0 }
 
-let init getQuiz =
-    let quiz = getQuiz "TEST"
+let init getQuiz (hubConnection:HubConnection) quizCode =
+    let quiz = getQuiz quizCode
+    hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, quizCode, CancellationToken.None)
+        |> Async.AwaitTask
+        |> ignore
     refreshModel quiz
+    
 
-let subscribe (signalRConnection: HubConnection) (initial: Model) =
+let subscribe (hubConnection: HubConnection) =
     let sub dispatch =
-        signalRConnection.On<QuizzerEntered>(
+        hubConnection.On<QuizzerEntered>(
             "EnteredQuiz",
             (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
         )
         |> ignore
 
-        signalRConnection.On<TeamScoreChanged>(
+        hubConnection.On<TeamScoreChanged>(
             nameof
                 Unchecked.defaultof<QuizHub.Client>
                     .HandleQuizEvent,
             (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
         )
         |> ignore
-
-        signalRConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, initial.Code)
+        
+        hubConnection.On<QuestionChanged>(
+            nameof
+                Unchecked.defaultof<QuizHub.Client>
+                    .HandleQuizEvent,
+            (fun (msg: QuestionChanged) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
+        )
+        |> ignore
+        
+        hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, "Example", CancellationToken.None)
         |> Async.AwaitTask
         |> ignore
-
     Cmd.ofSub sub
 
 type OverrideScoreErrors =

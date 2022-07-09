@@ -15,7 +15,7 @@ let mutable private exampleQuiz: TeamQuiz =
             let! juniScore = TeamScore.create 0
             let! currentQuestion = PositiveNumber.create 3 "CurrentQuestion"
             return
-                { Code = "TEST"
+                { Code = "Example"
                   TeamOne =
                     { Name = "LEFT"
                       Score = teamOneScore
@@ -47,7 +47,7 @@ let mutable private exampleQuiz: TeamQuiz =
     | Error _ -> Running RunningTeamQuiz.identity
 
 let getQuiz: GetTeamQuiz =
-    fun _ -> exampleQuiz
+    fun code -> exampleQuiz
 
 let saveQuiz: SaveTeamQuiz =
     fun quiz ->  exampleQuiz <- quiz 

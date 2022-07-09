@@ -19,13 +19,13 @@ open Microsoft.FSharp.Control
 /// Routing endpoints definition.
 type Page =
     | [<EndPoint "/">] Home
-    | [<EndPoint "/quiz">] Quiz
+    | [<EndPoint "/quiz">] Quiz of quizCode: string
 
 /// The Elmish application's model.
 type Model =
     { page: Page
       Error: string option
-      quiz: QuizPage.Model }
+      quiz: QuizPage.Model option }
 
 and Book =
     { title: string
@@ -33,10 +33,10 @@ and Book =
       publishDate: DateTime
       isbn: string }
 
-let initModel initQuizModel =
+let initModel =
     { page = Home
       Error = None
-      quiz = initQuizModel }
+      quiz = None }
 
 /// The Elmish application's update messages.
 type Message =
@@ -45,14 +45,18 @@ type Message =
     | QuizMessage of QuizPage.Message
 
 
-
 let update hubConnection getQuiz saveQuiz (message: Message) model : Model * Cmd<Message> =
-    match message with
-    | SetPage page -> { model with page = page }, Cmd.none
-    | ClearError -> { model with Error = None }, Cmd.none
-    | QuizMessage quizMsg ->
-        let (quizModel, quizCommand, externalMessage) =
-            QuizPage.update hubConnection getQuiz saveQuiz quizMsg model.quiz
+    match message, model.quiz with
+    | SetPage (Page.Quiz quizCode), _ ->
+        { model with
+            page = Quiz quizCode
+            quiz = Some(QuizPage.init getQuiz hubConnection quizCode) },
+        Cmd.none
+    | SetPage page, _ -> { model with page = page; quiz = None }, Cmd.none
+    | ClearError, _ -> { model with Error = None }, Cmd.none
+    | QuizMessage quizMsg, Some quizModel ->
+        let (updatedModel, quizCommand, externalMessage) =
+            QuizPage.update hubConnection getQuiz saveQuiz quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -61,7 +65,9 @@ let update hubConnection getQuiz saveQuiz (message: Message) model : Model * Cmd
                 match message with
                 | Error er -> { model with Error = Some er }
 
-        { newModel with quiz = quizModel }, Cmd.map QuizMessage quizCommand
+        { newModel with quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
+    | QuizMessage quizMsg, None ->
+        { model with Error = Some "A Quiz Message was dispatched, but there is not Quiz Model set" }, Cmd.none
 
 /// Connects the routing system to the Elmish application.
 let router =
@@ -89,14 +95,17 @@ let view model dispatch =
         .Menu(
             concat {
                 menuItem model Home "Home"
-                menuItem model Quiz "Quiz Example"
-            }
+                menuItem model (Quiz "Example") "Quiz Example"
+            };
         )
         .Body(
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | Quiz -> QuizPage.page model.quiz (fun quizMsg -> dispatch (QuizMessage quizMsg))
+                | Quiz code ->
+                    match model.quiz with
+                    | None -> Node.Empty()
+                    | Some quizModel -> QuizPage.page quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
         )
         .Error(
             cond model.Error
@@ -111,8 +120,8 @@ let view model dispatch =
         )
         .Elt()
 
-let subscription hubConnection model =
-    Cmd.batch [ Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection model.quiz) ]
+let subscription hubConnection _ =
+    Cmd.batch [Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection)]
 
 
 type MyApp() =
@@ -144,11 +153,7 @@ type MyApp() =
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore
-
-                let initQuizModel =
-                    QuizPage.init this.GetQuiz
-
-                (initModel initQuizModel), Cmd.none)
+                (initModel), Cmd.none)
             update
             view
         |> Program.withRouter router
