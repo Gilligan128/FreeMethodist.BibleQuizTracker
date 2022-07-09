@@ -8,6 +8,7 @@ open Bolero.Html
 open Bolero.Remoting
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
+open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Http
@@ -23,7 +24,7 @@ type Page =
 /// The Elmish application's model.
 type Model =
     { page: Page
-      error: string option
+      Error: string option
       quiz: QuizPage.Model }
 
 and Book =
@@ -34,7 +35,7 @@ and Book =
 
 let initModel initQuizModel =
     { page = Home
-      error = None
+      Error = None
       quiz = initQuizModel }
 
 /// The Elmish application's update messages.
@@ -48,12 +49,19 @@ type Message =
 let update hubConnection getQuiz saveQuiz (message: Message) model : Model * Cmd<Message> =
     match message with
     | SetPage page -> { model with page = page }, Cmd.none
-    | ClearError -> { model with error = None }, Cmd.none
+    | ClearError -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg ->
-        let (quizModel, quizCommand) =
+        let (quizModel, quizCommand, externalMessage) =
             QuizPage.update hubConnection getQuiz saveQuiz quizMsg model.quiz
 
-        { model with quiz = quizModel }, Cmd.map QuizMessage quizCommand
+        let newModel =
+            match externalMessage with
+            | None -> { model with Error = None }
+            | Some message ->
+                match message with
+                | Error er -> { model with Error = Some er }
+
+        { newModel with quiz = quizModel }, Cmd.map QuizMessage quizCommand
 
 /// Connects the routing system to the Elmish application.
 let router =
@@ -91,7 +99,7 @@ let view model dispatch =
                 | Quiz -> QuizPage.page model.quiz (fun quizMsg -> dispatch (QuizMessage quizMsg))
         )
         .Error(
-            cond model.error
+            cond model.Error
             <| function
                 | None -> empty ()
                 | Some err ->
@@ -138,7 +146,7 @@ type MyApp() =
                 hubConnection.StartAsync() |> ignore
 
                 let initQuizModel =
-                    QuizPage.initModel this.GetQuiz
+                    QuizPage.init this.GetQuiz
 
                 (initModel initQuizModel), Cmd.none)
             update
@@ -148,4 +156,3 @@ type MyApp() =
 #if DEBUG
         |> Program.withHotReload
 #endif
-  

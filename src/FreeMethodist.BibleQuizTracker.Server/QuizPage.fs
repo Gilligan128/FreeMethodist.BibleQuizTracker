@@ -48,11 +48,18 @@ type Model =
       JumpState: JumpState
       CurrentJumpPosition: int }
 
+type PublishEventError =
+    | FormError of string
+    | RemoteError of exn
+
 type Message =
     | OverrideScore of int * TeamPosition
     | RefreshQuiz of QuizCode
     | DoNothing
     | MoveToDifferentQuestion of int
+    | AsyncCommandError of PublishEventError
+
+type ExternalMessage = Error of string
 
 let private refreshModel (quiz: TeamQuiz) =
     let refreshQuizzer (quizzer: QuizzerState) =
@@ -89,7 +96,7 @@ let private refreshModel (quiz: TeamQuiz) =
           JumpState = Unlocked
           CurrentJumpPosition = 0 }
 
-let initModel getQuiz =
+let init getQuiz =
     let quiz = getQuiz "TEST"
     refreshModel quiz
 
@@ -139,21 +146,33 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
             |> Result.mapError (DomainError)
     }
 
-let publishEvent (hubConnection: HubConnection)  methodName (event) =
+let private publishEvent (hubConnection: HubConnection) methodName (event) =
     hubConnection.InvokeAsync(methodName, event, CancellationToken.None)
     |> Async.AwaitTask
 
-let createAsyncCommand task quiz =
-    Cmd.OfAsync.either task ignore (fun _ -> Message.RefreshQuiz quiz) (fun er -> Message.DoNothing)
+let private createAsyncCommand task quiz =
+    Cmd.OfAsync.either
+        task
+        ignore
+        (fun _ -> Message.RefreshQuiz quiz)
+        (fun er -> er |> RemoteError |> Message.AsyncCommandError)
 
-let hubStub = Unchecked.defaultof<QuizHub.Hub>
+let private hubStub =
+    Unchecked.defaultof<QuizHub.Hub>
 
 let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
-    let publishEvent = fun (event) -> publishEvent hubConnection event
+    let publishEvent =
+        fun (event) -> publishEvent hubConnection event
+
     match msg with
     | OverrideScore (score, teamPosition) ->
         let result =
             overrideScore getQuiz saveQuiz model score teamPosition
+
+        let overrideScoreError error =
+            match error with
+            | OverrideScoreErrors.DomainError error -> $"Quiz is in the wrong state: {error}"
+            | OverrideScoreErrors.FormError error -> error
 
         match result with
         | Ok event ->
@@ -161,13 +180,13 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
                 (fun _ -> publishEvent (nameof hubStub.TeamScoreChanged) event)
 
             let cmd = createAsyncCommand task event.Quiz
-            model, cmd
-        | Error error -> model, Cmd.none
+            model, cmd, None
+        | Result.Error error -> model, Cmd.none, Some(ExternalMessage.Error(overrideScoreError error))
     | RefreshQuiz quizCode ->
         getQuiz quizCode
         |> refreshModel
-        |> fun refreshedModel -> refreshedModel, Cmd.none
-    | DoNothing -> model, Cmd.none
+        |> fun refreshedModel -> refreshedModel, Cmd.none, None
+    | DoNothing -> model, Cmd.none, None
     | MoveToDifferentQuestion questionNumber ->
         let workflowResult =
             result {
@@ -185,19 +204,36 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
                     |> Result.mapError MoveQuestionError.QuizError
             }
 
+        let moveQuestionErrorMessage error =
+            match error with
+            | MoveQuestionError.FormError er -> er
+            | MoveQuestionError.QuizError er -> $"Wrong Quiz State: {er}"
+
         match workflowResult with
         | Ok event ->
             let task =
-                 (fun _ -> publishEvent (nameof hubStub.QuestionChanged) event)
+                (fun _ -> publishEvent (nameof hubStub.QuestionChanged) event)
 
             let cmd = createAsyncCommand task event.Quiz
+            model, cmd, None
+        | Result.Error event ->
+            model,
+            Cmd.none,
+            (moveQuestionErrorMessage event
+             |> ExternalMessage.Error
+             |> Some)
 
-            model, cmd
-        | Error event -> model, Cmd.none
+    | Message.AsyncCommandError error ->
+        let errorMessage =
+            match error with
+            | PublishEventError.FormError er -> er
+            | RemoteError exn -> exn.Message
 
-type quizPage = Template<"wwwroot/Quiz.html">
+        model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
 
-let teamView position ((teamModel, jumpOrder): TeamModel * string list) (dispatch: Dispatch<Message>) =
+type private quizPage = Template<"wwwroot/Quiz.html">
+
+let private teamView position ((teamModel, jumpOrder): TeamModel * string list) (dispatch: Dispatch<Message>) =
     quizPage
         .Team()
         .Name(teamModel.Name)

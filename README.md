@@ -66,3 +66,5 @@ Some links, to  be organized later:
 Testing and dependency management: https://fsharpforfunandprofit.com/posts/dependencies/
 
 Following the Workflows - Pipelines pattern here: https://www.amazon.com/Domain-Modeling-Made-Functional-Domain-Driven/dp/1680502549
+
+We are also following the "external message" pattern to dispatch updates to parent components, guided by [this article](https://medium.com/@MangelMaxime/my-tips-for-working-with-elmish-ab8d193d52fd).

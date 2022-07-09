@@ -10,7 +10,6 @@
 
     <ItemGroup>
         <Compile Include="RunQuiz.NextQuestion.fs" />
-        <Compile Include="Tests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
