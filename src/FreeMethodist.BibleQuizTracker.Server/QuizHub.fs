@@ -15,8 +15,6 @@ open System.Threading.Tasks
 type Client =
     abstract member EnteredQuiz: QuizzerEntered -> Task
     abstract member Jumped: Quizzer -> Task
-    abstract member HandleQuizEvent: 'T -> Task
-    
     abstract member QuestionChanged: QuestionChanged -> Task
 
 
