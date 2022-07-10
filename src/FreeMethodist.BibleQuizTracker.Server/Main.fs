@@ -14,6 +14,7 @@ open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Control
 
 /// Routing endpoints definition.
@@ -137,11 +138,16 @@ type MyApp() =
     member val GetQuiz = Unchecked.defaultof<GetTeamQuiz> with get, set
 
     override this.Program =
+        let configureLogging (logging: ILoggingBuilder) =
+            logging.AddConsole() |> ignore
         let hubConnection =
             HubConnectionBuilder()
                 .WithUrl($"{this.Navigator.BaseUri}QuizHub")
                 .WithAutomaticReconnect()
-                .AddJsonProtocol(fun options -> options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
+                .ConfigureLogging(configureLogging)
+                .AddJsonProtocol(fun options ->
+                    options.PayloadSerializerOptions.Converters.Clear()
+                    options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                 .Build()
 
         let update =

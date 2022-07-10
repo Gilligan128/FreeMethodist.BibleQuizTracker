@@ -68,9 +68,14 @@ module Program =
 
     [<EntryPoint>]
     let main args =
+        let loggingConfig (logging:ILoggingBuilder) =
+            logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug)
+                   .AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug) |> ignore
+            
         WebHost
             .CreateDefaultBuilder(args)
             .UseStaticWebAssets()
+            .ConfigureLogging(loggingConfig)
             .UseStartup<Startup>()
             .Build()
             .Run()

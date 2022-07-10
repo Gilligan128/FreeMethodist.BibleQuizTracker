@@ -16,6 +16,8 @@ type Client =
     abstract member EnteredQuiz: QuizzerEntered -> Task
     abstract member Jumped: Quizzer -> Task
     abstract member HandleQuizEvent: 'T -> Task
+    
+    abstract member QuestionChanged: QuestionChanged -> Task
 
 
 type Hub() =
@@ -33,5 +35,6 @@ type Hub() =
      member this.ConnectToQuiz(code: QuizCode) =
          this.Groups.AddToGroupAsync(this.Context.ConnectionId, code, CancellationToken.None)
          
-     member this.QuestionChanged(msg: QuestionChanged) =
-         this.Clients.OthersInGroup(msg.Quiz).HandleQuizEvent msg
+     member this.SendQuestionChanged(msg: QuestionChanged) =
+        this.Clients.OthersInGroup(msg.Quiz).QuestionChanged msg
+ 

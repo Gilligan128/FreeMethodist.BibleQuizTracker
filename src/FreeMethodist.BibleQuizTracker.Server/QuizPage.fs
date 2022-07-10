@@ -55,7 +55,7 @@ type PublishEventError =
 
 type Message =
     | OverrideScore of int * TeamPosition
-    | RefreshQuiz of QuizCode
+    | RefreshQuiz
     | DoNothing
     | MoveToDifferentQuestion of int
     | AsyncCommandError of PublishEventError
@@ -109,29 +109,29 @@ let subscribe (hubConnection: HubConnection) =
     let sub dispatch =
         hubConnection.On<QuizzerEntered>(
             "EnteredQuiz",
-            (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
+            (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
-
+        
         hubConnection.On<TeamScoreChanged>(
             nameof
                 Unchecked.defaultof<QuizHub.Client>
                     .HandleQuizEvent,
-            (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
+            (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
         
         hubConnection.On<QuestionChanged>(
             nameof
                 Unchecked.defaultof<QuizHub.Client>
-                    .HandleQuizEvent,
-            (fun (msg: QuestionChanged) -> dispatch (Message.RefreshQuiz msg.Quiz) |> ignore)
+                    .QuestionChanged,
+            (fun (msg) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
         
-        hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, "Example", CancellationToken.None)
-        |> Async.AwaitTask
-        |> ignore
+    hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, "Example", CancellationToken.None)
+    |> Async.AwaitTask
+    |> ignore
     Cmd.ofSub sub
 
 type OverrideScoreErrors =
@@ -166,7 +166,7 @@ let private createAsyncCommand task quiz =
     Cmd.OfAsync.either
         task
         ignore
-        (fun _ -> Message.RefreshQuiz quiz)
+        (fun _ -> Message.RefreshQuiz)
         (fun er -> er |> RemoteError |> Message.AsyncCommandError)
 
 let private hubStub =
@@ -194,8 +194,8 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
             let cmd = createAsyncCommand task event.Quiz
             model, cmd, None
         | Result.Error error -> model, Cmd.none, Some(ExternalMessage.Error(overrideScoreError error))
-    | RefreshQuiz quizCode ->
-        getQuiz quizCode
+    | RefreshQuiz  ->
+        getQuiz model.Code
         |> refreshModel
         |> fun refreshedModel -> refreshedModel, Cmd.none, None
     | DoNothing -> model, Cmd.none, None
@@ -224,7 +224,7 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
         match workflowResult with
         | Ok event ->
             let task =
-                (fun _ -> publishEvent (nameof hubStub.QuestionChanged) event)
+                (fun _ -> publishEvent (nameof hubStub.SendQuestionChanged) event)
 
             let cmd = createAsyncCommand task event.Quiz
             model, cmd, None
