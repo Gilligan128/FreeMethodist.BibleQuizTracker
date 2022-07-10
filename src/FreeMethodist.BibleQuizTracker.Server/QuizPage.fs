@@ -128,10 +128,7 @@ let subscribe (hubConnection: HubConnection) =
             (fun (msg) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
-        
-    hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, "Example", CancellationToken.None)
-    |> Async.AwaitTask
-    |> ignore
+ 
     Cmd.ofSub sub
 
 type OverrideScoreErrors =
