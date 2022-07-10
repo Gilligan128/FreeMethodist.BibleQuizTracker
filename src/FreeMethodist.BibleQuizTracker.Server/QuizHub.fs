@@ -17,6 +17,7 @@ type Client =
     abstract member Jumped: Quizzer -> Task
     abstract member QuestionChanged: QuestionChanged -> Task
 
+    abstract member TeamScoreChanged: TeamScoreChanged -> Task
 
 type Hub() =
     inherit Hub<Client>()
@@ -28,7 +29,7 @@ type Hub() =
         }
         
      member this.TeamScoreChanged( msg: TeamScoreChanged) =
-         this.Clients.Group(msg.Quiz).HandleQuizEvent msg
+         this.Clients.Group(msg.Quiz).TeamScoreChanged msg
 
      member this.ConnectToQuiz(code: QuizCode) =
          this.Groups.AddToGroupAsync(this.Context.ConnectionId, code, CancellationToken.None)

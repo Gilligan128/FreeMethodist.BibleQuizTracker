@@ -116,7 +116,7 @@ let subscribe (hubConnection: HubConnection) =
         hubConnection.On<TeamScoreChanged>(
             nameof
                 Unchecked.defaultof<QuizHub.Client>
-                    .HandleQuizEvent,
+                    .TeamScoreChanged,
             (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
