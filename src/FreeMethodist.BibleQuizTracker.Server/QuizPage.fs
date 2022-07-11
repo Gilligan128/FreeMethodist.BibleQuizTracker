@@ -288,4 +288,11 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
             | Locked -> "Unlock"
             | Unlocked -> "Lock"
         )
+        .TeamOneName(model.TeamOne.Name)
+        .TeamTwoName(model.TeamTwo.Name)
+        .SetAddQuizzerName("Quizzer1", fun name -> ())
+        .CancelAddQuizzer(fun _ -> ())
+        .AddQuizzerActive("")
+        .AddQuizzer(fun _ -> ())
+        .SetAddQuizzerTeamOne(fun _ -> ())
         .Elt()
