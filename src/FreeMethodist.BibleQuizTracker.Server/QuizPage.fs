@@ -265,7 +265,7 @@ let private teamView position ((teamModel, jumpOrder): TeamModel * string list) 
                         .JumpOrder(jumpPosition |> string)
                         .HiddenClass(
                             match jumpPosition with
-                            | 0 -> "is-hidden"
+                            | 0 -> "is-invisible"
                             | _ -> ""
                         )
                         .Elt()
@@ -295,4 +295,5 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .AddQuizzerActive("")
         .AddQuizzer(fun _ -> ())
         .SetAddQuizzerTeamOne(fun _ -> ())
+        .SetAddQuizzerTeamTwo(fun _ -> ())
         .Elt()

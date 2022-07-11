@@ -73,7 +73,7 @@
                             ${TeamOneName}
                         </label>
                         <label class="radio">
-                            <input type="radio" name="answer">
+                            <input type="radio" name="answer" onchange="${SetAddQuizzerTeamTwo}">
                             ${TeamTwoName}
                         </label>
                     </div>
@@ -95,7 +95,7 @@
         <div class="box">
             <div class="columns is-mobile has-background-info">
                 <div class="column ">
-                    Team ${Name}
+                    <span class="has-text-white">Team ${Name}</span>
                 </div>
                 <div class="column">
                     <div class="field has-addons">
@@ -108,19 +108,26 @@
         </div>
     </template>
     <template id="Quizzer">
-        <div class="box has-background-white-ter ">
+        <div class="box has-background-white-ter my-2 py-3">
             <div class="columns is-mobile is-centered">
-                <div class="column is-2">
+                <div class="column ">
                     <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
                 </div>
-                <div class="column is-half">
+                <div class="column is-one-third">
                     ${Name}
                 </div>
-                <div class="column">
+                <div class="column is-one-third">
                     <div class="field has-addons ">
-                        <p class="control"><input disabled class="input " value="${Score}"/></p>
+                        <p class="control"><input class="input " value="${Score}"/></p>
                         <p class="control"><a class="button is-static is-hidden-mobile">pts</a></p>
                     </div>
+                </div>
+                <div class="column">
+                    <button class="button is-info is-light" disabled> 
+                    <span class="icon ">
+                        <i class="fas fa-user-times"></i>
+                    </span>
+                    </button>
                 </div>
             </div>
         </div>
