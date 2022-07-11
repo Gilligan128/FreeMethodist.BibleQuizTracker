@@ -11,21 +11,7 @@
                     ${TeamTwo}
                 </div>
             </div>
-            <div class="box has-text-centered">
-                <button class="button is-info is-responsive " onclick="${UndoQuestion}">
-                    <span class="icon">
-                      <i class="fas fa-caret-left"></i>
-                    </span>
-                </button>
-                <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
-                <button class="button is-info is-responsive" onclick="${NextQuestion}">
-                    <span class="icon">
-                      <i class="fas fa-caret-right"></i>
-                    </span>
-                </button>
-                <button class="button is-info is-responsive" disabled>History</button>
-            </div>
-            <div class="box has-text-centered">
+            <div class="box has-text-centered" id="current-quizzer-section">
                 <div class="block">
                     <button class="button is-info is-responsive" disabled>
                         Undo
@@ -42,26 +28,40 @@
                     <button class="button is-danger is-responsive " disabled>Incorrect Prejump</button>
                 </div>
             </div>
+            <div class="box has-text-centered" id="question-section">
+                <button class="button is-info is-responsive " onclick="${UndoQuestion}">
+                    <span class="icon">
+                      <i class="fas fa-caret-left"></i>
+                    </span>
+                </button>
+                <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
+                <button class="button is-info is-responsive" onclick="${NextQuestion}">
+                    <span class="icon">
+                      <i class="fas fa-caret-right"></i>
+                    </span>
+                </button>
+            </div>
             <div class="box">
                 <div class="buttons is-centered">
                     <span class="is-size-5">Quiz Options:</span>
                     <button class="button is-primary is-responsive " disabled>Complete</button>
                     <button class="button is-danger is-responsive " disabled>Reset</button>
+                    <button class="button is-info is-responsive" disabled>Add Quizzer</button>
                 </div>
             </div>
         </div>
     </div>
     <template id="Team">
-        <div class="box">
-            <div class="columns is-mobile ">
-                <div class="column has-background-info ">
+        <div class="box ">
+            <div class="columns is-mobile has-background-info">
+                <div class="column ">
                     Team ${Name}
                 </div>
-                <div class="column has-background-info ">
-                        <div class="field has-addons">
-                            <p class="control"><input class="input" type="number" bind-onchange="${Score}" /></p>
-                            <p class="control"><a class="button is-static">pts</a></p>
-                        </div>
+                <div class="column">
+                    <div class="field has-addons">
+                        <p class="control"><input class="input" type="number" bind-onchange="${Score}"/></p>
+                        <p class="control"><a class="button is-static ">pts</a></p>
+                    </div>
                 </div>
             </div>
             ${Quizzers}
@@ -78,12 +78,11 @@
                 </div>
                 <div class="column">
                     <div class="field has-addons ">
-                        <p class="control"><input class="input " value="${Score}" disabled /></p>
+                        <p class="control"><input disabled class="input " value="${Score}"/></p>
                         <p class="control"><a class="button is-static is-hidden-mobile">pts</a></p>
                     </div>
                 </div>
             </div>
         </div>
     </template>
-</div>
 </div>
