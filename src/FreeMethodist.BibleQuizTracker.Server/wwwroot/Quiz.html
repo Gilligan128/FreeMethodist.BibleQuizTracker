@@ -12,20 +12,6 @@
                 </div>
             </div>
             <div class="box has-text-centered">
-                <button class="button is-info is-responsive " onclick="${UndoQuestion}">
-                    <span class="icon">
-                      <i class="fas fa-caret-left"></i>
-                    </span>
-                </button>
-                <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
-                <button class="button is-info is-responsive" onclick="${NextQuestion}">
-                    <span class="icon">
-                      <i class="fas fa-caret-right"></i>
-                    </span>
-                </button>
-                <button class="button is-info is-responsive" disabled>History</button>
-            </div>
-            <div class="box has-text-centered">
                 <div class="block">
                     <button class="button is-info is-responsive" disabled>
                         Undo
@@ -41,6 +27,19 @@
                     <button class="button is-danger is-responsive " disabled>Incorrect</button>
                     <button class="button is-danger is-responsive " disabled>Incorrect Prejump</button>
                 </div>
+            </div>
+            <div class="box has-text-centered">
+                <button class="button is-info is-responsive " onclick="${UndoQuestion}">
+                    <span class="icon">
+                      <i class="fas fa-caret-left"></i>
+                    </span>
+                </button>
+                <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
+                <button class="button is-info is-responsive" onclick="${NextQuestion}">
+                    <span class="icon">
+                      <i class="fas fa-caret-right"></i>
+                    </span>
+                </button>
             </div>
             <div class="box">
                 <div class="buttons is-centered">
