@@ -61,20 +61,21 @@ type PublishEventError =
 type AddQuizzerMessage =
     | Start
     | Cancel
-    | Submit 
+    | Submit
+    | SetName of string
+    | SetTeam of TeamPosition
 
 type Message =
     | ConnectToQuizEvents
     | OverrideScore of int * TeamPosition
     | RefreshQuiz
-    | DoNothing
     | MoveToDifferentQuestion of int
     | AsyncCommandError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
 
 type ExternalMessage = Error of string
 
-let public  emptyModel =
+let public emptyModel =
     { JoiningQuizzer = ""
       Code = ""
       TeamOne = { Name = ""; Score = 0; Quizzers = [] }
@@ -206,7 +207,6 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
         getQuiz model.Code
         |> refreshModel
         |> fun refreshedModel -> refreshedModel, Cmd.none, None
-    | DoNothing -> model, Cmd.none, None
     | MoveToDifferentQuestion questionNumber ->
         let workflowResult =
             result {
@@ -249,9 +249,35 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
             | RemoteError exn -> exn.Message
 
         model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
-    | Message.AddQuizzer Cancel -> {model with AddQuizzer = Inert}, Cmd.none, None
-    | Message.AddQuizzer Start | AddQuizzer Submit ->  model, Cmd.none, None
-    
+    | Message.AddQuizzer Cancel -> { model with AddQuizzer = Inert }, Cmd.none, None
+    | Message.AddQuizzer Start ->
+        let addQuizzerState =
+            match model.AddQuizzer with
+            | Inert -> Active("", TeamOne)
+            | Active (name, team) -> Active(name, team)
+
+        { model with AddQuizzer = addQuizzerState }, Cmd.none, None
+    | AddQuizzer (SetName name) ->
+        let addQuizzerModel =
+            match model.AddQuizzer with
+            | Inert -> Inert
+            | Active (_, team) -> Active(name, team)
+
+        { model with AddQuizzer = addQuizzerModel }, Cmd.none, None
+    | AddQuizzer (SetTeam teamPosition) ->
+        let addQuizzerModel =
+            match model.AddQuizzer with
+            | Inert -> Inert
+            | Active (name, _) -> Active(name, teamPosition)
+
+        { model with AddQuizzer = addQuizzerModel }, Cmd.none, None
+    | AddQuizzer Submit ->
+        { model with AddQuizzer = Inert },
+        Cmd.none,
+        ExternalMessage.Error "Add Quizzer does nothing yet"
+        |> Some
+
+
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
@@ -287,6 +313,12 @@ let private teamView position ((teamModel, jumpOrder): TeamModel * string list) 
         .Elt()
 
 let page (model: Model) (dispatch: Dispatch<Message>) =
+    let isTeam teamOneValue teamTwoValue =
+        match model.AddQuizzer with
+        | Inert -> false
+        | Active (_, TeamOne) -> teamOneValue
+        | Active (_, TeamTwo) -> teamTwoValue
+
     quizPage()
         .QuizCode(model.Code)
         .CurrentUser(model.CurrentUser)
@@ -309,10 +341,23 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         )
         .TeamOneName(model.TeamOne.Name)
         .TeamTwoName(model.TeamTwo.Name)
-        .SetAddQuizzerName("Quizzer1", (fun name -> ()))
-        .CancelAddQuizzer(fun _ -> ())
-        .AddQuizzerActive("")
-        .AddQuizzer(fun _ -> ())
-        .SetAddQuizzerTeamOne(fun _ -> ())
-        .SetAddQuizzerTeamTwo(fun _ -> ())
+        .AddQuizzerIsTeamOne(isTeam true false)
+        .AddQuizzerIsTeamTwo(isTeam false true)
+        .AddQuizzerName(
+            (match model.AddQuizzer with
+             | Active (name, _) -> name
+             | Inert -> ""),
+            (fun name -> ())
+        )
+        .AddQuizzerStart(fun _ -> dispatch (AddQuizzer Start))
+        .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
+        .AddQuizzerActive(
+            if model.AddQuizzer = Inert then
+                ""
+            else
+                "is-active"
+        )
+        .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer Submit))
+        .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
+        .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
         .Elt()

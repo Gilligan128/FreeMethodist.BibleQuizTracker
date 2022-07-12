@@ -46,7 +46,7 @@
                     <span class="is-size-5">Quiz Options:</span>
                     <button class="button is-primary is-responsive " disabled>Complete</button>
                     <button class="button is-danger is-responsive " disabled>Reset</button>
-                    <button class="button is-info is-responsive" disabled>Add Quizzer</button>
+                    <button class="button is-info is-responsive" onclick="${AddQuizzerStart}">Add Quizzer</button>
                 </div>
             </div>
         </div>
@@ -56,24 +56,24 @@
         <div class="modal-card">
             <header class="modal-card-head">
                 <p class="modal-card-title">Add Quizzer</p>
-                <button class="delete" aria-label="close" onclick="${CancelAddQuizzer}"></button>
+                <button class="delete" aria-label="close" onclick="${AddQuizzerCancel}"></button>
             </header>
             <section class="modal-card-body">
                 <div class="field">
                     <label class="label">Name</label>
                     <div class="control">
-                        <input class="input" type="text" placeholder="Text input" bind-onchange="${SetAddQuizzerName}">
+                        <input class="input" type="text" placeholder="Text input" bind-onchange="${AddQuizzerName}">
                     </div>
                 </div>
                 <div class="field">
                     <label class="label">Team</label>
                     <div class="control">
                         <label class="radio">
-                            <input type="radio" name="answer" onchange="${SetAddQuizzerTeamOne}">
+                            <input type="radio" name="answer" checked="${AddQuizzerIsTeamOne}" onchange="${SetAddQuizzerTeamOne}">
                             ${TeamOneName}
                         </label>
                         <label class="radio">
-                            <input type="radio" name="answer" onchange="${SetAddQuizzerTeamTwo}">
+                            <input type="radio" name="answer" checked="${AddQuizzerIsTeamTwo}" onchange="${SetAddQuizzerTeamTwo}">
                             ${TeamTwoName}
                         </label>
                     </div>
@@ -82,10 +82,10 @@
             <footer class="modal-card-foot">
                 <div class="field is-grouped">
                     <div class="control">
-                        <button class="button is-link" onclick="${AddQuizzer}">Submit</button>
+                        <button class="button is-link" onclick="${AddQuizzerSubmit}">Submit</button>
                     </div>
                     <div class="control">
-                        <button class="button is-link is-light" onclick="${CancelAddQuizzer}">Cancel</button>
+                        <button class="button is-link is-light" onclick="${AddQuizzerCancel}">Cancel</button>
                     </div>
                 </div>
             </footer>
@@ -125,7 +125,7 @@
                 <div class="column">
                     <button class="button is-info is-light" disabled> 
                     <span class="icon ">
-                        <i class="fas fa-user-times"></i>
+                        <i class="fas fa-times-circle"></i>
                     </span>
                     </button>
                 </div>
