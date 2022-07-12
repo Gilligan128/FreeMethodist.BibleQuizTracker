@@ -2,6 +2,7 @@ module FreeMethodist.BibleQuizTracker.Server.Main
 
 open System
 open System.Text.Json.Serialization
+open System.Threading
 open Elmish
 open Bolero
 open Bolero.Html
@@ -46,7 +47,7 @@ type Message =
     | QuizMessage of QuizPage.Message
 
 
-let update hubConnection getQuiz saveQuiz (message: Message) model : Model * Cmd<Message> =
+let update hubConnection publishEvent getQuiz saveQuiz (message: Message) model : Model * Cmd<Message> =
     match message, model.quiz with
     | SetPage (Page.Quiz quizCode), _ ->
         { model with
@@ -57,7 +58,7 @@ let update hubConnection getQuiz saveQuiz (message: Message) model : Model * Cmd
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            QuizPage.update hubConnection getQuiz saveQuiz quizMsg quizModel
+            QuizPage.update  publishEvent getQuiz saveQuiz quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -97,7 +98,7 @@ let view model dispatch =
             concat {
                 menuItem model Home "Home"
                 menuItem model (Quiz "Example") "Quiz Example"
-            };
+            }
         )
         .Body(
             cond model.page
@@ -122,7 +123,7 @@ let view model dispatch =
         .Elt()
 
 let subscription hubConnection _ =
-    Cmd.batch [Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection)]
+    Cmd.batch [ Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection) ]
 
 
 type MyApp() =
@@ -138,8 +139,8 @@ type MyApp() =
     member val GetQuiz = Unchecked.defaultof<GetTeamQuiz> with get, set
 
     override this.Program =
-        let configureLogging (logging: ILoggingBuilder) =
-            logging.AddConsole() |> ignore
+        let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore
+
         let hubConnection =
             HubConnectionBuilder()
                 .WithUrl($"{this.Navigator.BaseUri}QuizHub")
@@ -150,8 +151,13 @@ type MyApp() =
                     options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                 .Build()
 
+        let publishEvent =
+            fun methodName event ->
+                hubConnection.InvokeAsync(methodName, event, CancellationToken.None)
+                |> Async.AwaitTask
+
         let update =
-            update hubConnection this.GetQuiz this.SaveQuiz
+            update hubConnection publishEvent this.GetQuiz this.SaveQuiz
 
         let subscription =
             subscription hubConnection

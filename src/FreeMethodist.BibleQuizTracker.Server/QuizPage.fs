@@ -97,13 +97,15 @@ let private refreshModel (quiz: TeamQuiz) =
           JumpState = Unlocked
           CurrentJumpPosition = 0 }
 
-let init getQuiz (hubConnection:HubConnection) quizCode =
+let init getQuiz (hubConnection: HubConnection) quizCode =
     let quiz = getQuiz quizCode
+
     hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, quizCode, CancellationToken.None)
-        |> Async.AwaitTask
-        |> ignore
+    |> Async.AwaitTask
+    |> ignore
+
     refreshModel quiz
-    
+
 
 let subscribe (hubConnection: HubConnection) =
     let sub dispatch =
@@ -112,7 +114,7 @@ let subscribe (hubConnection: HubConnection) =
             (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
-        
+
         hubConnection.On<TeamScoreChanged>(
             nameof
                 Unchecked.defaultof<QuizHub.Client>
@@ -120,7 +122,7 @@ let subscribe (hubConnection: HubConnection) =
             (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
-        
+
         hubConnection.On<QuestionChanged>(
             nameof
                 Unchecked.defaultof<QuizHub.Client>
@@ -128,7 +130,7 @@ let subscribe (hubConnection: HubConnection) =
             (fun (msg) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
- 
+
     Cmd.ofSub sub
 
 type OverrideScoreErrors =
@@ -155,23 +157,17 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
             |> Result.mapError (DomainError)
     }
 
-let private publishEvent (hubConnection: HubConnection) methodName (event) =
-    hubConnection.InvokeAsync(methodName, event, CancellationToken.None)
-    |> Async.AwaitTask
-
-let private createAsyncCommand task quiz =
-    Cmd.OfAsync.either
-        task
-        ignore
-        (fun _ -> Message.RefreshQuiz)
-        (fun er -> er |> RemoteError |> Message.AsyncCommandError)
-
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
-    let publishEvent =
-        fun (event) -> publishEvent hubConnection event
+let update (publishEvent: PublishEventTask) getQuiz saveQuiz msg model =
+
+    let publishEventCmd methodName event =
+        Cmd.OfAsync.either
+            (fun _ -> publishEvent methodName event)
+            ()
+            (fun _ -> Message.RefreshQuiz)
+            (fun er -> er |> RemoteError |> Message.AsyncCommandError)
 
     match msg with
     | OverrideScore (score, teamPosition) ->
@@ -185,13 +181,12 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
 
         match result with
         | Ok event ->
-            let task =
-                (fun _ -> publishEvent (nameof hubStub.TeamScoreChanged) event)
+            let cmd =
+                publishEventCmd (nameof hubStub.TeamScoreChanged) event
 
-            let cmd = createAsyncCommand task event.Quiz
             model, cmd, None
         | Result.Error error -> model, Cmd.none, Some(ExternalMessage.Error(overrideScoreError error))
-    | RefreshQuiz  ->
+    | RefreshQuiz ->
         getQuiz model.Code
         |> refreshModel
         |> fun refreshedModel -> refreshedModel, Cmd.none, None
@@ -220,10 +215,9 @@ let update (hubConnection: HubConnection) getQuiz saveQuiz msg model =
 
         match workflowResult with
         | Ok event ->
-            let task =
-                (fun _ -> publishEvent (nameof hubStub.SendQuestionChanged) event)
+            let cmd =
+                publishEventCmd (nameof hubStub.SendQuestionChanged) event
 
-            let cmd = createAsyncCommand task event.Quiz
             model, cmd, None
         | Result.Error event ->
             model,
@@ -290,7 +284,7 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         )
         .TeamOneName(model.TeamOne.Name)
         .TeamTwoName(model.TeamTwo.Name)
-        .SetAddQuizzerName("Quizzer1", fun name -> ())
+        .SetAddQuizzerName("Quizzer1", (fun name -> ()))
         .CancelAddQuizzer(fun _ -> ())
         .AddQuizzerActive("")
         .AddQuizzer(fun _ -> ())

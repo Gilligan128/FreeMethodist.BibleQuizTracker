@@ -59,6 +59,7 @@ type Quiz =
 //Common Dependencies
 type GetTeamQuiz = QuizCode -> TeamQuiz
 type SaveTeamQuiz = TeamQuiz -> unit
+type PublishEventTask = string -> obj -> Async<unit>
 
 type NotEnoughPlayersError =
     { teamName: TeamName
