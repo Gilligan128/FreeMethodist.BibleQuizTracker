@@ -47,18 +47,27 @@ type Message =
     | QuizMessage of QuizPage.Message
 
 
-let update hubConnection publishEvent getQuiz saveQuiz (message: Message) model : Model * Cmd<Message> =
+let update
+    connectToQuizEvents
+    publishEvent
+    getQuiz
+    saveQuiz
+    (message: Message)
+    model
+    : Model * Cmd<Message> =
     match message, model.quiz with
     | SetPage (Page.Quiz quizCode), _ ->
+        let quizModel, cmd = init quizCode
+
         { model with
             page = Quiz quizCode
-            quiz = Some(QuizPage.init getQuiz hubConnection quizCode) },
-        Cmd.none
+            quiz = Some quizModel },
+        Cmd.map Message.QuizMessage cmd
     | SetPage page, _ -> { model with page = page; quiz = None }, Cmd.none
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            QuizPage.update  publishEvent getQuiz saveQuiz quizMsg quizModel
+            update connectToQuizEvents publishEvent getQuiz saveQuiz quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -68,7 +77,7 @@ let update hubConnection publishEvent getQuiz saveQuiz (message: Message) model 
                 | Error er -> { model with Error = Some er }
 
         { newModel with quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
-    | QuizMessage quizMsg, None ->
+    | QuizMessage _, None ->
         { model with Error = Some "A Quiz Message was dispatched, but there is not Quiz Model set" }, Cmd.none
 
 /// Connects the routing system to the Elmish application.
@@ -151,13 +160,17 @@ type MyApp() =
                     options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                 .Build()
 
+        let connectToQuizEvents quizCode =
+            hubConnection.InvokeAsync("ConnectToQuiz", quizCode, CancellationToken.None)
+            |> Async.AwaitTask
+
         let publishEvent =
             fun methodName event ->
                 hubConnection.InvokeAsync(methodName, event, CancellationToken.None)
                 |> Async.AwaitTask
 
         let update =
-            update hubConnection publishEvent this.GetQuiz this.SaveQuiz
+            update connectToQuizEvents publishEvent this.GetQuiz this.SaveQuiz
 
         let subscription =
             subscription hubConnection

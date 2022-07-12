@@ -54,6 +54,7 @@ type PublishEventError =
     | RemoteError of exn
 
 type Message =
+    | StartListeningToEvents
     | OverrideScore of int * TeamPosition
     | RefreshQuiz
     | DoNothing
@@ -97,14 +98,17 @@ let private refreshModel (quiz: TeamQuiz) =
           JumpState = Unlocked
           CurrentJumpPosition = 0 }
 
-let init getQuiz (hubConnection: HubConnection) quizCode =
-    let quiz = getQuiz quizCode
-
-    hubConnection.InvokeAsync(nameof Unchecked.defaultof<QuizHub.Hub>.ConnectToQuiz, quizCode, CancellationToken.None)
-    |> Async.AwaitTask
-    |> ignore
-
-    refreshModel quiz
+let init quizCode =
+    { JoiningQuizzer = ""
+      Code = quizCode
+      TeamOne = { Name = ""; Score = 0; Quizzers = [] }
+      TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
+      JumpOrder = []
+      CurrentQuestion = 1
+      CurrentUser = ""
+      JumpState = Unlocked
+      CurrentJumpPosition = 0 },
+    Cmd.ofMsg Message.StartListeningToEvents
 
 
 let subscribe (hubConnection: HubConnection) =
@@ -160,7 +164,14 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let update (publishEvent: PublishEventTask) getQuiz saveQuiz msg model =
+let update
+    (connectToQuizEvents: ConnectToQuizEvents)
+    (publishEvent: PublishEventTask)
+    getQuiz
+    saveQuiz
+    msg
+    model
+    =
 
     let publishEventCmd methodName event =
         Cmd.OfAsync.either
@@ -170,6 +181,14 @@ let update (publishEvent: PublishEventTask) getQuiz saveQuiz msg model =
             (fun er -> er |> RemoteError |> Message.AsyncCommandError)
 
     match msg with
+    | StartListeningToEvents ->
+        let task =
+            async {
+                do! connectToQuizEvents model.Code
+                return RefreshQuiz
+            }
+
+        model, Cmd.OfAsync.result task, None
     | OverrideScore (score, teamPosition) ->
         let result =
             overrideScore getQuiz saveQuiz model score teamPosition
@@ -276,7 +295,13 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .CurrentQuestion(string model.CurrentQuestion)
         .NextQuestion(fun _ -> dispatch (MoveToDifferentQuestion(model.CurrentQuestion + 1)))
         .UndoQuestion(fun _ -> dispatch (MoveToDifferentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
-        .CurrentQuizzer(model.JumpOrder.Item model.CurrentJumpPosition)
+        .CurrentQuizzer(
+            if model.CurrentJumpPosition = 0
+               || model.JumpOrder.IsEmpty then
+                ""
+            else
+                model.JumpOrder.Item model.CurrentJumpPosition
+        )
         .JumpLockToggleAction(
             match model.JumpState with
             | Locked -> "Unlock"
