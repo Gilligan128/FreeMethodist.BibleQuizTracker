@@ -4,6 +4,7 @@ open Elmish
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 
 let connectToQuiz _ = Async.retn ()
@@ -24,7 +25,7 @@ let sut =
 let ``When Cancelled then AddQuizzer is Inert`` () =
 
     let initialModel =
-        { emptyModel with AddQuizzer = Active("", TeamPosition.TeamOne) }
+        { emptyModel with AddQuizzer = AddQuizzerModel.Active("", TeamOne) }
 
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Cancel) initialModel
@@ -35,21 +36,25 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
 
 [<Fact>]
 let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
-    
+
     let initialModel =
         { emptyModel with AddQuizzer = Inert }
+
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Start) initialModel
 
-    Assert.Equal(Active ("", TeamOne), resultingModel.AddQuizzer)
+    Assert.Equal(AddQuizzerModel.Active("", TeamOne), resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(None, externalMsg)
-    
+
 [<Fact>]
 let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with original data`` () =
-    let activeState = Active ("test", TeamTwo)
+    let activeState =
+        AddQuizzerModel.Active("test", TeamTwo)
+
     let initialModel =
         { emptyModel with AddQuizzer = activeState }
+
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Start) initialModel
 

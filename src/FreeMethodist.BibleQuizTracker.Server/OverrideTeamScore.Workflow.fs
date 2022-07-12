@@ -3,10 +3,7 @@
 open System
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-type TeamPosition =
-    | TeamOne
-    | TeamTwo
-    
+
 type OverrideTeamScoreData = {
     Team: TeamPosition
     NewScore: TeamScore

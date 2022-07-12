@@ -88,9 +88,10 @@ module RunningTeamQuiz =
 
 type ValidateQuizIsRunning = TeamQuiz -> Result<RunningTeamQuiz, QuizStateError>
 
-let validateQuiz quiz =
-    match quiz with
-    | TeamQuiz.Running running -> Ok running
-    | TeamQuiz.Completed c -> Error(WrongQuizState(c.GetType()))
-    | TeamQuiz.Official o -> Error(WrongQuizState(o.GetType()))
-    | TeamQuiz.Unvalidated u -> Error(WrongQuizState(u.GetType()))
+let validateQuiz: ValidateQuizIsRunning =
+    fun quiz ->
+        match quiz with
+        | TeamQuiz.Running running -> Ok running
+        | TeamQuiz.Completed c -> Error(WrongQuizState(c.GetType()))
+        | TeamQuiz.Official o -> Error(WrongQuizState(o.GetType()))
+        | TeamQuiz.Unvalidated u -> Error(WrongQuizState(u.GetType()))

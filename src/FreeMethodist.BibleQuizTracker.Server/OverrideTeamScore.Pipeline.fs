@@ -11,7 +11,6 @@ type UpdateQuizScore = RunningTeamQuiz -> OverrideTeamScoreData -> RunningTeamQu
 type CreateEvent = RunningTeamQuiz -> OverrideTeamScoreData -> TeamScoreChanged
 
 
-
 let updateQuizScore: UpdateQuizScore =
     fun quiz score ->
         match score.Team with

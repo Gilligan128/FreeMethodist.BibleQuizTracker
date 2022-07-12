@@ -37,7 +37,11 @@ module TeamScore =
 
     let value (TeamScore score) = score
     
-    let identity  = TeamScore 0
+    let identity: TeamScore  = TeamScore 0
+
+type TeamPosition =
+    | TeamOne
+    | TeamTwo
 
 type PositiveNumber = PositiveNumber of int
 
@@ -60,7 +64,6 @@ type UnvalidatedTeamQuiz =
       TeamTwo: TeamName }
 
 type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
-
 
 
 type CompletedQuestion = { answeringPlayer: Quizzer option }
