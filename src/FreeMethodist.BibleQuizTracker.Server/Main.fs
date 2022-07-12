@@ -78,7 +78,7 @@ let update
 
         { newModel with quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
     | QuizMessage _, None ->
-        { model with Error = Some "A Quiz Message was dispatched, but there is not Quiz Model set" }, Cmd.none
+        { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
 
 /// Connects the routing system to the Elmish application.
 let router =

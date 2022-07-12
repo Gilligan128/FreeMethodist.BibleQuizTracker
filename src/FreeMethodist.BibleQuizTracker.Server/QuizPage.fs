@@ -38,6 +38,10 @@ type JumpState =
     | Locked
     | Unlocked
 
+type AddQuizzerModel =
+    | Active of string * TeamPosition
+    | Inert
+
 type Model =
     { JoiningQuizzer: string
       Code: string
@@ -47,21 +51,40 @@ type Model =
       CurrentQuestion: int
       CurrentUser: string
       JumpState: JumpState
-      CurrentJumpPosition: int }
+      CurrentJumpPosition: int
+      AddQuizzer: AddQuizzerModel }
 
 type PublishEventError =
     | FormError of string
     | RemoteError of exn
 
+type AddQuizzerMessage =
+    | Start
+    | Cancel
+    | Submit 
+
 type Message =
-    | StartListeningToEvents
+    | ConnectToQuizEvents
     | OverrideScore of int * TeamPosition
     | RefreshQuiz
     | DoNothing
     | MoveToDifferentQuestion of int
     | AsyncCommandError of PublishEventError
+    | AddQuizzer of AddQuizzerMessage
 
 type ExternalMessage = Error of string
+
+let public  emptyModel =
+    { JoiningQuizzer = ""
+      Code = ""
+      TeamOne = { Name = ""; Score = 0; Quizzers = [] }
+      TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
+      JumpOrder = []
+      CurrentQuestion = 1
+      CurrentUser = ""
+      JumpState = Unlocked
+      CurrentJumpPosition = 0
+      AddQuizzer = Inert }
 
 let private refreshModel (quiz: TeamQuiz) =
     let refreshQuizzer (quizzer: QuizzerState) =
@@ -76,40 +99,30 @@ let private refreshModel (quiz: TeamQuiz) =
 
     match quiz with
     | Running runningQuiz ->
-        { Code = runningQuiz.Code
-          TeamOne = runningQuiz.TeamOne |> refreshTeam
-          TeamTwo = runningQuiz.TeamTwo |> refreshTeam
-          CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
-          CurrentJumpPosition = 1
-          CurrentUser = "Quizmaster"
-          JoiningQuizzer = ""
-          JumpOrder = [ "Jim"; "Juni"; "John" ]
-          JumpState = Unlocked }
+        { emptyModel with
+            Code = runningQuiz.Code
+            TeamOne = runningQuiz.TeamOne |> refreshTeam
+            TeamTwo = runningQuiz.TeamTwo |> refreshTeam
+            CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
+            CurrentJumpPosition = 1
+            CurrentUser = "Quizmaster"
+            JoiningQuizzer = ""
+            JumpOrder = [ "Jim"; "Juni"; "John" ]
+            JumpState = Unlocked }
     | TeamQuiz.Completed _
     | Official _
-    | Unvalidated _ ->
-        { JoiningQuizzer = ""
-          Code = ""
-          TeamOne = { Name = ""; Score = 0; Quizzers = [] }
-          TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
-          JumpOrder = []
-          CurrentQuestion = 1
-          CurrentUser = ""
-          JumpState = Unlocked
-          CurrentJumpPosition = 0 }
+    | Unvalidated _ -> emptyModel
 
 let init quizCode =
-    { JoiningQuizzer = ""
-      Code = quizCode
-      TeamOne = { Name = ""; Score = 0; Quizzers = [] }
-      TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
-      JumpOrder = []
-      CurrentQuestion = 1
-      CurrentUser = ""
-      JumpState = Unlocked
-      CurrentJumpPosition = 0 },
-    Cmd.ofMsg Message.StartListeningToEvents
+    { emptyModel with Code = quizCode }, Cmd.ofMsg Message.ConnectToQuizEvents
 
+type OverrideScoreErrors =
+    | DomainError of QuizStateError
+    | FormError of string
+
+type MoveQuestionError =
+    | FormError of string
+    | QuizError of QuizStateError
 
 let subscribe (hubConnection: HubConnection) =
     let sub dispatch =
@@ -137,14 +150,6 @@ let subscribe (hubConnection: HubConnection) =
 
     Cmd.ofSub sub
 
-type OverrideScoreErrors =
-    | DomainError of QuizStateError
-    | FormError of string
-
-type MoveQuestionError =
-    | FormError of string
-    | QuizError of QuizStateError
-
 let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =
     result {
         let! newScore =
@@ -164,15 +169,7 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let update
-    (connectToQuizEvents: ConnectToQuizEvents)
-    (publishEvent: PublishEventTask)
-    getQuiz
-    saveQuiz
-    msg
-    model
-    =
-
+let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEventTask) getQuiz saveQuiz msg model =
     let publishEventCmd methodName event =
         Cmd.OfAsync.either
             (fun _ -> publishEvent methodName event)
@@ -181,7 +178,7 @@ let update
             (fun er -> er |> RemoteError |> Message.AsyncCommandError)
 
     match msg with
-    | StartListeningToEvents ->
+    | ConnectToQuizEvents ->
         let task =
             async {
                 do! connectToQuizEvents model.Code
@@ -252,6 +249,9 @@ let update
             | RemoteError exn -> exn.Message
 
         model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
+    | Message.AddQuizzer Cancel -> {model with AddQuizzer = Inert}, Cmd.none, None
+    | Message.AddQuizzer Start | AddQuizzer Submit ->  model, Cmd.none, None
+    
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
