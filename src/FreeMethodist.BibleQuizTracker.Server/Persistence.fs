@@ -1,7 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Persistence
 
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
-open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Pipeline
 
 
 let mutable private exampleQuiz: TeamQuiz =

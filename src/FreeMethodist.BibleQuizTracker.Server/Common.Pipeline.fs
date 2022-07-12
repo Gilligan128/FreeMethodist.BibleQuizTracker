@@ -1,10 +1,10 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+﻿module FreeMethodist.BibleQuizTracker.Server.Pipeline
 
 open System
 open System.ComponentModel.DataAnnotations
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
-open QuizzingApi
+open Workflow
 
 //We will eventually modularize this into separate files, probbaly by Workflow.
 

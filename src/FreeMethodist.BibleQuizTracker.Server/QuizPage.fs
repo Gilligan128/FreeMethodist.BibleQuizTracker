@@ -1,22 +1,18 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizPage
 
 open System
-open System.Threading
 open Bolero
 open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
-open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Api
+open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
-open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore.SignalR.Client
-open Microsoft.FSharp.Control
 open Microsoft.FSharp.Core
-open Elmish
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Pipeline
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
 
 
 type ConnectionStatus =
@@ -70,7 +66,7 @@ type Message =
     | OverrideScore of int * TeamPosition
     | RefreshQuiz
     | MoveToDifferentQuestion of int
-    | AsyncCommandError of PublishEventError
+    | PublishEventError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
 
 type ExternalMessage = Error of string
@@ -176,7 +172,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
             (fun _ -> publishEvent methodName event)
             ()
             (fun _ -> Message.RefreshQuiz)
-            (fun er -> er |> RemoteError |> Message.AsyncCommandError)
+            (fun er -> er |> RemoteError |> Message.PublishEventError)
 
     match msg with
     | ConnectToQuizEvents ->
@@ -242,7 +238,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
              |> ExternalMessage.Error
              |> Some)
 
-    | Message.AsyncCommandError error ->
+    | Message.PublishEventError error ->
         let errorMessage =
             match error with
             | PublishEventError.FormError er -> er

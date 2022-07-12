@@ -1,6 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 type QuestionChanged = { Quiz: QuizCode; NewQuestion: QuestionNumber; }
  

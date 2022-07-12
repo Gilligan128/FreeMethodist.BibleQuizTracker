@@ -1,8 +1,8 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
 
-open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Api
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
-open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.FSharp.Core
 
 

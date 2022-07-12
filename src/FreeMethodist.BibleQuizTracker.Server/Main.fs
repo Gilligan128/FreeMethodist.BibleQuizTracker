@@ -10,7 +10,7 @@ open Bolero.Remoting
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
-open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR.Client

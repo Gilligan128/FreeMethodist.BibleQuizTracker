@@ -68,3 +68,24 @@ Testing and dependency management: https://fsharpforfunandprofit.com/posts/depen
 Following the Workflows - Pipelines pattern here: https://www.amazon.com/Domain-Modeling-Made-Functional-Domain-Driven/dp/1680502549
 
 We are also following the "external message" pattern to dispatch updates to parent components, guided by [this article](https://medium.com/@MangelMaxime/my-tips-for-working-with-elmish-ab8d193d52fd).
+
+# Project Structure
+F# only supports unidirectional dependencies, in file location order. 
+
+## All dependencies point inward.
+Practicing Domain-driven Design, all pipelines depend on Workflow files, which are either interfaces or public types.
+For each workflow, there is likely a [workflow name].Workflow.fs followed by a [workflow name].pipelines.fs.
+
+Example: 'Common.Pages.fs' can depend on 'Common.pipeline.fs', which in turn can depend on 'Common.Workflow.fs' but not vice versa.
+
+## Common stuff 
+Anything labeled "common" depends on nothing else within its 'circle' of the code and should be the first file of its section.
+Circles meaning: "Workflow" and "Pipeline" for backend, "Pages/Components" for frontend. 
+
+Example: 'Common.Pipeline.fs' cannot depend upon 'OverrideTeamScore.Pipeline.fs' but CAN depend on 'OverrideTeamScore.Worfklow.fs'
+
+## Main stuff
+In the reverse of "common", "main" files can depend on any other file of its circle but nothing else in that layer should depend on it.
+
+Example: 'Main.Pipeline.fs' can depend on 'OverrideTeamScore.pipeline.fs' but not vice versa. It CAN depend on 'Main.Workflow.fs' as "all dependencies point inward"
+

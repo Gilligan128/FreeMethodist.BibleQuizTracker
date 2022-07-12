@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.QuizzingApi
+﻿module FreeMethodist.BibleQuizTracker.Server.Workflow
 
 open System
 open Microsoft.FSharp.Core

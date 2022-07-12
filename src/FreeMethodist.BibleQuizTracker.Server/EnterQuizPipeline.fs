@@ -1,7 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.EnterQuizPipeline
 
 open System
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 type ValidEntrance = {
     Quizzer: Quizzer

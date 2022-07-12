@@ -1,7 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.JumpPipeline
 
 open System
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 //Jump pipeline
 type ValidJump = {

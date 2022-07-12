@@ -1,8 +1,8 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Pipeline
 
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
-open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Pipeline
 
 type MoveQuizToQuestion = Quiz -> Result<RunningTeamQuiz, QuizStateError>
 type CreateEvent = RunningTeamQuiz  -> QuestionChanged

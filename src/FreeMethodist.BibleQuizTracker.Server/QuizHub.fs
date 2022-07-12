@@ -2,12 +2,12 @@
 
 open System.Threading
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
-open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Api
-open FreeMethodist.BibleQuizTracker.Server.QuizzingApi
-open FreeMethodist.BibleQuizTracker.Server.QuizzingDomain
+open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore.SignalR
 open Microsoft.FSharp.Control
-open QuizzingDomain
+open Pipeline
 open System.Threading.Tasks
 
 //Used for event notification to clients
