@@ -53,12 +53,15 @@ let addQuizzerToQuiz: AddQuizzerToQuiz =
 let createEvent: CreateEvent =
     fun code input -> { Quizzer = input.Name; Quiz = code }
 
-let addQuizzer getQuiz saveQuiz : AddQuizzer.Workflow =
+let addQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : AddQuizzer.Workflow =
     fun command ->
         result {
             let quiz = getQuiz command.Quiz
             let! validQuiz = validateQuizzerAdd (validateQuiz) quiz command.Data
-            let updatedQuiz = addQuizzerToQuiz validQuiz command.Data
-            saveQuiz updatedQuiz
+
+            addQuizzerToQuiz validQuiz command.Data
+            |> Running
+            |> saveQuiz
+
             return createEvent command.Quiz command.Data
         }

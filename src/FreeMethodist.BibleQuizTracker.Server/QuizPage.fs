@@ -5,9 +5,11 @@ open Bolero
 open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
+open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore.SignalR.Client
@@ -45,7 +47,7 @@ type Model =
       TeamTwo: TeamModel
       JumpOrder: string list
       CurrentQuestion: int
-      CurrentUser: string
+      CurrentUser: User
       JumpState: JumpState
       CurrentJumpPosition: int
       AddQuizzer: AddQuizzerModel }
@@ -68,6 +70,7 @@ type Message =
     | MoveToDifferentQuestion of int
     | PublishEventError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
+    | RemoveQuizzer of Quizzer * TeamPosition
 
 type ExternalMessage = Error of string
 
@@ -78,7 +81,7 @@ let public emptyModel =
       TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
       JumpOrder = []
       CurrentQuestion = 1
-      CurrentUser = ""
+      CurrentUser = User.Quizmaster
       JumpState = Unlocked
       CurrentJumpPosition = 0
       AddQuizzer = Inert }
@@ -102,7 +105,7 @@ let private refreshModel (quiz: TeamQuiz) =
             TeamTwo = runningQuiz.TeamTwo |> refreshTeam
             CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
             CurrentJumpPosition = 1
-            CurrentUser = "Quizmaster"
+            CurrentUser = Quizmaster
             JoiningQuizzer = ""
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked }
@@ -173,7 +176,8 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
             ()
             (fun _ -> Message.RefreshQuiz)
             (fun er -> er |> RemoteError |> Message.PublishEventError)
-
+    let externalErrorMessage message =
+        message |> ExternalMessage.Error |> Some
     match msg with
     | ConnectToQuizEvents ->
         let task =
@@ -198,7 +202,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
                 publishEventCmd (nameof hubStub.TeamScoreChanged) event
 
             model, cmd, None
-        | Result.Error error -> model, Cmd.none, Some(ExternalMessage.Error(overrideScoreError error))
+        | Result.Error error -> model, Cmd.none, overrideScoreError error |> externalErrorMessage
     | RefreshQuiz ->
         getQuiz model.Code
         |> refreshModel
@@ -268,10 +272,47 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
 
         { model with AddQuizzer = addQuizzerModel }, Cmd.none, None
     | AddQuizzer Submit ->
-        { model with AddQuizzer = Inert },
-        Cmd.none,
-        ExternalMessage.Error "Add Quizzer does nothing yet"
-        |> Some
+        match model.AddQuizzer with
+        | AddQuizzerModel.Active (name, team) ->
+            let command: AddQuizzer.Command =
+                { Quiz = model.Code
+                  Data = { Name = name; Team = team }
+                  User = model.CurrentUser }
+
+            let result = AddQuizzer_Pipeline.addQuizzer getQuiz saveQuiz command
+                
+            match result with
+            | Ok event ->
+                let cmd = publishEventCmd (nameof hubStub.SendQuizzerParticipating) event
+                { model with AddQuizzer = Inert }, cmd, None
+            | Result.Error error ->
+                let errorMessage = match error with
+                                   | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
+                                   | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
+                { model with AddQuizzer = Inert }, Cmd.none, errorMessage |> externalErrorMessage
+        | AddQuizzerModel.Inert ->
+            model,
+            Cmd.none,
+            ExternalMessage.Error "How are you even submitting from an inert AddQuizzer state?"
+            |> Some
+    | RemoveQuizzer (name, teamPosition) ->
+        let withinQuizCommand: RemoveQuizzer.Command =
+            { Quiz = model.Code
+              Data = { Quizzer = name; Team = teamPosition }
+              User = Quizmaster }
+
+        let result =
+            RemoveQuizzer_Pipeline.removeQuizzer getQuiz saveQuiz withinQuizCommand
+
+        match result with
+        | Ok event -> model, (publishEventCmd (nameof hubStub.SendQuizzerNoLongerParticipating) event), None
+        | Result.Error error ->
+            let errorMessage =
+                match error with
+                | RemoveQuizzer.QuizStateError quizStateError -> $"Wrong Quiz State: {quizStateError}"
+                | RemoveQuizzer.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is already not participating"
+
+            model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
 
 
 
@@ -303,6 +344,7 @@ let private teamView position ((teamModel, jumpOrder): TeamModel * string list) 
                             | 0 -> "is-invisible"
                             | _ -> ""
                         )
+                        .Remove(fun _ -> dispatch (RemoveQuizzer(quizzer.Name, position)))
                         .Elt()
             }
         )
@@ -317,7 +359,13 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
 
     quizPage()
         .QuizCode(model.Code)
-        .CurrentUser(model.CurrentUser)
+        .CurrentUser(
+            match model.CurrentUser with
+            | Quizmaster -> "Quizmaster"
+            | Spectator -> "Spectator"
+            | Quizzer name -> name
+            | Scorekeeper -> "Scorekeeper"
+        )
         .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder) dispatch)
         .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
@@ -343,7 +391,7 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
             (match model.AddQuizzer with
              | Active (name, _) -> name
              | Inert -> ""),
-            (fun name -> ())
+            (fun name -> dispatch (AddQuizzerMessage.SetName name |> Message.AddQuizzer))
         )
         .AddQuizzerStart(fun _ -> dispatch (AddQuizzer Start))
         .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
