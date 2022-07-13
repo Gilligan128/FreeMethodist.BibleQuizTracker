@@ -39,6 +39,7 @@ let mutable private exampleQuiz: TeamQuiz =
                             Score = juniScore
                             Participation = In } ] }
                   CurrentQuestion = currentQuestion
+                  CurrentQuizzer = "Juni"
                   Questions = [] }
         }
 

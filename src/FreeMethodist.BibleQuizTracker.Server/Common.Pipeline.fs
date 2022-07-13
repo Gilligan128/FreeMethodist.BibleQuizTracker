@@ -84,6 +84,7 @@ module RunningTeamQuiz =
               Captain = None
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.identity
+          CurrentQuizzer = ""
           Questions = [] }
 
 type ValidateQuizIsRunning = TeamQuiz -> Result<RunningTeamQuiz, QuizStateError>

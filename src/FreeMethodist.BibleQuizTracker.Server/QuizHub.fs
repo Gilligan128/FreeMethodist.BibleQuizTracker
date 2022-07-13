@@ -5,6 +5,7 @@ open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore.SignalR
@@ -24,6 +25,7 @@ type Client =
     abstract member QuizzerNoLongerParticipating: QuizzerNoLongerParticipating -> Task
     
     abstract member QuizzerParticipating: QuizzerParticipating -> Task
+    abstract member CurrentQuizzerChanged: CurrentQuizzerChanged -> Task
 
 type Hub() =
     inherit Hub<Client>()
@@ -48,5 +50,7 @@ type Hub() =
          
      member this.SendQuizzerParticipating(msg: QuizzerParticipating) =
           this.Clients.OthersInGroup(msg.Quiz).QuizzerParticipating msg
+     member this.SendCurrentQuizzerChanged(msg: CurrentQuizzerChanged) =
+         this.Clients.OthersInGroup(msg.Quiz).CurrentQuizzerChanged
         
  

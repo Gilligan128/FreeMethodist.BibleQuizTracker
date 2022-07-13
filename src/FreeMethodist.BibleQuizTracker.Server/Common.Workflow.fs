@@ -38,7 +38,9 @@ module TeamScore =
     let value (TeamScore score) = score
     
     let identity: TeamScore  = TeamScore 0
-
+    
+    let ofQuestions questionCount =
+        TeamScore (questionCount * 20)
 type TeamPosition =
     | TeamOne
     | TeamTwo
@@ -92,7 +94,8 @@ type RunningTeamQuiz =
       Questions: QuizQuestion list
       TeamOne: QuizTeamState
       TeamTwo: QuizTeamState
-      CurrentQuestion: QuestionNumber }
+      CurrentQuestion: QuestionNumber
+      CurrentQuizzer: Quizzer }
 
 type TeamQuizCreated = { Quiz: RunningTeamQuiz }
 
@@ -146,3 +149,20 @@ type PlayerJumpsWorkflow = JumpCommand -> Result<JumpOrderChanged, JumpError>
 
 
 type QuizStateError = WrongQuizState of Type
+
+[<RequireQualifiedAccess>]
+module RunningTeamQuiz =
+    let identity = { Code = "Example"
+                     TeamOne =
+                        { Name = "LEFT"
+                          Score = TeamScore.identity 
+                          Captain = None
+                          Quizzers =  [ ] }
+                     TeamTwo =
+                        { Name = "RIGHT"
+                          Score = TeamScore.identity
+                          Captain = None
+                          Quizzers = [ ] }
+                     CurrentQuestion = PositiveNumber.identity
+                     CurrentQuizzer = ""
+                     Questions = [] }

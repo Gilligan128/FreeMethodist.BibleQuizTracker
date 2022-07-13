@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <Compile Include="AddQuizzerComponentTests.fs" />
+        <Compile Include="SelectQuizzerWorkflowTests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
