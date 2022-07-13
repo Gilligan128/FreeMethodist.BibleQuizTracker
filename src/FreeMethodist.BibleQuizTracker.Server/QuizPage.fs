@@ -49,8 +49,8 @@ type Model =
       CurrentQuestion: int
       CurrentUser: User
       JumpState: JumpState
-      CurrentJumpPosition: int
-      AddQuizzer: AddQuizzerModel }
+      AddQuizzer: AddQuizzerModel
+      CurrentQuizzer: Quizzer }
 
 type PublishEventError =
     | FormError of string
@@ -71,7 +71,7 @@ type Message =
     | PublishEventError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of Quizzer * TeamPosition
-
+    | SelectQuizzer of Quizzer
 type ExternalMessage = Error of string
 
 let public emptyModel =
@@ -83,8 +83,8 @@ let public emptyModel =
       CurrentQuestion = 1
       CurrentUser = User.Quizmaster
       JumpState = Unlocked
-      CurrentJumpPosition = 0
-      AddQuizzer = Inert }
+      AddQuizzer = Inert
+      CurrentQuizzer = ""}
 
 let private refreshModel (quiz: TeamQuiz) =
     let refreshQuizzer (quizzer: QuizzerState) =
@@ -104,7 +104,7 @@ let private refreshModel (quiz: TeamQuiz) =
             TeamOne = runningQuiz.TeamOne |> refreshTeam
             TeamTwo = runningQuiz.TeamTwo |> refreshTeam
             CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
-            CurrentJumpPosition = 1
+            CurrentQuizzer = "Juni"
             CurrentUser = Quizmaster
             JoiningQuizzer = ""
             JumpOrder = [ "Jim"; "Juni"; "John" ]
@@ -141,9 +141,7 @@ let subscribe (hubConnection: HubConnection) =
         |> ignore
 
         hubConnection.On<QuestionChanged>(
-            nameof
-                Unchecked.defaultof<QuizHub.Client>
-                    .QuestionChanged,
+            nameof Unchecked.defaultof<QuizHub.Client>.QuestionChanged,
             (fun (msg) -> dispatch (Message.RefreshQuiz) |> ignore)
         )
         |> ignore
@@ -313,7 +311,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
                 | RemoveQuizzer.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is already not participating"
 
             model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
-
+    | SelectQuizzer (name) -> {model with CurrentQuizzer = name }, Cmd.none, externalErrorMessage "This is not yet wired up to the backend"
 
 
 type private quizPage = Template<"wwwroot/Quiz.html">
@@ -345,6 +343,7 @@ let private teamView position ((teamModel, jumpOrder): TeamModel * string list) 
                             | _ -> ""
                         )
                         .Remove(fun _ -> dispatch (RemoveQuizzer(quizzer.Name, position)))
+                        .Select(fun _ -> dispatch (SelectQuizzer(quizzer.Name)))
                         .Elt()
             }
         )
@@ -371,12 +370,7 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .CurrentQuestion(string model.CurrentQuestion)
         .NextQuestion(fun _ -> dispatch (MoveToDifferentQuestion(model.CurrentQuestion + 1)))
         .UndoQuestion(fun _ -> dispatch (MoveToDifferentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
-        .CurrentQuizzer(
-            if model.CurrentJumpPosition = 0
-               || model.JumpOrder.IsEmpty then
-                ""
-            else
-                model.JumpOrder.Item model.CurrentJumpPosition
+        .CurrentQuizzer(model.CurrentQuizzer
         )
         .JumpLockToggleAction(
             match model.JumpState with
