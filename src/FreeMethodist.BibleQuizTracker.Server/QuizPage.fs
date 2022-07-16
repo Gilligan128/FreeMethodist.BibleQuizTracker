@@ -69,7 +69,7 @@ type Message =
     | ConnectToQuizEvents
     | OverrideScore of int * TeamPosition
     | RefreshQuiz
-    | MoveToDifferentQuestion of int
+    | ChangeCurrentQuestion of int
     | PublishEventError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of Quizzer * TeamPosition
@@ -124,7 +124,7 @@ type OverrideScoreErrors =
     | DomainError of QuizStateError
     | FormError of string
 
-type MoveQuestionError =
+type ChangeQuestionError =
     | FormError of string
     | QuizError of QuizStateError
 
@@ -172,16 +172,15 @@ let update
     model
     =
 
+    let commandToRefresh task =
+        Cmd.OfAsync.either task () (fun _ -> Message.RefreshQuiz) (fun er -> er |> RemoteError |> Message.PublishEventError)
+    
     let publishRunQuizEventCmd quiz (event: RunQuizEvent) =
-        Cmd.OfAsync.either
-            (fun _ -> publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event)
-            ()
-            (fun _ -> Message.RefreshQuiz)
-            (fun er -> er |> RemoteError |> Message.PublishEventError)
-
+        commandToRefresh (fun _ -> publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event)
+   
     let externalErrorMessage message =
         message |> ExternalMessage.Error |> Some
-
+    
     match msg with
     | ConnectToQuizEvents ->
         let task =
@@ -211,12 +210,12 @@ let update
         getQuiz model.Code
         |> refreshModel
         |> fun refreshedModel -> refreshedModel, Cmd.none, None
-    | MoveToDifferentQuestion questionNumber ->
+    | ChangeCurrentQuestion questionNumber ->
         let workflowResult =
             result {
                 let! questionNumber =
                     PositiveNumber.create questionNumber "QuestionNumber"
-                    |> Result.mapError MoveQuestionError.FormError
+                    |> Result.mapError ChangeQuestionError.FormError
 
                 return!
                     moveQuizToQuestion
@@ -225,13 +224,13 @@ let update
                         { Quiz = model.Code
                           User = Quizmaster
                           Data = { Question = questionNumber } }
-                    |> Result.mapError MoveQuestionError.QuizError
+                    |> Result.mapError ChangeQuestionError.QuizError
             }
 
         let moveQuestionErrorMessage error =
             match error with
-            | MoveQuestionError.FormError er -> er
-            | MoveQuestionError.QuizError er -> $"Wrong Quiz State: {er}"
+            | ChangeQuestionError.FormError er -> er
+            | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}"
 
         match workflowResult with
         | Ok event ->
@@ -324,11 +323,7 @@ let update
                                      |> List.map (publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) model.Code)
                                      |> Async.Parallel)
            
-            let cmd = Cmd.OfAsync.either
-                        asyncBatch
-                        ()
-                        (fun _ -> Message.RefreshQuiz)
-                        (fun er -> er |> RemoteError |> Message.PublishEventError)
+            let cmd = commandToRefresh asyncBatch
             model, cmd, None
         | Result.Error error ->
             let errorMessage =
@@ -444,8 +439,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
                 dispatch
         )
         .CurrentQuestion(string model.CurrentQuestion)
-        .NextQuestion(fun _ -> dispatch (MoveToDifferentQuestion(model.CurrentQuestion + 1)))
-        .UndoQuestion(fun _ -> dispatch (MoveToDifferentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
+        .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(model.CurrentQuestion + 1)))
+        .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
         .CurrentQuizzer(
             match model.CurrentQuizzer with
             | Some q -> $"{q}'s Turn"
