@@ -49,7 +49,6 @@ type Message =
 
 let update
     connectToQuizEvents
-    publishEvent
     publishQuizEvent
     getQuiz
     saveQuiz
@@ -68,7 +67,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents publishEvent publishQuizEvent getQuiz saveQuiz quizMsg quizModel
+            update connectToQuizEvents publishQuizEvent getQuiz saveQuiz quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -164,11 +163,6 @@ type MyApp() =
         let connectToQuizEvents quizCode =
             hubConnection.InvokeAsync("ConnectToQuiz", quizCode, CancellationToken.None)
             |> Async.AwaitTask
-
-        let publishEvent =
-            fun methodName event ->
-                hubConnection.InvokeAsync(methodName, event, CancellationToken.None)
-                |> Async.AwaitTask
                 
         let publishQuizEvent =
             fun methodName quiz event ->
@@ -176,7 +170,7 @@ type MyApp() =
                 |> Async.AwaitTask 
             
         let update =
-            update connectToQuizEvents publishEvent publishQuizEvent this.GetQuiz this.SaveQuiz
+            update connectToQuizEvents publishQuizEvent this.GetQuiz this.SaveQuiz
 
         let subscription =
             subscription hubConnection

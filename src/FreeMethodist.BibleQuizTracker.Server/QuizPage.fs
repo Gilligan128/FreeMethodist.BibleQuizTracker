@@ -163,20 +163,13 @@ let private hubStub =
 
 let update
     (connectToQuizEvents: ConnectToQuizEvents)
-    (publishEvent: PublishEventTask)
     (publishQuizEvent: PublishQuizEventTask)
     getQuiz
     saveQuiz
     msg
     model
     =
-    let publishEventCmd methodName event =
-        Cmd.OfAsync.either
-            (fun _ -> publishEvent methodName event)
-            ()
-            (fun _ -> Message.RefreshQuiz)
-            (fun er -> er |> RemoteError |> Message.PublishEventError)
-
+    
     let publishRunQuizEventCmd quiz (event: RunQuizEvent) =
         Cmd.OfAsync.either
             (fun _ -> publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event)
