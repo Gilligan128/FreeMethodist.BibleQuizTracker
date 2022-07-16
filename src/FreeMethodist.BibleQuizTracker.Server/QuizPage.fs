@@ -51,7 +51,8 @@ type Model =
       CurrentUser: User
       JumpState: JumpState
       AddQuizzer: AddQuizzerModel
-      CurrentQuizzer: Quizzer }
+      CurrentQuizzerDeprecated: Quizzer
+      CurrentQuizzer: Quizzer option }
 
 type PublishEventError =
     | FormError of string
@@ -86,7 +87,8 @@ let public emptyModel =
       CurrentUser = User.Quizmaster
       JumpState = Unlocked
       AddQuizzer = Inert
-      CurrentQuizzer = "" }
+      CurrentQuizzerDeprecated = ""
+      CurrentQuizzer = None }
 
 let private refreshModel (quiz: TeamQuiz) =
     let refreshQuizzer (quizzer: QuizzerState) =
@@ -169,7 +171,7 @@ let update
     msg
     model
     =
-    
+
     let publishRunQuizEventCmd quiz (event: RunQuizEvent) =
         Cmd.OfAsync.either
             (fun _ -> publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event)
@@ -200,7 +202,9 @@ let update
 
         match result with
         | Ok event ->
-            let cmd = publishRunQuizEventCmd event.Quiz (TeamScoreChanged event)
+            let cmd =
+                publishRunQuizEventCmd event.Quiz (TeamScoreChanged event)
+
             model, cmd, None
         | Result.Error error -> model, Cmd.none, overrideScoreError error |> externalErrorMessage
     | RefreshQuiz ->
@@ -231,7 +235,9 @@ let update
 
         match workflowResult with
         | Ok event ->
-            let cmd = publishRunQuizEventCmd event.Quiz (CurrentQuestionChanged event)
+            let cmd =
+                publishRunQuizEventCmd event.Quiz (CurrentQuestionChanged event)
+
             model, cmd, None
         | Result.Error event ->
             model,
@@ -347,7 +353,7 @@ type private quizPage = Template<"wwwroot/Quiz.html">
 
 let private teamView
     position
-    ((teamModel, jumpOrder, currentQuizzer): TeamModel * string list * Quizzer)
+    ((teamModel, jumpOrder, currentQuizzerDeprecated, currentQuizzer): TeamModel * string list * Quizzer * Option<Quizzer>)
     (dispatch: Dispatch<Message>)
     =
     quizPage
@@ -378,10 +384,16 @@ let private teamView
                         .Remove(fun _ -> dispatch (RemoveQuizzer(quizzer.Name, position)))
                         .Select(fun _ -> dispatch (SelectQuizzer(quizzer.Name)))
                         .BackgroundColor(
-                            if quizzer.Name = currentQuizzer then
-                                "has-background-grey-lighter"
-                            else
-                                "has-background-white-ter"
+                            currentQuizzer
+                            |> Option.map (fun current ->
+                                if quizzer.Name = current then
+                                    "has-background-grey-lighter"
+                                else
+                                    "has-background-white-ter")
+                            |> (fun current ->
+                                match current with
+                                | None -> ""
+                                | Some q -> q)
                         )
                         .Elt()
             }
@@ -404,12 +416,26 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
             | Quizzer name -> name
             | Scorekeeper -> "Scorekeeper"
         )
-        .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder, model.CurrentQuizzer) dispatch)
-        .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer) dispatch)
+        .TeamOne(
+            teamView
+                TeamPosition.TeamOne
+                (model.TeamOne, model.JumpOrder, model.CurrentQuizzerDeprecated, model.CurrentQuizzer)
+                dispatch
+        )
+        .TeamTwo(
+            teamView
+                TeamPosition.TeamTwo
+                (model.TeamTwo, model.JumpOrder, model.CurrentQuizzerDeprecated, model.CurrentQuizzer)
+                dispatch
+        )
         .CurrentQuestion(string model.CurrentQuestion)
         .NextQuestion(fun _ -> dispatch (MoveToDifferentQuestion(model.CurrentQuestion + 1)))
         .UndoQuestion(fun _ -> dispatch (MoveToDifferentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
-        .CurrentQuizzer(model.CurrentQuizzer)
+        .CurrentQuizzer(
+            match model.CurrentQuizzer with
+            | Some q -> q
+            | None -> ""
+        )
         .JumpLockToggleAction(
             match model.JumpState with
             | Locked -> "Unlock"

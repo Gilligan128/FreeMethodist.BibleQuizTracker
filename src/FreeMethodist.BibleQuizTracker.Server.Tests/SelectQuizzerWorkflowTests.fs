@@ -11,4 +11,4 @@ let ``When Selecting Quizzer then that is now the quiz's current quizzer`` () =
     let result =
         SelectQuizzer_Pipeline.changeCurrentQuizzer "Jordan" quiz
 
-    Assert.Equal("Jordan", result.CurrentQuizzer)
+    Assert.Equal(Some "Jordan", result.CurrentQuizzer)

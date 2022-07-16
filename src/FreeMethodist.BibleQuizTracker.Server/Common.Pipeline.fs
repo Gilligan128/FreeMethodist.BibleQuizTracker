@@ -71,24 +71,6 @@ type NotEnoughPlayersError =
       minimumPlayerCount: int }
 
 type StartTeamQuizError = NotEnoughPlayers of NotEnoughPlayersError
-
-module RunningTeamQuiz =
-    let identity: RunningTeamQuiz =
-        { Code = ""
-          TeamOne =
-            { Name = ""
-              Score = TeamScore.identity
-              Captain = None
-              Quizzers = [] }
-          TeamTwo =
-            { Name = ""
-              Score = TeamScore.identity
-              Captain = None
-              Quizzers = [] }
-          CurrentQuestion = PositiveNumber.identity
-          CurrentQuizzer = ""
-          Questions = [] }
-
 type ValidateQuizIsRunning = TeamQuiz -> Result<RunningTeamQuiz, QuizStateError>
 
 let validateQuiz: ValidateQuizIsRunning =

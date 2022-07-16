@@ -94,7 +94,8 @@ type RunningTeamQuiz =
       TeamOne: QuizTeamState
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
-      CurrentQuizzer: Quizzer }
+      CurrentQuizzer: Quizzer option
+       }
 
 type TeamQuizCreated = { Quiz: RunningTeamQuiz }
 
@@ -162,5 +163,5 @@ module RunningTeamQuiz =
                           Captain = None
                           Quizzers = [ ] }
                      CurrentQuestion = PositiveNumber.identity
-                     CurrentQuizzer = ""
+                     CurrentQuizzer = None
                      Questions = [] }

@@ -6,7 +6,7 @@ open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 type ValidateSelection = TeamQuiz -> SelectQuizzer.Input -> Result<RunningTeamQuiz, SelectQuizzer.Error>
-type ChangeCurrentQuizzer = Quizzer -> RunningTeamQuiz  -> RunningTeamQuiz
+type ChangeCurrentQuizzer = Quizzer -> RunningTeamQuiz -> RunningTeamQuiz
 type CreateEvent = RunningTeamQuiz -> Quizzer -> CurrentQuizzerChanged
 
 
@@ -29,26 +29,33 @@ let validateSelection: ValidateSelection =
                     Error(SelectQuizzer.Error.QuizzerNotParticipating input.Quizzer)
 
             return!
-                if validQuiz.CurrentQuizzer = input.Quizzer then
-                    Error SelectQuizzer.QuizzerAlreadyCurrent
-                else
-                    Ok validQuiz
+                match validQuiz.CurrentQuizzer with
+                | None -> Ok validQuiz
+                | Some currentQuizzer ->
+                    if currentQuizzer = input.Quizzer then
+                        Error SelectQuizzer.QuizzerAlreadyCurrent
+                    else
+                        Ok validQuiz
         }
 
-let changeCurrentQuizzer : ChangeCurrentQuizzer =
-    fun quizzer quiz ->
-        { quiz with CurrentQuizzer = quizzer} 
-        
-let createEvent : CreateEvent =
+let changeCurrentQuizzer: ChangeCurrentQuizzer =
+    fun quizzer quiz -> { quiz with CurrentQuizzer = Some quizzer }
+
+let createEvent: CreateEvent =
     fun quiz quizzer -> { Quiz = quiz.Code; Quizzer = quizzer }
-    
- 
-let selectQuizzer getQuiz (saveQuiz: SaveTeamQuiz ): SelectQuizzer.Workflow =
+
+
+let selectQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : SelectQuizzer.Workflow =
     fun command ->
         let validateSelection quiz = validateSelection quiz command.Data
+
         result {
-            let! validQuiz = getQuiz command.Quiz
-                                |> validateSelection
-            validQuiz |> changeCurrentQuizzer command.Data.Quizzer |> Running |> saveQuiz 
-            return createEvent validQuiz command.Data.Quizzer 
+            let! validQuiz = getQuiz command.Quiz |> validateSelection
+
+            validQuiz
+            |> changeCurrentQuizzer command.Data.Quizzer
+            |> Running
+            |> saveQuiz
+
+            return createEvent validQuiz command.Data.Quizzer
         }
