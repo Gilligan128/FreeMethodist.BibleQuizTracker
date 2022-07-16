@@ -6,6 +6,7 @@ open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
@@ -142,7 +143,7 @@ let subscribe (hubConnection: HubConnection) =
         )
         |> ignore
 
-        hubConnection.On<QuestionChanged>(
+        hubConnection.On<CurrentQuestionChanged>(
             nameof
                 Unchecked.defaultof<QuizHub.Client>
                     .QuestionChanged,

@@ -56,7 +56,6 @@ module PositiveNumber =
     let identity = PositiveNumber 1
     
     let value (PositiveNumber number) = number
- 
 
  
 //Create Quiz Workflow
@@ -146,7 +145,6 @@ type JumpError =
     | QuizRoomClosed of QuizCode
 
 type PlayerJumpsWorkflow = JumpCommand -> Result<JumpOrderChanged, JumpError>
-
 
 type QuizStateError = WrongQuizState of Type
 

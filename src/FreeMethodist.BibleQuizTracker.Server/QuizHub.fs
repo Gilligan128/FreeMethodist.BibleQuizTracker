@@ -2,6 +2,7 @@
 
 open System.Threading
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
@@ -18,7 +19,7 @@ open System.Threading.Tasks
 type Client =
     abstract member EnteredQuiz: QuizzerEntered -> Task
     abstract member Jumped: Quizzer -> Task
-    abstract member QuestionChanged: QuestionChanged -> Task
+    abstract member QuestionChanged: CurrentQuestionChanged -> Task
 
     abstract member TeamScoreChanged: TeamScoreChanged -> Task
     
@@ -42,7 +43,7 @@ type Hub() =
      member this.ConnectToQuiz(code: QuizCode) =
          this.Groups.AddToGroupAsync(this.Context.ConnectionId, code, CancellationToken.None)
          
-     member this.SendQuestionChanged(msg: QuestionChanged) =
+     member this.SendQuestionChanged(msg: CurrentQuestionChanged) =
         this.Clients.OthersInGroup(msg.Quiz).QuestionChanged msg
         
      member this.SendQuizzerNoLongerParticipating(msg: QuizzerNoLongerParticipating) =

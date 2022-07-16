@@ -1,11 +1,12 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Pipeline
 
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 
 type MoveQuizToQuestion = Quiz -> Result<RunningTeamQuiz, QuizStateError>
-type CreateEvent = RunningTeamQuiz  -> QuestionChanged
+type CreateEvent = RunningTeamQuiz  -> CurrentQuestionChanged
 
 
 let updateQuiz quiz question =

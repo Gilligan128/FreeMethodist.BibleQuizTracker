@@ -1,6 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Pipeline
 
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core

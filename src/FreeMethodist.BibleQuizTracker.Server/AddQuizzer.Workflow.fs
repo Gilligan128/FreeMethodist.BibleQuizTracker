@@ -1,9 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-type QuizzerParticipating = { Quizzer: Quizzer; Quiz: QuizCode }
 
 [<RequireQualifiedAccess>]
 module AddQuizzer =

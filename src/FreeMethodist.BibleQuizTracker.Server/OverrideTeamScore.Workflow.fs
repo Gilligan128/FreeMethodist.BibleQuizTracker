@@ -1,6 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 
 open System
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 
@@ -9,11 +10,6 @@ type OverrideTeamScoreData = {
     NewScore: TeamScore
 }
 
-type TeamScoreChanged = {
-    Quiz: QuizCode
-    Team: TeamPosition
-    NewScore: TeamScore
-}
 
 [<RequireQualifiedAccess>]
 module OverrideTeamScore =

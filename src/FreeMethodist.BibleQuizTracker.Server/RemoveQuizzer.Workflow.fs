@@ -1,10 +1,11 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 
-type QuizzerNoLongerParticipating = { Quizzer : Quizzer; Quiz: QuizCode }
+
 
 [<RequireQualifiedAccess>]
 module RemoveQuizzer =
