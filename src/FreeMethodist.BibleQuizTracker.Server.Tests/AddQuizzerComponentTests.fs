@@ -9,6 +9,7 @@ open Xunit
 
 let connectToQuiz _ = Async.retn ()
 let publish _ _ = Async.retn ()
+let publishQuiz _ _ _ = Async.retn ()
 
 let getQuiz _ =
     TeamQuiz.Unvalidated
@@ -19,7 +20,7 @@ let getQuiz _ =
 let saveQuiz _ = ()
 
 let sut =
-    update connectToQuiz publish getQuiz saveQuiz
+    update connectToQuiz publish publishQuiz getQuiz saveQuiz
 
 [<Fact>]
 let ``When Cancelled then AddQuizzer is Inert`` () =

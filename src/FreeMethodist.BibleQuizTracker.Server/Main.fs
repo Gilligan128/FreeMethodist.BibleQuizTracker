@@ -50,6 +50,7 @@ type Message =
 let update
     connectToQuizEvents
     publishEvent
+    publishQuizEvent
     getQuiz
     saveQuiz
     (message: Message)
@@ -67,7 +68,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents publishEvent getQuiz saveQuiz quizMsg quizModel
+            update connectToQuizEvents publishEvent publishQuizEvent getQuiz saveQuiz quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -132,7 +133,7 @@ let view model dispatch =
         .Elt()
 
 let subscription hubConnection _ =
-    Cmd.batch [ Cmd.map Message.QuizMessage (QuizPage.subscribe hubConnection) ]
+    Cmd.batch [ Cmd.map Message.QuizMessage (subscribe hubConnection) ]
 
 
 type MyApp() =
@@ -168,9 +169,14 @@ type MyApp() =
             fun methodName event ->
                 hubConnection.InvokeAsync(methodName, event, CancellationToken.None)
                 |> Async.AwaitTask
-
+                
+        let publishQuizEvent =
+            fun methodName quiz event ->
+                hubConnection.InvokeAsync(methodName, quiz, event, CancellationToken.None)
+                |> Async.AwaitTask 
+            
         let update =
-            update connectToQuizEvents publishEvent this.GetQuiz this.SaveQuiz
+            update connectToQuizEvents publishEvent publishQuizEvent this.GetQuiz this.SaveQuiz
 
         let subscription =
             subscription hubConnection
@@ -178,7 +184,7 @@ type MyApp() =
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore
-                (initModel), Cmd.none)
+                initModel, Cmd.none)
             update
             view
         |> Program.withRouter router

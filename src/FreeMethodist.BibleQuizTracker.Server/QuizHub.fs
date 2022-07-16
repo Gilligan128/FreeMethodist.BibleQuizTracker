@@ -23,10 +23,7 @@ type Client =
 
     abstract member TeamScoreChanged: TeamScoreChanged -> Task
     
-    abstract member QuizzerNoLongerParticipating: QuizzerNoLongerParticipating -> Task
-    
-    abstract member QuizzerParticipating: QuizzerParticipating -> Task
-    abstract member CurrentQuizzerChanged: CurrentQuizzerChanged -> Task
+    abstract member RunQuizEventOccurred: RunQuizEvent -> Task
 
 type Hub() =
     inherit Hub<Client>()
@@ -36,22 +33,11 @@ type Hub() =
             this.Groups.AddToGroupAsync(this.Context.ConnectionId, msg.Quiz) |> ignore
             this.Clients.Group(msg.Quiz).EnteredQuiz(msg) |> ignore
         }
-        
-     member this.TeamScoreChanged( msg: TeamScoreChanged) =
-         this.Clients.Group(msg.Quiz).TeamScoreChanged msg
 
      member this.ConnectToQuiz(code: QuizCode) =
          this.Groups.AddToGroupAsync(this.Context.ConnectionId, code, CancellationToken.None)
          
-     member this.SendQuestionChanged(msg: CurrentQuestionChanged) =
-        this.Clients.OthersInGroup(msg.Quiz).QuestionChanged msg
-        
-     member this.SendQuizzerNoLongerParticipating(msg: QuizzerNoLongerParticipating) =
-         this.Clients.OthersInGroup(msg.Quiz).QuizzerNoLongerParticipating msg
-         
-     member this.SendQuizzerParticipating(msg: QuizzerParticipating) =
-          this.Clients.OthersInGroup(msg.Quiz).QuizzerParticipating msg
-     member this.SendCurrentQuizzerChanged(msg: CurrentQuizzerChanged) =
-         this.Clients.OthersInGroup(msg.Quiz).CurrentQuizzerChanged
+     member this.SendRunQuizEventOccurred (quiz: QuizCode) (msg: RunQuizEvent) =
+         this.Clients.OthersInGroup(quiz).RunQuizEventOccurred msg
         
  

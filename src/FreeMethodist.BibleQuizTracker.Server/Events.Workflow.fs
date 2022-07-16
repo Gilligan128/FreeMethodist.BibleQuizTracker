@@ -18,8 +18,8 @@
  type CurrentQuizzerChanged = { Quiz: QuizCode; Quizzer: Quizzer  }
 
  
- type RunQuizEvents =
-     | QuizzerNotNoLongerParticipating of QuizzerNoLongerParticipating
+ type RunQuizEvent =
+     | QuizzerNoLongerParticipating of QuizzerNoLongerParticipating
      | TeamScoreChanged of TeamScoreChanged
      | CurrentQuestionChanged of CurrentQuestionChanged
      | QuizzerParticipating of QuizzerParticipating

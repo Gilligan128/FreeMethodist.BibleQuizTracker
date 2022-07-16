@@ -7,7 +7,6 @@ open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
@@ -128,26 +127,16 @@ type MoveQuestionError =
     | QuizError of QuizStateError
 
 let subscribe (hubConnection: HubConnection) =
-    let sub dispatch =
-        hubConnection.On<QuizzerEntered>(
-            "EnteredQuiz",
-            (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz) |> ignore)
-        )
+    let sub (dispatch: Dispatch<Message>) =
+        hubConnection.On<QuizzerEntered>("EnteredQuiz", (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz)))
         |> ignore
 
-        hubConnection.On<TeamScoreChanged>(
-            nameof
-                Unchecked.defaultof<QuizHub.Client>
-                    .TeamScoreChanged,
-            (fun (msg: TeamScoreChanged) -> dispatch (Message.RefreshQuiz) |> ignore)
-        )
-        |> ignore
+        let clientStub =
+            Unchecked.defaultof<QuizHub.Client>
 
-        hubConnection.On<CurrentQuestionChanged>(
-            nameof
-                Unchecked.defaultof<QuizHub.Client>
-                    .QuestionChanged,
-            (fun (msg) -> dispatch (Message.RefreshQuiz) |> ignore)
+        hubConnection.On<RunQuizEvent>(
+            nameof clientStub.RunQuizEventOccurred,
+            (fun (msg) -> dispatch Message.RefreshQuiz)
         )
         |> ignore
 
@@ -172,10 +161,25 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEventTask) getQuiz saveQuiz msg model =
+let update
+    (connectToQuizEvents: ConnectToQuizEvents)
+    (publishEvent: PublishEventTask)
+    (publishQuizEvent: PublishQuizEventTask)
+    getQuiz
+    saveQuiz
+    msg
+    model
+    =
     let publishEventCmd methodName event =
         Cmd.OfAsync.either
             (fun _ -> publishEvent methodName event)
+            ()
+            (fun _ -> Message.RefreshQuiz)
+            (fun er -> er |> RemoteError |> Message.PublishEventError)
+
+    let publishRunQuizEventCmd quiz (event: RunQuizEvent) =
+        Cmd.OfAsync.either
+            (fun _ -> publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event)
             ()
             (fun _ -> Message.RefreshQuiz)
             (fun er -> er |> RemoteError |> Message.PublishEventError)
@@ -203,9 +207,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
 
         match result with
         | Ok event ->
-            let cmd =
-                publishEventCmd (nameof hubStub.TeamScoreChanged) event
-
+            let cmd = publishRunQuizEventCmd event.Quiz (TeamScoreChanged event)
             model, cmd, None
         | Result.Error error -> model, Cmd.none, overrideScoreError error |> externalErrorMessage
     | RefreshQuiz ->
@@ -236,9 +238,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
 
         match workflowResult with
         | Ok event ->
-            let cmd =
-                publishEventCmd (nameof hubStub.SendQuestionChanged) event
-
+            let cmd = publishRunQuizEventCmd event.Quiz (CurrentQuestionChanged event)
             model, cmd, None
         | Result.Error event ->
             model,
@@ -290,7 +290,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
             match result with
             | Ok event ->
                 let cmd =
-                    publishEventCmd (nameof hubStub.SendQuizzerParticipating) event
+                    publishRunQuizEventCmd event.Quiz (QuizzerParticipating event)
 
                 { model with AddQuizzer = Inert }, cmd, None
             | Result.Error error ->
@@ -315,7 +315,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
             RemoveQuizzer_Pipeline.removeQuizzer getQuiz saveQuiz withinQuizCommand
 
         match result with
-        | Ok event -> model, (publishEventCmd (nameof hubStub.SendQuizzerNoLongerParticipating) event), None
+        | Ok event -> model, (publishRunQuizEventCmd event.Quiz (QuizzerNoLongerParticipating event)), None
         | Result.Error error ->
             let errorMessage =
                 match error with
@@ -347,7 +347,7 @@ let update (connectToQuizEvents: ConnectToQuizEvents) (publishEvent: PublishEven
                 |> externalErrorMessage
 
         match result with
-        | Ok event -> model, publishEventCmd (nameof hubStub.SendCurrentQuizzerChanged) event, None
+        | Ok event -> model, (publishRunQuizEventCmd event.Quiz (CurrentQuizzerChanged event)), None
         | Result.Error error -> errorResult error
 
 type private quizPage = Template<"wwwroot/Quiz.html">

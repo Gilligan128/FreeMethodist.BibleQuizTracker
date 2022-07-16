@@ -61,6 +61,8 @@ type GetTeamQuiz = QuizCode -> TeamQuiz
 type SaveTeamQuiz = TeamQuiz -> unit
 type PublishEventTask = string -> obj -> Async<unit>
 
+type PublishQuizEventTask = string ->  QuizCode -> obj -> Async<unit>
+
 type ConnectToQuizEvents = QuizCode -> Async<unit>
 
 type NotEnoughPlayersError =
