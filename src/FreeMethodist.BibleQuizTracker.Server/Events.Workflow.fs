@@ -15,7 +15,7 @@
  
  type QuizzerParticipating = { Quizzer: Quizzer; Quiz: QuizCode }
  
- type CurrentQuizzerChanged = { Quiz: QuizCode; Quizzer: Quizzer  }
+ type CurrentQuizzerChanged = { Quiz: QuizCode; Quizzer: Quizzer option  }
 
  
  type RunQuizEvent =

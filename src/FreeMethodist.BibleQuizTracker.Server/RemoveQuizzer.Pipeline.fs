@@ -6,7 +6,7 @@ open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 type ValidateRemoval = TeamQuiz -> RemoveQuizzer.Data -> Result<RunningTeamQuiz, RemoveQuizzer.Error>
-type RemoveQuizzerFromQuiz = RunningTeamQuiz -> RemoveQuizzer.Data -> RunningTeamQuiz
+type RemoveQuizzerFromQuiz = RemoveQuizzer.Data -> RunningTeamQuiz -> Jump seq -> RunningTeamQuiz*CurrentQuizzerChanged option
 type CreateEvent = QuizCode -> RemoveQuizzer.Data -> QuizzerNoLongerParticipating
 
 let validateRemoval validateQuiz : ValidateRemoval =
@@ -31,17 +31,39 @@ let validateRemoval validateQuiz : ValidateRemoval =
                 | TeamTwo -> teamHasQuizzer validQuiz.TeamTwo
         }
 
+let private nextCurrentQuizzer  removedQuizzer currentQuizzer  =
+    if currentQuizzer = removedQuizzer then
+        None
+    else
+        Some currentQuizzer
+
 let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
-    fun quiz input ->
+    fun input quiz jumps ->
         let remove (team: QuizTeamState) =
             { team with
                 Quizzers =
                     team.Quizzers
                     |> List.filter (fun q -> q.Name <> input.Quizzer) }
+        let replaceCurrent =
+            quiz.CurrentQuizzer |> Option.bind (nextCurrentQuizzer input.Quizzer)
+        
+        let newQuiz =
+            match input.Team with
+            | TeamOne ->
+                { quiz with
+                    TeamOne = remove quiz.TeamOne
+                    CurrentQuizzer = replaceCurrent }
+            | TeamTwo ->
+                { quiz with
+                    TeamTwo = remove quiz.TeamTwo
+                    CurrentQuizzer = replaceCurrent }
+        let currentQuizzerChanged =
+                if newQuiz.CurrentQuizzer <> quiz.CurrentQuizzer then
+                    Some { Quiz = quiz.Code; Quizzer = newQuiz.CurrentQuizzer}
+                else
+                    None
+        newQuiz, currentQuizzerChanged
 
-        match input.Team with
-        | TeamOne -> { quiz with TeamOne = remove quiz.TeamOne }
-        | TeamTwo -> { quiz with TeamTwo = remove quiz.TeamTwo }
 
 let createEvent: CreateEvent =
     fun quizCode input ->
@@ -56,7 +78,9 @@ let removeQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : RemoveQuizzer.Workflow =
         result {
             let! validQuiz = validateRemoval validateQuiz quiz command.Data
 
-            removeQuizzerFromQuiz validQuiz command.Data
+            let quiz, _ = removeQuizzerFromQuiz command.Data validQuiz []
+            
+            quiz
             |> Running
             |> saveQuiz
 

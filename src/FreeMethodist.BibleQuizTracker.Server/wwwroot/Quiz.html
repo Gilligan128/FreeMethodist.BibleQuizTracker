@@ -16,7 +16,7 @@
                     <button class="button is-info is-responsive" disabled>
                         Undo
                     </button>
-                    <span class="is-size-4 is-size-5-mobile">${CurrentQuizzer}'s Turn</span>
+                    <span class="is-size-4 is-size-5-mobile">${CurrentQuizzer}</span>
                     <button class="button is-info is-responsive" disabled>
                         Next
                     </button>
@@ -108,7 +108,7 @@
         </div>
     </template>
     <template id="Quizzer">
-        <div class="box  ${BackgroundColor} my-2 py-3"">
+        <div class="box  ${BackgroundColor} my-2 py-3">
             <div class="columns is-mobile is-centered">
                 <div class="column ">
                     <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
@@ -119,7 +119,6 @@
                 <div class="column is-one-third">
                     <div class="field has-addons ">
                         <p class="control"><input class="input " value="${Score}"/></p>
-                        <p class="control"><a class="button is-static is-hidden-mobile">pts</a></p>
                     </div>
                 </div>
                 <div class="column">

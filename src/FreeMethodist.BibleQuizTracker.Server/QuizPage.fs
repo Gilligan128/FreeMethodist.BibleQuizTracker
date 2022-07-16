@@ -433,7 +433,7 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .UndoQuestion(fun _ -> dispatch (MoveToDifferentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
         .CurrentQuizzer(
             match model.CurrentQuizzer with
-            | Some q -> q
+            | Some q -> $"{q}'s Turn"
             | None -> ""
         )
         .JumpLockToggleAction(

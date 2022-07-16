@@ -3,7 +3,6 @@
 open System
 open Microsoft.FSharp.Core
 
-//Common
 type NonEmptyString = string
 
 type QuizCode = NonEmptyString
@@ -22,6 +21,7 @@ type WithinQuizCommand<'data> =
     { Data: 'data
       Quiz: QuizCode
       User: User }
+
 type TeamScore = private TeamScore of int //increments of 20
 
 [<RequireQualifiedAccess>]
@@ -36,11 +36,11 @@ module TeamScore =
             Error "Score not divisible by 20"
 
     let value (TeamScore score) = score
-    
-    let identity: TeamScore  = TeamScore 0
-    
-    let ofQuestions questionCount =
-        TeamScore (questionCount * 20)
+
+    let identity: TeamScore = TeamScore 0
+
+    let ofQuestions questionCount = TeamScore(questionCount * 20)
+
 type TeamPosition =
     | TeamOne
     | TeamTwo
@@ -48,30 +48,24 @@ type TeamPosition =
 type PositiveNumber = PositiveNumber of int
 
 type QuestionNumber = PositiveNumber
+
 [<RequireQualifiedAccess>]
 module PositiveNumber =
     let create number field =
-        if number > 0 then Ok (PositiveNumber number) else Error $"{field} should be greater than zero"
-    
+        if number > 0 then
+            Ok(PositiveNumber number)
+        else
+            Error $"{field} should be greater than zero"
+
     let identity = PositiveNumber 1
-    
+
     let value (PositiveNumber number) = number
-
- 
-//Create Quiz Workflow
-type UnvalidatedTeamQuiz =
-    { Code: QuizCode
-      TeamOne: TeamName
-      TeamTwo: TeamName }
-
-type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
-
-
-type CompletedQuestion = { answeringPlayer: Quizzer option }
 
 type ParticipationState =
     | In
     | Out
+
+type CompletedQuestion = { answeringPlayer: Quizzer option }
 
 type QuizzerState =
     { Name: Quizzer
@@ -95,15 +89,22 @@ type RunningTeamQuiz =
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
       CurrentQuizzer: Quizzer option
-       }
 
-type TeamQuizCreated = { Quiz: RunningTeamQuiz }
+     }
+    
+//Jumps are outside of Quizzes so that we can handle having to save a bunch around the same time.
+type Jump =
+    { Quiz: QuizCode
+      Quizzer: Quizzer
+      ServerTimestamp: DateTimeOffset }
 
-type CreateTeamQuizError =
-    | QuizWithThatCodeAlreadyExists of QuizCode
-    | TeamNamesAreSame of TeamName
+//Create Quiz Workflow
+type UnvalidatedTeamQuiz =
+    { Code: QuizCode
+      TeamOne: TeamName
+      TeamTwo: TeamName }
 
-type CreateTeamQuizWorkflow = CreateTeamQuizCommand -> Result<TeamQuizCreated, CreateTeamQuizError>
+type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
 
 //Enter Quiz Workflow
 type ParticipationType =
@@ -151,17 +152,18 @@ type QuizStateError = WrongQuizState of Type
 
 [<RequireQualifiedAccess>]
 module RunningTeamQuiz =
-    let identity = { Code = "Example"
-                     TeamOne =
-                        { Name = "LEFT"
-                          Score = TeamScore.identity 
-                          Captain = None
-                          Quizzers =  [ ] }
-                     TeamTwo =
-                        { Name = "RIGHT"
-                          Score = TeamScore.identity
-                          Captain = None
-                          Quizzers = [ ] }
-                     CurrentQuestion = PositiveNumber.identity
-                     CurrentQuizzer = None
-                     Questions = [] }
+    let identity =
+        { Code = "Example"
+          TeamOne =
+            { Name = "LEFT"
+              Score = TeamScore.identity
+              Captain = None
+              Quizzers = [] }
+          TeamTwo =
+            { Name = "RIGHT"
+              Score = TeamScore.identity
+              Captain = None
+              Quizzers = [] }
+          CurrentQuestion = PositiveNumber.identity
+          CurrentQuizzer = None
+          Questions = [] }
