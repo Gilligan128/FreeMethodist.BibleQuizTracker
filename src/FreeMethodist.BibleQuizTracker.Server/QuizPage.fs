@@ -309,12 +309,27 @@ let update
             { Quiz = model.Code
               Data = { Quizzer = name; Team = teamPosition }
               User = Quizmaster }
-
+        let transformToRunQuizEvent event =
+            match event with
+            | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
+            | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
+            
         let result =
             RemoveQuizzer_Pipeline.removeQuizzer getQuiz saveQuiz withinQuizCommand
-
+        
         match result with
-        | Ok event -> model, (publishRunQuizEventCmd event.Quiz (QuizzerNoLongerParticipating event)), None
+        | Ok events ->
+            let asyncBatch = (fun _ -> events
+                                     |> List.map transformToRunQuizEvent
+                                     |> List.map (publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) model.Code)
+                                     |> Async.Parallel)
+           
+            let cmd = Cmd.OfAsync.either
+                        asyncBatch
+                        ()
+                        (fun _ -> Message.RefreshQuiz)
+                        (fun er -> er |> RemoteError |> Message.PublishEventError)
+            model, cmd, None
         | Result.Error error ->
             let errorMessage =
                 match error with
