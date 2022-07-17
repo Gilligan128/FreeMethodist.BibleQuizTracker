@@ -62,6 +62,7 @@ module PositiveNumber =
     let value (PositiveNumber number) = number
     
     let increment (PositiveNumber i) = PositiveNumber (i + 1)
+    let decrement (PositiveNumber i) = PositiveNumber (Math.Max(i - 1,1))
 
 type ParticipationState =
     | In

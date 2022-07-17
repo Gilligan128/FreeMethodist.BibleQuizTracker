@@ -66,3 +66,17 @@ let addQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : AddQuizzer.Workflow =
 
             return createEvent command.Quiz command.Data
         }
+
+let addQuizzerAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : AddQuizzer.WorkflowAsync =
+    fun command ->
+        asyncResult {
+            let quiz = getQuiz command.Quiz
+            let! validQuiz = validateQuizzerAdd (validateQuiz) quiz command.Data |> Async.retn
+
+            return! addQuizzerToQuiz validQuiz command.Data
+            |> Running
+            |> saveQuiz
+            |> Async.map (fun _ -> Ok ())
+            
+            return createEvent command.Quiz command.Data
+        }
