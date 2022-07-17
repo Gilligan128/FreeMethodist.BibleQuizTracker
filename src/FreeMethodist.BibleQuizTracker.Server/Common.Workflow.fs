@@ -57,9 +57,11 @@ module PositiveNumber =
         else
             Error $"{field} should be greater than zero"
 
-    let identity = PositiveNumber 1
+    let one = PositiveNumber 1
 
     let value (PositiveNumber number) = number
+    
+    let increment (PositiveNumber i) = PositiveNumber (i + 1)
 
 type ParticipationState =
     | In
@@ -164,6 +166,6 @@ module RunningTeamQuiz =
               Score = TeamScore.identity
               Captain = None
               Quizzers = [] }
-          CurrentQuestion = PositiveNumber.identity
+          CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
           Questions = [] }

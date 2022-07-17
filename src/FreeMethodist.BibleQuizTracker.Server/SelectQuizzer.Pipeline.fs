@@ -5,7 +5,7 @@ open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-type ValidateSelection = TeamQuiz -> SelectQuizzer.Input -> Result<RunningTeamQuiz, SelectQuizzer.Error>
+type ValidateSelection = Quiz -> SelectQuizzer.Input -> Result<RunningTeamQuiz, SelectQuizzer.Error>
 type ChangeCurrentQuizzer = Quizzer -> RunningTeamQuiz -> RunningTeamQuiz
 type CreateEvent = RunningTeamQuiz -> Quizzer -> CurrentQuizzerChanged
 

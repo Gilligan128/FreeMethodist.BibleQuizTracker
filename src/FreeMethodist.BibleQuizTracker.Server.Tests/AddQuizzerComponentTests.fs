@@ -11,7 +11,7 @@ let connectToQuiz _ _ = Async.retn ()
 let publishQuiz _ _ _ = Async.retn ()
 
 let getQuiz _ =
-    TeamQuiz.Unvalidated
+    Quiz.Unvalidated
         { Code = ""
           TeamOne = ""
           TeamTwo = "" }

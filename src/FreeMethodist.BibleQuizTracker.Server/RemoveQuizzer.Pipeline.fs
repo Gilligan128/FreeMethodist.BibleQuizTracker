@@ -5,7 +5,7 @@ open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-type ValidateRemoval = TeamQuiz -> RemoveQuizzer.Data -> Result<RunningTeamQuiz, RemoveQuizzer.Error>
+type ValidateRemoval = Quiz -> RemoveQuizzer.Data -> Result<RunningTeamQuiz, RemoveQuizzer.Error>
 
 type RemoveQuizzerFromQuiz =
     RemoveQuizzer.Data -> RunningTeamQuiz -> Jump seq -> RunningTeamQuiz * CurrentQuizzerChanged option

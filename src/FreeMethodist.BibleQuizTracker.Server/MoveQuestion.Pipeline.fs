@@ -5,9 +5,7 @@ open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 
-type MoveQuizToQuestion = Quiz -> Result<RunningTeamQuiz, QuizStateError>
 type CreateEvent = RunningTeamQuiz  -> CurrentQuestionChanged
-
 
 let updateQuiz quiz question =
    { quiz with CurrentQuestion = question }

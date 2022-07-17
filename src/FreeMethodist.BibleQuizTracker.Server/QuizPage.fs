@@ -90,7 +90,7 @@ let public emptyModel =
       CurrentQuizzerDeprecated = ""
       CurrentQuizzer = None }
 
-let private refreshModel (quiz: TeamQuiz) =
+let private refreshModel (quiz: Quiz) =
     let refreshQuizzer (quizzer: QuizzerState) =
         { Name = quizzer.Name
           Score = TeamScore.value quizzer.Score
@@ -113,7 +113,7 @@ let private refreshModel (quiz: TeamQuiz) =
             JoiningQuizzer = ""
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked }
-    | TeamQuiz.Completed _
+    | Quiz.Completed _
     | Official _
     | Unvalidated _ -> emptyModel
 

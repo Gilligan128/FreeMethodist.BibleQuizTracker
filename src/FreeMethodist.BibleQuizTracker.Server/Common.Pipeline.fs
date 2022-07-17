@@ -46,19 +46,18 @@ type OfficialTeamQuiz =
       LosingTeam: OfficialTeam
       CompletedQuestions: CompletedQuestion list }
 
-type TeamQuiz =
+type Quiz =
     | Unvalidated of UnvalidatedTeamQuiz
     | Running of RunningTeamQuiz
     | Completed of CompletedTeamQuiz
     | Official of OfficialTeamQuiz
 
-type Quiz =
-    | TeamQuiz of TeamQuiz
-    | IndividualQuiz
-
 //Common Dependencies
-type GetTeamQuiz = QuizCode -> TeamQuiz
-type SaveTeamQuiz = TeamQuiz -> unit
+type GetTeamQuiz = QuizCode -> Quiz
+type GetTeamQuizAsync = QuizCode -> Async<Quiz>
+type SaveTeamQuiz = Quiz -> unit
+type SaveTeamQuizAsync = Quiz -> Async<unit>
+
 type PublishQuizEventTask = string ->  QuizCode -> obj -> Async<unit>
 
 
@@ -73,12 +72,12 @@ type NotEnoughPlayersError =
       minimumPlayerCount: int }
 
 type StartTeamQuizError = NotEnoughPlayers of NotEnoughPlayersError
-type ValidateQuizIsRunning = TeamQuiz -> Result<RunningTeamQuiz, QuizStateError>
+type ValidateQuizIsRunning = Quiz -> Result<RunningTeamQuiz, QuizStateError>
 
 let validateQuiz: ValidateQuizIsRunning =
     fun quiz ->
         match quiz with
-        | TeamQuiz.Running running -> Ok running
-        | TeamQuiz.Completed c -> Error(WrongQuizState(c.GetType()))
-        | TeamQuiz.Official o -> Error(WrongQuizState(o.GetType()))
-        | TeamQuiz.Unvalidated u -> Error(WrongQuizState(u.GetType()))
+        | Quiz.Running running -> Ok running
+        | Quiz.Completed c -> Error(WrongQuizState(c.GetType()))
+        | Quiz.Official o -> Error(WrongQuizState(o.GetType()))
+        | Quiz.Unvalidated u -> Error(WrongQuizState(u.GetType()))
