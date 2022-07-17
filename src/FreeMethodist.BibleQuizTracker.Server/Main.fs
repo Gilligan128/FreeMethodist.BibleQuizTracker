@@ -147,6 +147,12 @@ type MyApp() =
 
     [<Inject>]
     member val GetQuiz = Unchecked.defaultof<GetTeamQuiz> with get, set
+    
+    [<Inject>]
+    member val GetQuizAsync = Unchecked.defaultof<GetTeamQuizAsync> with get, set
+    
+    [<Inject>]
+    member val SaveQuizAsync = Unchecked.defaultof<SaveTeamQuizAsync> with get, set
 
     override this.Program =
         let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore
@@ -170,7 +176,7 @@ type MyApp() =
                 |> Async.AwaitTask 
             
         let update =
-            update connectToQuizEvents publishQuizEvent this.GetQuiz Persistence.getQuizFromLocalStorage this.SaveQuiz Persistence.saveQuizToLocalStorage
+            update connectToQuizEvents publishQuizEvent this.GetQuiz this.GetQuizAsync this.SaveQuiz this.SaveQuizAsync
 
         let subscription =
             subscription hubConnection

@@ -1,7 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 
@@ -12,5 +11,4 @@ module AddQuizzer =
     type Error =
         | QuizState of QuizStateError
         | QuizzerAlreadyAdded of Quizzer
-    type Workflow = Command -> Result<QuizzerParticipating, Error>
-    type WorkflowAsync = Command -> AsyncResult<QuizzerParticipating, Error>
+    type Workflow = Command -> AsyncResult<QuizzerParticipating, Error>

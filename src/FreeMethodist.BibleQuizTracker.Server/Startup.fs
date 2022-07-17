@@ -35,9 +35,15 @@ type Startup() =
             )
 #endif
         |> ignore
-        services.AddSingleton<SaveTeamQuiz>(Persistence.saveQuiz)
-                .AddSingleton<GetTeamQuiz>(Persistence.getQuiz) |> ignore 
         
+        //since we are storing in-memory, we need to ensure this is a singleton across Blazor Circuits
+        services
+            .AddSingleton<SaveTeamQuiz>(Persistence.saveQuiz)
+            .AddSingleton<GetTeamQuiz>(Persistence.getQuiz)
+            .AddSingleton<GetTeamQuizAsync>(Persistence.getQuizFromMemory)
+            .AddSingleton<SaveTeamQuizAsync>(Persistence.saveQuizToMemory)
+        |> ignore
+
         //So that Discriminated unions can bd serialized/deserialized
         services.Configure (fun (options: JsonHubProtocolOptions) ->
             options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter())
@@ -68,10 +74,12 @@ module Program =
 
     [<EntryPoint>]
     let main args =
-        let loggingConfig (logging:ILoggingBuilder) =
-            logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug)
-                   .AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug) |> ignore
-            
+        let loggingConfig (logging: ILoggingBuilder) =
+            logging
+                .AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug)
+                .AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug)
+            |> ignore
+
         WebHost
             .CreateDefaultBuilder(args)
             .UseStaticWebAssets()

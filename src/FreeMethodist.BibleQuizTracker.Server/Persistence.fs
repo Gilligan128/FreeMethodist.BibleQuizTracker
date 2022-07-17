@@ -49,6 +49,12 @@ let getQuiz: GetTeamQuiz =
 let saveQuiz: SaveTeamQuiz =
     fun quiz -> exampleQuiz <- quiz
 
+let getQuizFromMemory: GetTeamQuizAsync =
+    fun code -> code |> getQuiz |> Async.retn
+
+let saveQuizToMemory: SaveTeamQuizAsync =
+    fun quiz -> quiz |> saveQuiz |> Async.retn
+
 let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetTeamQuizAsync =
     fun quizCode ->
         async {

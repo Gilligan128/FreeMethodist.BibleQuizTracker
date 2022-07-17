@@ -15,7 +15,7 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Core
-open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Pipeline
+open FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline
 
 
 type ConnectionStatus =
@@ -69,7 +69,7 @@ type Message =
     | OverrideScore of int * TeamPosition
     | RefreshQuiz
     | ChangeCurrentQuestion of int
-    | PublishEventError of PublishEventError
+    | WorkflowError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of Quizzer * TeamPosition
     | SelectQuizzer of Quizzer
@@ -116,7 +116,9 @@ let private refreshModel (quiz: Quiz) =
     | Unvalidated _ -> emptyModel
 
 let init quizCode previousQuizCode =
-    { emptyModel with Code = quizCode }, Message.ConnectToQuizEvents previousQuizCode |> Cmd.ofMsg
+    { emptyModel with Code = quizCode },
+    Message.ConnectToQuizEvents previousQuizCode
+    |> Cmd.ofMsg
 
 type OverrideScoreErrors =
     | DomainError of QuizStateError
@@ -172,80 +174,111 @@ let update
     model
     =
 
-    let commandToRefresh task =
-        Cmd.OfAsync.either task () (fun _ -> Message.RefreshQuiz) (RemoteError >> Message.PublishEventError)
-    
-    let publishRunQuizEventCmd quiz (event: RunQuizEvent) =
-        commandToRefresh (fun _ -> publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event)
-   
-    let externalErrorMessage message =
-        message |> ExternalMessage.Error |> Some
-    
+    let publishRunQuizEvent quiz event =
+        publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
+
+    let mapExceptionToPublishEventError =
+        (fun exn -> exn |> RemoteError |> WorkflowError)
+
+    let workflowCmdList workflow mapToQuizEvent mapResult =
+        let publishEvents events =
+            events
+            |> List.map mapToQuizEvent
+            |> List.map (publishRunQuizEvent model.Code)
+            |> Async.Parallel
+
+        let workflowX = fun _ -> workflow ()
+
+        let workflowWithPublish x =
+            workflowX x
+            |> AsyncResult.bind (publishEvents >> AsyncResult.ofAsync)
+
+        Cmd.OfAsync.either workflowWithPublish () mapResult mapExceptionToPublishEventError
+
+    let workflowCmdSingle workflow mapToQuizEvent mapResult =
+        let newWorkflow =
+            fun () -> workflow () |> AsyncResult.map List.singleton
+
+        workflowCmdList newWorkflow mapToQuizEvent mapResult
+
     match msg with
     | ConnectToQuizEvents previousQuiz ->
         let task =
             async {
-                do! connectToQuizEvents model.Code previousQuiz 
+                do! connectToQuizEvents model.Code previousQuiz
                 return RefreshQuiz
             }
 
         model, Cmd.OfAsync.result task, None
     | OverrideScore (score, teamPosition) ->
-        let result =
-            overrideScore getQuiz saveQuiz model score teamPosition
+        let mapResultToMessage result =
+            match result with
+            | Ok _ -> RefreshQuiz
+            | Result.Error error ->
+                match error with
+                | OverrideScoreErrors.DomainError error ->
+                    PublishEventError.FormError $"Quiz is in the wrong state: {error}"
+                    |> WorkflowError
+                | OverrideScoreErrors.FormError error -> PublishEventError.FormError error |> WorkflowError
 
-        let overrideScoreError error =
-            match error with
-            | OverrideScoreErrors.DomainError error -> $"Quiz is in the wrong state: {error}"
-            | OverrideScoreErrors.FormError error -> error
+        let mapEvent event =
+            RunQuizEvent.TeamScoreChanged event, event.Quiz
 
-        match result with
-        | Ok event ->
-            let cmd =
-                publishRunQuizEventCmd event.Quiz (TeamScoreChanged event)
+        let workflow =
+            fun () ->
+                overrideScore getQuiz saveQuiz model score teamPosition
+                |> AsyncResult.ofResult
 
-            model, cmd, None
-        | Result.Error error -> model, Cmd.none, overrideScoreError error |> externalErrorMessage
+        let cmd =
+            workflowCmdSingle workflow mapEvent mapResultToMessage
+
+        model, cmd, None
     | RefreshQuiz ->
         getQuiz model.Code
         |> refreshModel
         |> fun refreshedModel -> refreshedModel, Cmd.none, None
     | ChangeCurrentQuestion questionNumber ->
-        let workflowResult =
-            result {
-                let! questionNumber =
-                    PositiveNumber.create questionNumber "QuestionNumber"
-                    |> Result.mapError ChangeQuestionError.FormError
+        let mapToQuizEvent event =
+            event |> RunQuizEvent.CurrentQuestionChanged, event.Quiz
 
-                return!
-                    moveQuizToQuestion
-                        getQuiz
-                        saveQuiz
-                        { Quiz = model.Code
-                          User = Quizmaster
-                          Data = { Question = questionNumber } }
-                    |> Result.mapError ChangeQuestionError.QuizError
-            }
+        let mapWorkflowResult result =
+            let moveQuestionErrorMessage error =
+                match error with
+                | ChangeQuestionError.FormError er -> er
+                | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
 
-        let moveQuestionErrorMessage error =
-            match error with
-            | ChangeQuestionError.FormError er -> er
-            | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}"
+            match result with
+            | Ok _ -> RefreshQuiz
+            | Result.Error error ->
+                error
+                |> moveQuestionErrorMessage
+                |> PublishEventError.FormError
+                |> WorkflowError
 
-        match workflowResult with
-        | Ok event ->
-            let cmd =
-                publishRunQuizEventCmd event.Quiz (CurrentQuestionChanged event)
+        let workflow =
+            fun () ->
+                asyncResult {
+                    let! questionNumber =
+                        PositiveNumber.create questionNumber "QuestionNumber"
+                        |> Result.mapError ChangeQuestionError.FormError
+                        |> AsyncResult.ofResult
 
-            model, cmd, None
-        | Result.Error event ->
-            model,
-            Cmd.none,
-            (moveQuestionErrorMessage event
-             |> ExternalMessage.Error
-             |> Some)
+                    return!
+                        changeCurrentQuestionAsync
+                            getQuizAsync
+                            saveQuizAsync
+                            { Quiz = model.Code
+                              User = Quizmaster
+                              Data = { Question = questionNumber } }
+                        |> AsyncResult.mapError ChangeQuestionError.QuizError
+                }
 
-    | Message.PublishEventError error ->
+        let cmd =
+            workflowCmdSingle workflow mapToQuizEvent mapWorkflowResult
+
+        model, cmd, None
+
+    | Message.WorkflowError error ->
         let errorMessage =
             match error with
             | PublishEventError.FormError er -> er
@@ -277,27 +310,32 @@ let update
     | AddQuizzer Submit ->
         match model.AddQuizzer with
         | AddQuizzerModel.Active (name, team) ->
-            let command: AddQuizzer.Command =
-                { Quiz = model.Code
-                  Data = { Name = name; Team = team }
-                  User = model.CurrentUser }
-
-            let result =
-                AddQuizzer_Pipeline.addQuizzer getQuiz saveQuiz command
-
-            match result with
-            | Ok event ->
-                let cmd =
-                    publishRunQuizEventCmd event.Quiz (QuizzerParticipating event)
-
-                { model with AddQuizzer = Inert }, cmd, None
-            | Result.Error error ->
-                let errorMessage =
+            let mapResult result =
+                match result with
+                | Ok _ -> Message.RefreshQuiz
+                | Result.Error error ->
                     match error with
                     | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
                     | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
+                    |> PublishEventError.FormError
+                    |> Message.WorkflowError
 
-                { model with AddQuizzer = Inert }, Cmd.none, errorMessage |> externalErrorMessage
+            let mapQuizEvent event =
+                event |> QuizzerParticipating, event.Quiz
+
+            let workflow =
+                fun () ->
+                    let inputCommand: AddQuizzer.Command =
+                        { Quiz = model.Code
+                          Data = { Name = name; Team = team }
+                          User = model.CurrentUser }
+
+                    AddQuizzer_Pipeline.addQuizzerAsync getQuizAsync saveQuizAsync inputCommand
+
+            let cmd =
+                workflowCmdSingle workflow mapQuizEvent mapResult
+
+            { model with AddQuizzer = Inert }, cmd, None
         | AddQuizzerModel.Inert ->
             model,
             Cmd.none,
@@ -308,56 +346,54 @@ let update
             { Quiz = model.Code
               Data = { Quizzer = name; Team = teamPosition }
               User = Quizmaster }
+
         let transformToRunQuizEvent event =
             match event with
-            | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
-            | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
-            
-        let result =
-            RemoveQuizzer_Pipeline.removeQuizzer getQuiz saveQuiz withinQuizCommand
-        
-        match result with
-        | Ok events ->
-            let asyncBatch = (fun _ -> events
-                                     |> List.map transformToRunQuizEvent
-                                     |> List.map (publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) model.Code)
-                                     |> Async.Parallel)
-           
-            let cmd = commandToRefresh asyncBatch
-            model, cmd, None
-        | Result.Error error ->
-            let errorMessage =
-                match error with
-                | RemoveQuizzer.QuizStateError quizStateError -> $"Wrong Quiz State: {quizStateError}"
-                | RemoveQuizzer.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is already not participating"
+            | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e, e.Quiz
+            | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e, e.Quiz
 
-            model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
+        let mapResultToMessage result =
+            match result with
+            | Ok _ -> RefreshQuiz
+            | Result.Error (RemoveQuizzer.QuizStateError quizStateError) ->
+                PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
+                |> WorkflowError
+            | Result.Error (RemoveQuizzer.QuizzerNotParticipating quizzer) ->
+                PublishEventError.FormError $"Quizzer {quizzer} is already not participating"
+                |> WorkflowError
+
+        let workflow =
+            fun () ->
+                RemoveQuizzer_Pipeline.removeQuizzer getQuiz saveQuiz withinQuizCommand
+                |> AsyncResult.ofResult
+
+        model, (workflowCmdList workflow transformToRunQuizEvent mapResultToMessage), None
+
     | SelectQuizzer (name) ->
+        let mapEvent event = CurrentQuizzerChanged event
+
+        let mapResultToMessage result =
+            match result with
+            | Ok _ -> RefreshQuiz
+            | Result.Error (SelectQuizzer.Error.QuizState quizStateError) ->
+                PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
+                |> WorkflowError
+            | Result.Error (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> RefreshQuiz
+            | Result.Error (SelectQuizzer.Error.QuizzerNotParticipating quizzer) ->
+                PublishEventError.FormError $"Quizzer {quizzer} is not participating"
+                |> WorkflowError
+
         let command: SelectQuizzer.Command =
             { Quiz = model.Code
               User = model.CurrentUser
               Data = { Quizzer = name } }
 
-        let result =
-            SelectQuizzer_Pipeline.selectQuizzer getQuiz saveQuiz command
-        
-        let errorResult (error: SelectQuizzer.Error) =
-            match error with
-            | SelectQuizzer.Error.QuizState quizStateError ->
-                model,
-                Cmd.none,
-                $"Wrong Quiz State: {quizStateError}"
-                |> externalErrorMessage
-            | SelectQuizzer.Error.QuizzerAlreadyCurrent -> model, Cmd.none, None
-            | SelectQuizzer.Error.QuizzerNotParticipating quizzer ->
-                model,
-                Cmd.none,
-                $"Quizzer {quizzer} is not participating"
-                |> externalErrorMessage
+        let workflow =
+            fun () ->
+                SelectQuizzer_Pipeline.selectQuizzer getQuiz saveQuiz command
+                |> AsyncResult.ofResult
 
-        match result with
-        | Ok event -> model, (publishRunQuizEventCmd event.Quiz (CurrentQuizzerChanged event)), None
-        | Result.Error error -> errorResult error
+        model, (workflowCmdSingle workflow mapEvent mapResultToMessage), None
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
@@ -426,18 +462,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
             | Quizzer name -> name
             | Scorekeeper -> "Scorekeeper"
         )
-        .TeamOne(
-            teamView
-                TeamPosition.TeamOne
-                (model.TeamOne, model.JumpOrder, model.CurrentQuizzer)
-                dispatch
-        )
-        .TeamTwo(
-            teamView
-                TeamPosition.TeamTwo
-                (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer)
-                dispatch
-        )
+        .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder, model.CurrentQuizzer) dispatch)
+        .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
         .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(model.CurrentQuestion + 1)))
         .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))

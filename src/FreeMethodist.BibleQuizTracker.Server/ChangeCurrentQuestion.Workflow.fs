@@ -4,9 +4,10 @@ open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
  
 [<RequireQualifiedAccess>]
-module MoveQuestion = 
+module ChangeCurrentQuestion = 
 
     type QuestionData = { Question:QuestionNumber }
     type Command = WithinQuizCommand<QuestionData>
-    type Workflow = Command -> Result<CurrentQuestionChanged, QuizStateError>
+    type WorkflowDeprecated = Command -> Result<CurrentQuestionChanged, QuizStateError>
+    type Workflow = Command -> AsyncResult<CurrentQuestionChanged, QuizStateError>
     

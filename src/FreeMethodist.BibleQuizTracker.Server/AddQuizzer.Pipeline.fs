@@ -54,29 +54,16 @@ let addQuizzerToQuiz: AddQuizzerToQuiz =
 let createEvent: CreateEvent =
     fun code input -> { Quizzer = input.Name; Quiz = code }
 
-let addQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : AddQuizzer.Workflow =
-    fun command ->
-        result {
-            let quiz = getQuiz command.Quiz
-            let! validQuiz = validateQuizzerAdd (validateQuiz) quiz command.Data
-
-            addQuizzerToQuiz validQuiz command.Data
-            |> Running
-            |> saveQuiz
-
-            return createEvent command.Quiz command.Data
-        }
-
-let addQuizzerAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : AddQuizzer.WorkflowAsync =
+let addQuizzerAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : AddQuizzer.Workflow =
     fun command ->
         asyncResult {
-            let quiz = getQuiz command.Quiz
+            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
             let! validQuiz = validateQuizzerAdd (validateQuiz) quiz command.Data |> Async.retn
 
             return! addQuizzerToQuiz validQuiz command.Data
             |> Running
             |> saveQuiz
-            |> Async.map (fun _ -> Ok ())
+            |> AsyncResult.ofAsync
             
             return createEvent command.Quiz command.Data
         }
