@@ -4,7 +4,7 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 
 
-let mutable private exampleQuiz: TeamQuiz =
+let mutable private exampleQuiz: TeamQuiz = 
     let exampleResult =
         result {
             let! teamOneScore = TeamScore.create 20

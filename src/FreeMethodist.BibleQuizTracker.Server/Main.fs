@@ -56,9 +56,8 @@ let update
     model
     : Model * Cmd<Message> =
     match message, model.quiz with
-    | SetPage (Page.Quiz quizCode), _ ->
-        let quizModel, cmd = init quizCode
-
+    | SetPage (Page.Quiz quizCode), quizOption ->
+        let quizModel, cmd = init quizCode (quizOption |> Option.map (fun q -> q.Code) ) 
         { model with
             page = Quiz quizCode
             quiz = Some quizModel },
@@ -160,9 +159,8 @@ type MyApp() =
                     options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                 .Build()
 
-        let connectToQuizEvents quizCode =
-            hubConnection.InvokeAsync("ConnectToQuiz", quizCode, CancellationToken.None)
-            |> Async.AwaitTask
+        let connectToQuizEvents quizCode previousQuizCode =
+            hubConnection.InvokeAsync("ConnectToQuiz", quizCode, previousQuizCode, CancellationToken.None) |> Async.AwaitTask
                 
         let publishQuizEvent =
             fun methodName quiz event ->

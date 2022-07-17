@@ -66,7 +66,7 @@ type AddQuizzerMessage =
     | SetTeam of TeamPosition
 
 type Message =
-    | ConnectToQuizEvents
+    | ConnectToQuizEvents of Option<QuizCode>
     | OverrideScore of int * TeamPosition
     | RefreshQuiz
     | ChangeCurrentQuestion of int
@@ -117,8 +117,8 @@ let private refreshModel (quiz: TeamQuiz) =
     | Official _
     | Unvalidated _ -> emptyModel
 
-let init quizCode =
-    { emptyModel with Code = quizCode }, Cmd.ofMsg Message.ConnectToQuizEvents
+let init quizCode previousQuizCode =
+    { emptyModel with Code = quizCode }, Message.ConnectToQuizEvents previousQuizCode |> Cmd.ofMsg
 
 type OverrideScoreErrors =
     | DomainError of QuizStateError
@@ -173,7 +173,7 @@ let update
     =
 
     let commandToRefresh task =
-        Cmd.OfAsync.either task () (fun _ -> Message.RefreshQuiz) (fun er -> er |> RemoteError |> Message.PublishEventError)
+        Cmd.OfAsync.either task () (fun _ -> Message.RefreshQuiz) (RemoteError >> Message.PublishEventError)
     
     let publishRunQuizEventCmd quiz (event: RunQuizEvent) =
         commandToRefresh (fun _ -> publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event)
@@ -182,10 +182,10 @@ let update
         message |> ExternalMessage.Error |> Some
     
     match msg with
-    | ConnectToQuizEvents ->
+    | ConnectToQuizEvents previousQuiz ->
         let task =
             async {
-                do! connectToQuizEvents model.Code
+                do! connectToQuizEvents model.Code previousQuiz 
                 return RefreshQuiz
             }
 

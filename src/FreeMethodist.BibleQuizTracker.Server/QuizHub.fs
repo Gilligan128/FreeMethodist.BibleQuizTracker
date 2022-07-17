@@ -22,7 +22,7 @@ type Client =
     abstract member QuestionChanged: CurrentQuestionChanged -> Task
 
     abstract member TeamScoreChanged: TeamScoreChanged -> Task
-    
+
     abstract member RunQuizEventOccurred: RunQuizEvent -> Task
 
 type Hub() =
@@ -30,14 +30,29 @@ type Hub() =
 
     member this.EnterQuiz(msg: QuizzerEntered) =
         task {
-            this.Groups.AddToGroupAsync(this.Context.ConnectionId, msg.Quiz) |> ignore
-            this.Clients.Group(msg.Quiz).EnteredQuiz(msg) |> ignore
+            this.Groups.AddToGroupAsync(this.Context.ConnectionId, msg.Quiz)
+            |> ignore
+
+            this.Clients.Group(msg.Quiz).EnteredQuiz(msg)
+            |> ignore
         }
 
-     member this.ConnectToQuiz(code: QuizCode) =
-         this.Groups.AddToGroupAsync(this.Context.ConnectionId, code, CancellationToken.None)
-         
-     member this.SendRunQuizEventOccurred (quiz: QuizCode) (msg: RunQuizEvent) =
-         this.Clients.OthersInGroup(quiz).RunQuizEventOccurred msg
-        
- 
+    member this.ConnectToQuiz(code: QuizCode, previousCode: QuizCode option) =
+        let leaveGroup =
+            previousCode
+            |> Option.map (fun code ->
+                this.Groups.RemoveFromGroupAsync(this.Context.ConnectionId, code, CancellationToken.None))
+            |> Option.map Async.AwaitTask
+
+        this.Groups.AddToGroupAsync(this.Context.ConnectionId, code, CancellationToken.None)
+        |> Async.AwaitTask
+        |> Some
+        |> Option.bind (fun innerTask ->
+            leaveGroup
+            |> Option.map (Async.bind (fun _ -> innerTask)))
+
+    member this.SendRunQuizEventOccurred (quiz: QuizCode) (msg: RunQuizEvent) =
+        this
+            .Clients
+            .OthersInGroup(quiz)
+            .RunQuizEventOccurred msg

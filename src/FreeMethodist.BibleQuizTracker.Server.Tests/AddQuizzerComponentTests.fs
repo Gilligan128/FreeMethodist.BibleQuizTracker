@@ -7,7 +7,7 @@ open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 
-let connectToQuiz _ = Async.retn ()
+let connectToQuiz _ _ = Async.retn ()
 let publishQuiz _ _ _ = Async.retn ()
 
 let getQuiz _ =

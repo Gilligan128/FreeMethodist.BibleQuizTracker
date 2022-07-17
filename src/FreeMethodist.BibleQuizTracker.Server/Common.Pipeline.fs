@@ -65,7 +65,7 @@ type PublishQuizEventTask = string ->  QuizCode -> obj -> Async<unit>
 type GetJumps = QuizCode -> Jump seq
 type SaveJump = Jump -> unit
 
-type ConnectToQuizEvents = QuizCode -> Async<unit>
+type ConnectToQuizEvents = QuizCode -> QuizCode option -> Async<unit>
 
 type NotEnoughPlayersError =
     { teamName: TeamName
