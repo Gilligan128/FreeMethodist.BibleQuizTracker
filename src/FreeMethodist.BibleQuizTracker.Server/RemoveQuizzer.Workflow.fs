@@ -17,6 +17,6 @@ module RemoveQuizzer =
     type Event =
         | CurrentQuizzerChanged of CurrentQuizzerChanged
         | QuizzerNoLongerParticipating of QuizzerNoLongerParticipating
-    type Workflow = Command -> Result<Event list,Error>
+    type Workflow = Command -> AsyncResult<Event list,Error>
     
     

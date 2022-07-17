@@ -144,11 +144,12 @@ let subscribe (hubConnection: HubConnection) =
 
     Cmd.ofSub sub
 
-let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =
-    result {
+let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =
+    asyncResult {
         let! newScore =
             TeamScore.create score
             |> Result.mapError (OverrideScoreErrors.FormError)
+            |> AsyncResult.ofResult
 
         let command =
             { Quiz = model.Code
@@ -156,8 +157,8 @@ let private overrideScore getQuiz saveQuiz (model: Model) (score: int) (team: Te
               User = Quizmaster }
 
         return!
-            overrideTeamScore getQuiz saveQuiz command
-            |> Result.mapError (DomainError)
+            overrideTeamScoreAsync getQuiz saveQuiz command
+            |> AsyncResult.mapError (DomainError)
     }
 
 let private hubStub =
@@ -225,9 +226,7 @@ let update
             RunQuizEvent.TeamScoreChanged event, event.Quiz
 
         let workflow =
-            fun () ->
-                overrideScore getQuiz saveQuiz model score teamPosition
-                |> AsyncResult.ofResult
+            fun () -> overrideScoreAsync getQuizAsync saveQuizAsync model score teamPosition
 
         let cmd =
             workflowCmdSingle workflow mapEvent mapResultToMessage
@@ -363,9 +362,7 @@ let update
                 |> WorkflowError
 
         let workflow =
-            fun () ->
-                RemoveQuizzer_Pipeline.removeQuizzer getQuiz saveQuiz withinQuizCommand
-                |> AsyncResult.ofResult
+            fun () -> RemoveQuizzer_Pipeline.removeQuizzer getQuizAsync saveQuizAsync withinQuizCommand
 
         model, (workflowCmdList workflow transformToRunQuizEvent mapResultToMessage), None
 

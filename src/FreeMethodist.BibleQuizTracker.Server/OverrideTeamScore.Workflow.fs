@@ -14,6 +14,6 @@ type OverrideTeamScoreData = {
 [<RequireQualifiedAccess>]
 module OverrideTeamScore =
     type Command = WithinQuizCommand<OverrideTeamScoreData>
-    
-    type Workflow = Command -> Result<TeamScoreChanged, QuizStateError>
+   
+    type Workflow = Command -> AsyncResult<TeamScoreChanged, QuizStateError>
 

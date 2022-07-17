@@ -24,15 +24,15 @@ let createEvent: CreateEvent =
           NewScore = score.NewScore
           Quiz = quiz.Code }
 
-let overrideTeamScore getQuiz (saveQuiz:SaveTeamQuiz) : OverrideTeamScore.Workflow =
+let overrideTeamScoreAsync getQuiz (saveQuiz:SaveTeamQuizAsync) : OverrideTeamScore.Workflow =
     fun command ->
-        result {
-            let quiz = getQuiz command.Quiz
-            let! quiz = validateQuiz quiz
+        asyncResult {
+            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! quiz = validateQuiz quiz |> AsyncResult.ofResult
             let score = command.Data
             let quiz = updateQuizScore quiz score
             let event = createEvent quiz score
-            saveQuiz (Running quiz)
+            do! saveQuiz (Running quiz) |> AsyncResult.ofAsync
             return event
         }
-    
+        

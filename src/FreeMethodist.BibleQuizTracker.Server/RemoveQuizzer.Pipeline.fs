@@ -96,17 +96,17 @@ let createEvents: CreateEvents =
           yield! currentChangedEvents ]
 
 
-let removeQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : RemoveQuizzer.Workflow =
+let removeQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : RemoveQuizzer.Workflow =
     fun command ->
-        let quiz = getQuiz command.Quiz
-
-        result {
-            let! validQuiz = validateRemoval validateQuiz quiz command.Data
+        asyncResult {
+            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! validQuiz = validateRemoval validateQuiz quiz command.Data |> AsyncResult.ofResult
 
             let quiz, currentChangedEvent =
                 removeQuizzerFromQuiz command.Data validQuiz []
 
-            quiz |> Running |> saveQuiz
+            do! quiz |> Running |> saveQuiz |> AsyncResult.ofAsync
 
             return createEvents command.Quiz command.Data currentChangedEvent
         }
+
