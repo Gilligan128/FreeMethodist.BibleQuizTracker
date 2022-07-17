@@ -51,7 +51,6 @@ type Model =
       CurrentUser: User
       JumpState: JumpState
       AddQuizzer: AddQuizzerModel
-      CurrentQuizzerDeprecated: Quizzer
       CurrentQuizzer: Quizzer option }
 
 type PublishEventError =
@@ -87,7 +86,6 @@ let public emptyModel =
       CurrentUser = User.Quizmaster
       JumpState = Unlocked
       AddQuizzer = Inert
-      CurrentQuizzerDeprecated = ""
       CurrentQuizzer = None }
 
 let private refreshModel (quiz: Quiz) =
@@ -342,7 +340,7 @@ let update
 
         let result =
             SelectQuizzer_Pipeline.selectQuizzer getQuiz saveQuiz command
-
+        
         let errorResult (error: SelectQuizzer.Error) =
             match error with
             | SelectQuizzer.Error.QuizState quizStateError ->
@@ -365,7 +363,7 @@ type private quizPage = Template<"wwwroot/Quiz.html">
 
 let private teamView
     position
-    ((teamModel, jumpOrder, currentQuizzerDeprecated, currentQuizzer): TeamModel * string list * Quizzer * Option<Quizzer>)
+    ((teamModel, jumpOrder, currentQuizzer): TeamModel * string list * Option<Quizzer>)
     (dispatch: Dispatch<Message>)
     =
     quizPage
@@ -431,13 +429,13 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .TeamOne(
             teamView
                 TeamPosition.TeamOne
-                (model.TeamOne, model.JumpOrder, model.CurrentQuizzerDeprecated, model.CurrentQuizzer)
+                (model.TeamOne, model.JumpOrder, model.CurrentQuizzer)
                 dispatch
         )
         .TeamTwo(
             teamView
                 TeamPosition.TeamTwo
-                (model.TeamTwo, model.JumpOrder, model.CurrentQuizzerDeprecated, model.CurrentQuizzer)
+                (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer)
                 dispatch
         )
         .CurrentQuestion(string model.CurrentQuestion)
