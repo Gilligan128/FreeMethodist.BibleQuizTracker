@@ -169,7 +169,6 @@ let private hubStub =
 let update
     (connectToQuizEvents: ConnectToQuizEvents)
     (publishQuizEvent: PublishQuizEventTask)
-    getQuiz
     getQuizAsync
     saveQuizAsync
     msg

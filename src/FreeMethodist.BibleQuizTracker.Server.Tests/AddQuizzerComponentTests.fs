@@ -21,7 +21,7 @@ let saveQuiz _ = ()
 let saveQuizAsync _= Async.retn ()
 
 let sut =
-    update connectToQuiz publishQuiz getQuiz getQuizAsync saveQuizAsync
+    update connectToQuiz publishQuiz getQuizAsync saveQuizAsync
 
 [<Fact>]
 let ``When Cancelled then AddQuizzer is Inert`` () =

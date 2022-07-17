@@ -38,8 +38,6 @@ type Startup() =
         
         //since we are storing in-memory, we need to ensure this is a singleton across Blazor Circuits
         services
-            .AddSingleton<SaveTeamQuiz>(Persistence.saveQuiz)
-            .AddSingleton<GetTeamQuiz>(Persistence.getQuiz)
             .AddSingleton<GetTeamQuizAsync>(Persistence.getQuizFromMemory)
             .AddSingleton<SaveTeamQuizAsync>(Persistence.saveQuizToMemory)
         |> ignore

@@ -42,18 +42,15 @@ let initExample quizCode =
 let mutable private exampleQuiz: Quiz =
     initExample "Example"
 
-
-let getQuiz: GetTeamQuiz =
-    fun _ -> exampleQuiz
-
-let saveQuiz: SaveTeamQuiz =
-    fun quiz -> exampleQuiz <- quiz
-
 let getQuizFromMemory: GetTeamQuizAsync =
-    fun code -> code |> getQuiz |> Async.retn
+    fun _ ->
+        Async.retn exampleQuiz
+    
 
 let saveQuizToMemory: SaveTeamQuizAsync =
-    fun quiz -> quiz |> saveQuiz |> Async.retn
+    fun quiz ->
+        exampleQuiz <- quiz
+        Async.retn ()
 
 let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetTeamQuizAsync =
     fun quizCode ->
