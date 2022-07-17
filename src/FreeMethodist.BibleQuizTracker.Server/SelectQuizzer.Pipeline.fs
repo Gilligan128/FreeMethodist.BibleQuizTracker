@@ -44,18 +44,18 @@ let changeCurrentQuizzer: ChangeCurrentQuizzer =
 let createEvent: CreateEvent =
     fun quiz quizzer -> { Quiz = quiz.Code; Quizzer = Some quizzer }
 
-
-let selectQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : SelectQuizzer.Workflow =
+let selectQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : SelectQuizzer.Workflow =
     fun command ->
-        let validateSelection quiz = validateSelection quiz command.Data
+        let validateSelection quiz = validateSelection quiz command.Data |> AsyncResult.ofResult
 
-        result {
-            let! validQuiz = getQuiz command.Quiz |> validateSelection
+        asyncResult {
+            let! validQuiz = getQuiz command.Quiz |> AsyncResult.ofAsync |> AsyncResult.bind validateSelection
 
-            validQuiz
-            |> changeCurrentQuizzer command.Data.Quizzer
-            |> Running
-            |> saveQuiz
+            do! validQuiz
+                |> changeCurrentQuizzer command.Data.Quizzer
+                |> Running
+                |> saveQuiz
+                |> AsyncResult.ofAsync
 
             return createEvent validQuiz command.Data.Quizzer
         }

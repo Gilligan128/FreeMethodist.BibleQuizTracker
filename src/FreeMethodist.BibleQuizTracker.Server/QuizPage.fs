@@ -387,8 +387,7 @@ let update
 
         let workflow =
             fun () ->
-                SelectQuizzer_Pipeline.selectQuizzer getQuiz saveQuiz command
-                |> AsyncResult.ofResult
+                SelectQuizzer_Pipeline.selectQuizzer getQuizAsync saveQuizAsync command
 
         model, (workflowCmdSingle workflow mapEvent mapResultToMessage), None
 

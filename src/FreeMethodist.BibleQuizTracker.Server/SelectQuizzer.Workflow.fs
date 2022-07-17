@@ -10,4 +10,4 @@ module SelectQuizzer =
         | QuizState of QuizStateError
         | QuizzerNotParticipating of Quizzer
         | QuizzerAlreadyCurrent
-    type Workflow = Command -> Result<CurrentQuizzerChanged, Error>     
+    type Workflow = Command -> AsyncResult<CurrentQuizzerChanged, Error>     
