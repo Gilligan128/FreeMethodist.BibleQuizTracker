@@ -22,6 +22,7 @@
     <Compile Include="QuizHub.fs" />
     <Compile Include="EnterQuizPipeline.fs" />
     <Compile Include="JumpPipeline.fs" />
+    <Compile Include="Common.Page.fs" />
     <Compile Include="QuizPage.fs" />
     <Compile Include="Main.fs" />
     <Compile Include="Index.fs" />

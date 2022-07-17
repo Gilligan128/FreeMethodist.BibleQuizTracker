@@ -46,8 +46,7 @@ type Startup() =
 
         //So that Discriminated unions can bd serialized/deserialized
         services.Configure (fun (options: JsonHubProtocolOptions) ->
-            options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter())
-            |> ignore)
+            options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
         |> ignore
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
