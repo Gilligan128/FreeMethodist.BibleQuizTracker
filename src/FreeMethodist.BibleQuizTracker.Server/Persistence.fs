@@ -43,9 +43,8 @@ let mutable private exampleQuiz: Quiz =
     initExample "Example"
 
 let getQuizFromMemory: GetTeamQuizAsync =
-    fun _ ->
-        Async.retn exampleQuiz
-    
+    fun _ -> Async.retn exampleQuiz
+
 
 let saveQuizToMemory: SaveTeamQuizAsync =
     fun quiz ->
@@ -73,7 +72,7 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
                     | Some quiz -> quiz
         }
 
-let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) : SaveTeamQuizAsync =
+let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
     fun quiz ->
         async {
             let code =
@@ -83,6 +82,7 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) : SaveTeamQuizA
                 | Official officialTeamQuiz -> officialTeamQuiz.Code
                 | Unvalidated unvalidatedTeamQuiz -> unvalidatedTeamQuiz.Code
 
-            localStorage.SetAsync($"QUIZ-{code}", quiz)
-            |> ignore
+            let json = JsonSerializer.Serialize(quiz, options)
+
+            return! localStorage.SetAsync($"QUIZ-{code}", json).AsTask() |> Async.AwaitTask
         }

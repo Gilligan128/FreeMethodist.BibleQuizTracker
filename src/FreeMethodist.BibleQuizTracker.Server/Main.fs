@@ -50,9 +50,7 @@ type Message =
 let update
     connectToQuizEvents
     publishQuizEvent
-    getQuiz
     getQuizAsync
-    saveQuiz
     saveQuizAsync
     (message: Message)
     model
@@ -141,12 +139,6 @@ type MyApp() =
 
     [<Inject>]
     member val Navigator = Unchecked.defaultof<NavigationManager> with get, set
-
-    [<Inject>]
-    member val SaveQuiz = Unchecked.defaultof<SaveTeamQuiz> with get, set
-
-    [<Inject>]
-    member val GetQuiz = Unchecked.defaultof<GetTeamQuiz> with get, set
     
     [<Inject>]
     member val GetQuizAsync = Unchecked.defaultof<GetTeamQuizAsync> with get, set
@@ -176,7 +168,7 @@ type MyApp() =
                 |> Async.AwaitTask 
             
         let update =
-            update connectToQuizEvents publishQuizEvent this.GetQuiz this.GetQuizAsync this.SaveQuiz this.SaveQuizAsync
+            update connectToQuizEvents publishQuizEvent this.GetQuizAsync this.SaveQuizAsync
 
         let subscription =
             subscription hubConnection

@@ -1,10 +1,13 @@
 namespace FreeMethodist.BibleQuizTracker.Server
 
+open System
+open System.Text.Json
 open System.Text.Json.Serialization
 open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
@@ -35,11 +38,19 @@ type Startup() =
             )
 #endif
         |> ignore
+        let fsharpJsonOptions = JsonSerializerOptions()
+        fsharpJsonOptions.Converters.Add(JsonFSharpConverter())
         
         //since we are storing in-memory, we need to ensure this is a singleton across Blazor Circuits
+        let getTeam (c:IServiceProvider) =
+                let localStorage = c.GetRequiredService<ProtectedLocalStorage>()
+                Persistence.getQuizFromLocalStorage localStorage fsharpJsonOptions
+        let saveTeam (provider: IServiceProvider) =
+            let localStorage = provider.GetRequiredService<ProtectedLocalStorage>()
+            Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
         services
-            .AddSingleton<GetTeamQuizAsync>(Persistence.getQuizFromMemory)
-            .AddSingleton<SaveTeamQuizAsync>(Persistence.saveQuizToMemory)
+            .AddTransient<GetTeamQuizAsync>(Func<IServiceProvider, GetTeamQuizAsync>(getTeam))
+            .AddTransient<SaveTeamQuizAsync>(Func<IServiceProvider, SaveTeamQuizAsync>(saveTeam))
         |> ignore
 
         //So that Discriminated unions can bd serialized/deserialized
