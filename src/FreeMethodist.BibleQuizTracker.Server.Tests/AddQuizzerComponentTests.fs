@@ -15,11 +15,13 @@ let getQuiz _ =
         { Code = ""
           TeamOne = ""
           TeamTwo = "" }
+let getQuizAsync _ = Async.retn getQuiz
 
 let saveQuiz _ = ()
+let saveQuizAsync _= Async.retn ()
 
 let sut =
-    update connectToQuiz publishQuiz getQuiz saveQuiz
+    update connectToQuiz publishQuiz getQuiz getQuizAsync saveQuiz saveQuizAsync
 
 [<Fact>]
 let ``When Cancelled then AddQuizzer is Inert`` () =

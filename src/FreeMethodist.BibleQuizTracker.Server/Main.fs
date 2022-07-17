@@ -51,7 +51,9 @@ let update
     connectToQuizEvents
     publishQuizEvent
     getQuiz
+    getQuizAsync
     saveQuiz
+    saveQuizAsync
     (message: Message)
     model
     : Model * Cmd<Message> =
@@ -66,7 +68,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents publishQuizEvent getQuiz saveQuiz quizMsg quizModel
+            update connectToQuizEvents publishQuizEvent getQuiz getQuizAsync saveQuiz saveQuizAsync quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -168,7 +170,7 @@ type MyApp() =
                 |> Async.AwaitTask 
             
         let update =
-            update connectToQuizEvents publishQuizEvent this.GetQuiz this.SaveQuiz
+            update connectToQuizEvents publishQuizEvent this.GetQuiz Persistence.getQuizFromLocalStorage this.SaveQuiz Persistence.saveQuizToLocalStorage
 
         let subscription =
             subscription hubConnection

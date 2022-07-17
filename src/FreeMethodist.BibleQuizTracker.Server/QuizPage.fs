@@ -167,7 +167,9 @@ let update
     (connectToQuizEvents: ConnectToQuizEvents)
     (publishQuizEvent: PublishQuizEventTask)
     getQuiz
+    getQuizAsync
     saveQuiz
+    saveQuizAsync
     msg
     model
     =
