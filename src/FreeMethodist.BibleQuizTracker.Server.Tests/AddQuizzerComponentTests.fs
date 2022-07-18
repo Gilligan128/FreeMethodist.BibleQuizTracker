@@ -1,8 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AddQuizzerComponentTests
 
 open Elmish
-open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit

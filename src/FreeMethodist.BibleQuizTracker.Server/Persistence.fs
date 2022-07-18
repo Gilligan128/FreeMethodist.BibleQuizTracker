@@ -3,7 +3,7 @@
 open System.Text.Json
 open System.Text.Json.Serialization
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 
 

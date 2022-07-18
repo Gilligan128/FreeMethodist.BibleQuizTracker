@@ -8,9 +8,11 @@ open Microsoft.FSharp.Core
 
 //Answer Question
 type AnswerQuestion = Quizzer -> AnsweredQuestion
+
+
 type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerCorrectly.Error>
 
-type CreateEvents = RunningTeamQuiz -> RunningTeamQuiz -> AnswerCorrectly.Event list
+type CreateEvents = Quizzer -> RunningTeamQuiz -> AnswerCorrectly.Event list
 
 let updateQuiz: UpdateQuiz =
     let updateQuizzerScore (quizzer: QuizzerState) =
@@ -64,7 +66,7 @@ let updateQuiz: UpdateQuiz =
             Questions =
                 quiz.Questions
                 |> Map.add newCurrentQuestion updatedQuestion }
-     
+
     let updateTeamOpt isQuizzer team =
         team.Quizzers
         |> List.exists isQuizzer
@@ -82,12 +84,69 @@ let updateQuiz: UpdateQuiz =
         let teamTwoOpt =
             (updateTeamOpt quiz.TeamTwo)
 
-        let teamUpdatedQuiz =
-            match teamOneOpt, teamTwoOpt with
-            | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
-            | None, None -> Error(QuizzerNotFound quizzerName)
-            | Some teamOne, None -> Ok { quiz with TeamOne = teamOne }
-            | None, Some teamTwo -> Ok { quiz with TeamTwo = teamTwo }
+        let updatedQuizInfo =
+            updateQuizLevelInfo quizzerName quiz
 
-        teamUpdatedQuiz
-        |> Result.map (updateQuizLevelInfo quizzerName)
+        match teamOneOpt, teamTwoOpt with
+        | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
+        | None, None -> Error(QuizzerNotFound quizzerName)
+        | Some teamOne, None -> Ok { updatedQuizInfo with TeamOne = teamOne }
+        | None, Some teamTwo -> Ok { updatedQuizInfo with TeamTwo = teamTwo }
+
+
+let createEvents: CreateEvents =
+    fun quizzer quizState ->
+        let updatedTeamScore (quiz: RunningTeamQuiz) teamPosition =
+            match teamPosition with
+            | TeamOne -> quiz.TeamOne.Score
+            | TeamTwo -> quiz.TeamTwo.Score
+
+        let findAnswerer (quiz: RunningTeamQuiz) =
+            [ yield!
+                  (quiz.TeamOne.Quizzers
+                   |> List.map (fun q -> (q, TeamOne)))
+              yield!
+                  (quiz.TeamTwo.Quizzers
+                   |> List.map (fun q -> (q, TeamTwo))) ]
+            |> List.find (fun (q, _) -> q.Name = quizzer)
+
+        let answerer, teamUpdated =
+            findAnswerer quizState
+
+        let teamScoreChanged =
+            Event.TeamScoreChanged
+                { NewScore = updatedTeamScore quizState teamUpdated
+                  Team = teamUpdated
+                  Quiz = quizState.Code }
+
+        let individualScoreChanged =
+            Event.IndividualScoreChanged
+                { NewScore = answerer.Score
+                  Quiz = quizState.Code
+                  Quizzer = quizzer
+                  Question = quizState.CurrentQuestion }
+
+        let currentQuestionChanged =
+            Event.CurrentQuestionChanged
+                { Quiz = quizState.Code
+                  NewQuestion = quizState.CurrentQuestion }
+
+        [ teamScoreChanged
+          individualScoreChanged
+          currentQuestionChanged ]
+
+let answerCorrectly getQuiz saveQuiz : Workflow =
+    fun command ->
+        asyncResult {
+            let! quiz =
+                getQuiz command.Quiz
+                |> AsyncResult.ofAsync
+                |> AsyncResult.bind (fun quiz ->
+                    quiz
+                    |> Common.Pipeline.validateQuiz
+                    |> AsyncResult.ofResult
+                    |> AsyncResult.mapError Error.QuizStateError)
+            let! updatedQuiz = updateQuiz command.Data.Quizzer quiz  |> AsyncResult.ofResult
+            do! updatedQuiz |> saveQuiz |> AsyncResult.ofAsync
+            return createEvents command.Data.Quizzer updatedQuiz
+        }

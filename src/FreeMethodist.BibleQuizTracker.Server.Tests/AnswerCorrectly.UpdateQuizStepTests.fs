@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AnswerCorrectlyWorkflowTests
+﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AnswerCorrectly.UpdateQuizStepTests
 
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow

@@ -1,7 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Pipeline
 
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 

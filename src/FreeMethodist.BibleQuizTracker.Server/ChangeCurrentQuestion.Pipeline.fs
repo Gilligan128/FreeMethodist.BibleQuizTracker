@@ -1,9 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline
 
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
 
 type CreateEvent = RunningTeamQuiz -> CurrentQuestionChanged
 

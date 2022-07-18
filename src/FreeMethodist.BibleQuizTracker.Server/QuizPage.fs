@@ -6,6 +6,7 @@ open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
@@ -13,7 +14,6 @@ open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Core
 open FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline

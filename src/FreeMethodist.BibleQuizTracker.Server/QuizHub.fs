@@ -8,10 +8,9 @@ open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.SignalR
 open Microsoft.FSharp.Control
-open Pipeline
 open System.Threading.Tasks
 
 //Used for event notification to clients

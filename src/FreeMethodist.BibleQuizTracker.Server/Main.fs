@@ -6,13 +6,11 @@ open System.Threading
 open Elmish
 open Bolero
 open Bolero.Html
-open Bolero.Remoting
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components
-open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging

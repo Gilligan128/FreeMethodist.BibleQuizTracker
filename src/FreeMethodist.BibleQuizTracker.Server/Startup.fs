@@ -3,7 +3,7 @@ namespace FreeMethodist.BibleQuizTracker.Server
 open System
 open System.Text.Json
 open System.Text.Json.Serialization
-open FreeMethodist.BibleQuizTracker.Server.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
