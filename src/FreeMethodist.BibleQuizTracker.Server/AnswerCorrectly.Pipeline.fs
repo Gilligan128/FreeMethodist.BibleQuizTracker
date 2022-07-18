@@ -13,32 +13,81 @@ type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerCo
 type CreateEvents = RunningTeamQuiz -> RunningTeamQuiz -> AnswerCorrectly.Event list
 
 let updateQuiz: UpdateQuiz =
-    let quizzerCorrectlyAnswers (quizzer: QuizzerState) =
+    let updateQuizzerScore (quizzer: QuizzerState) =
         { quizzer with Score = quizzer.Score |> TeamScore.correctAnswer }
 
-    let updateQuizTeams (quiz: RunningTeamQuiz) teamOne teamTwo =
-        { quiz with
-            TeamOne = teamOne
-            TeamTwo = teamTwo
-            CurrentQuestion = quiz.CurrentQuestion |> PositiveNumber.increment }
-
-    let updateAnweringQuizzer isQuizzer quizzers =
+    let updateAnsweringQuizzer isQuizzer quizzers =
         quizzers
         |> List.map (fun q ->
             if isQuizzer q then
-                (quizzerCorrectlyAnswers q)
+                (updateQuizzerScore q)
             else
                 q)
 
+    let recordAnsweredQuestion quizzer (initialQuestionState) =
+        let CompletedAnswered = Answered >> Complete
+
+        let withoutAnswerer =
+            List.except [ quizzer ]
+
+        match initialQuestionState with
+        | Some (Complete (Answered questionState)) ->
+            CompletedAnswered
+                { Answerer = quizzer
+                  IncorrectAnswerers =
+                    questionState.IncorrectAnswerers
+                    |> withoutAnswerer }
+        | Some (Complete (Unanswered questionState)) ->
+            CompletedAnswered
+                { Answerer = quizzer
+                  IncorrectAnswerers = questionState |> withoutAnswerer }
+        | Some (Incomplete answerers) ->
+            CompletedAnswered
+                { Answerer = quizzer
+                  IncorrectAnswerers = answerers }
+        | None ->
+            CompletedAnswered
+                { Answerer = quizzer
+                  IncorrectAnswerers = [] }
+
+    let updateQuizLevelInfo quizzer (quiz: RunningTeamQuiz) =
+        let newCurrentQuestion =
+            quiz.CurrentQuestion |> PositiveNumber.increment
+
+        let updatedQuestion =
+            quiz.Questions
+            |> Map.tryFind newCurrentQuestion
+            |> recordAnsweredQuestion quizzer
+
+        { quiz with
+            CurrentQuestion = newCurrentQuestion
+            Questions =
+                quiz.Questions
+                |> Map.add newCurrentQuestion updatedQuestion }
+     
+    let updateTeamOpt isQuizzer team =
+        team.Quizzers
+        |> List.exists isQuizzer
+        |> fun found -> if found then Some team else None
+        |> Option.map (fun team -> { team with Quizzers = team.Quizzers |> updateAnsweringQuizzer isQuizzer })
+        |> Option.map (fun team -> { team with Score = team.Score |> TeamScore.correctAnswer })
+
     fun quizzerName quiz ->
         let isQuizzer (quizzer: QuizzerState) = quizzer.Name = quizzerName
+        let updateTeamOpt = updateTeamOpt isQuizzer
 
-        let updateTeamOpt team =
-            quiz.TeamOne.Quizzers
-            |> List.exists isQuizzer
-            |> fun found -> if found then Some team else None
-            |> Option.map (fun team -> { team with Quizzers = team.Quizzers |> updateAnweringQuizzer isQuizzer })
-            |> Option.map (fun team -> { team with Score = team.Score |> TeamScore.correctAnswer })
+        let teamOneOpt =
+            (updateTeamOpt quiz.TeamOne)
 
-        Option.map2 (updateQuizTeams quiz) (updateTeamOpt quiz.TeamOne) (updateTeamOpt quiz.TeamTwo)
-        |> Result.ofOption (QuizzerNotFound quizzerName)
+        let teamTwoOpt =
+            (updateTeamOpt quiz.TeamTwo)
+
+        let teamUpdatedQuiz =
+            match teamOneOpt, teamTwoOpt with
+            | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
+            | None, None -> Error(QuizzerNotFound quizzerName)
+            | Some teamOne, None -> Ok { quiz with TeamOne = teamOne }
+            | None, Some teamTwo -> Ok { quiz with TeamTwo = teamTwo }
+
+        teamUpdatedQuiz
+        |> Result.map (updateQuizLevelInfo quizzerName)

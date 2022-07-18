@@ -11,6 +11,7 @@ module AnswerCorrectly =
     type Error =
         | QuizStateError of QuizStateError
         | QuizzerNotFound of Quizzer
+        | DuplicateQuizzer of Quizzer
 
     type Event =
         | IndividualScoreChanged of IndividualScoreChanged

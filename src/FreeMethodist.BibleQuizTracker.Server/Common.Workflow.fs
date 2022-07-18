@@ -72,10 +72,10 @@ type ParticipationState =
 
 type AnsweredQuestion =
     { Answerer: Quizzer
-      AttemptedAnswerers: Quizzer list }
+      IncorrectAnswerers: Quizzer list }
 
 type CompletedQuestion =
-    | Answered of Quizzer
+    | Answered of AnsweredQuestion
     | Unanswered of Quizzer list
 
 type QuizzerState =
@@ -101,12 +101,11 @@ type QuizTeamState =
 
 type RunningTeamQuiz =
     { Code: QuizCode
-      Questions: QuizQuestion list
+      Questions: Map<PositiveNumber,QuizQuestion> 
       TeamOne: QuizTeamState
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
       CurrentQuizzer: Quizzer option
-
      }
 
 //Jumps are outside of Quizzes so that we can handle having to save a bunch around the same time.
@@ -183,4 +182,4 @@ module RunningTeamQuiz =
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
-          Questions = [] }
+          Questions = Map.empty }

@@ -37,7 +37,7 @@ let initExample quizCode =
              |> PositiveNumber.increment
              |> PositiveNumber.increment)
           CurrentQuizzer = Some "Juni"
-          Questions = [] }
+          Questions = Map.empty }
 
 let mutable private exampleQuiz: Quiz =
     initExample "Example"
