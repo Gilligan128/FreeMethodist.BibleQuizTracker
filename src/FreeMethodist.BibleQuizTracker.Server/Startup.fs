@@ -31,7 +31,7 @@ type Startup() =
             .AddAuthorization()
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie()
-            .Services.AddBoleroHost(server = true)
+            .Services.AddBoleroHost(server = true, prerendered = false)
 #if DEBUG
             .AddHotReload(
                 templateDir = __SOURCE_DIRECTORY__
@@ -49,8 +49,8 @@ type Startup() =
             let localStorage = provider.GetRequiredService<ProtectedLocalStorage>()
             Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
         services
-            .AddSingleton<GetTeamQuizAsync>(Persistence.getQuizFromMemory)
-            .AddSingleton<SaveTeamQuizAsync>(Persistence.saveQuizToMemory)
+            .AddSingleton<GetTeamQuizAsync>(Func<IServiceProvider, GetTeamQuizAsync>(getTeam))
+            .AddSingleton<SaveTeamQuizAsync>(Func<IServiceProvider, SaveTeamQuizAsync>(saveTeam))
         |> ignore
 
         //So that Discriminated unions can bd serialized/deserialized
