@@ -40,7 +40,9 @@ module TeamScore =
     let initial: TeamScore = TeamScore 0
 
     let ofQuestions questionCount = TeamScore(questionCount * 20)
-
+    
+    let correctAnswer (TeamScore value) = TeamScore (value + 20) 
+        
 type TeamPosition =
     | TeamOne
     | TeamTwo

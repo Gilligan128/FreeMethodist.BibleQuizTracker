@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Result.fs" />
+    <Compile Include="Option.fs" />
     <Compile Include="Common.Workflow.fs" />
     <Compile Include="Events.Workflow.fs" />
     <Compile Include="OverrideTeamScore.Workflow.fs" />

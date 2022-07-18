@@ -12,7 +12,32 @@ type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerCo
 
 type CreateEvents = RunningTeamQuiz -> RunningTeamQuiz -> AnswerCorrectly.Event list
 
+let updateQuiz: UpdateQuiz =
+    let quizzerCorrectlyAnswers (quizzer: QuizzerState) =
+        { quizzer with Score = quizzer.Score |> TeamScore.correctAnswer }
 
-let updateQuiz : UpdateQuiz =
-    fun quizzer quiz ->
-        quizzer |> Error.QuizzerNotFound |> Result.Error
+    let updateQuizTeams (quiz: RunningTeamQuiz) teamOne teamTwo =
+        { quiz with
+            TeamOne = teamOne
+            TeamTwo = teamTwo }
+
+    let updateAnweringQuizzer isQuizzer quizzers =
+        quizzers
+        |> List.map (fun q ->
+            if isQuizzer q then
+                (quizzerCorrectlyAnswers q)
+            else
+                q)
+
+    fun quizzerName quiz ->
+        let isQuizzer (quizzer: QuizzerState) = quizzer.Name = quizzerName
+
+        let updateTeamOpt team =
+            quiz.TeamOne.Quizzers
+            |> List.exists isQuizzer
+            |> fun found -> if found then Some team else None
+            |> Option.map (fun team -> { team with Quizzers = team.Quizzers |> updateAnweringQuizzer isQuizzer })
+            |> Option.map (fun team -> { team with Score = team.Score |> TeamScore.correctAnswer })
+
+        Option.map2 (updateQuizTeams quiz) (updateTeamOpt quiz.TeamOne) (updateTeamOpt quiz.TeamTwo)
+        |> Result.ofOption (QuizzerNotFound quizzerName)
