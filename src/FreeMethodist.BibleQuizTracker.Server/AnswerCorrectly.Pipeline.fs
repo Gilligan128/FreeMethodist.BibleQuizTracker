@@ -2,6 +2,7 @@
 
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow.AnswerCorrectly
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
@@ -147,6 +148,6 @@ let answerCorrectly getQuiz saveQuiz : Workflow =
                     |> AsyncResult.ofResult
                     |> AsyncResult.mapError Error.QuizStateError)
             let! updatedQuiz = updateQuiz command.Data.Quizzer quiz  |> AsyncResult.ofResult
-            do! updatedQuiz |> saveQuiz |> AsyncResult.ofAsync
+            do! updatedQuiz |> Quiz.Running |> saveQuiz |> AsyncResult.ofAsync
             return createEvents command.Data.Quizzer updatedQuiz
         }

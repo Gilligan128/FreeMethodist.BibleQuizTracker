@@ -49,8 +49,8 @@ type Startup() =
             let localStorage = provider.GetRequiredService<ProtectedLocalStorage>()
             Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
         services
-            .AddTransient<GetTeamQuizAsync>(Func<IServiceProvider, GetTeamQuizAsync>(getTeam))
-            .AddTransient<SaveTeamQuizAsync>(Func<IServiceProvider, SaveTeamQuizAsync>(saveTeam))
+            .AddSingleton<GetTeamQuizAsync>(Persistence.getQuizFromMemory)
+            .AddSingleton<SaveTeamQuizAsync>(Persistence.saveQuizToMemory)
         |> ignore
 
         //So that Discriminated unions can bd serialized/deserialized
