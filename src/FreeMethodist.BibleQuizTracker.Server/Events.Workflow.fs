@@ -11,12 +11,14 @@
     NewScore: TeamScore
  }
  
+ 
  type CurrentQuestionChanged = { Quiz: QuizCode; NewQuestion: QuestionNumber; }
  
  type QuizzerParticipating = { Quizzer: Quizzer; Quiz: QuizCode }
  
  type CurrentQuizzerChanged = { Quiz: QuizCode; Quizzer: Quizzer option  }
 
+ type IndividualScoreChanged = { Quiz: QuizCode; Quizzer: Quizzer; NewScore: TeamScore; Question: QuestionNumber }
  
  type RunQuizEvent =
      | QuizzerNoLongerParticipating of QuizzerNoLongerParticipating
@@ -24,3 +26,4 @@
      | CurrentQuestionChanged of CurrentQuestionChanged
      | QuizzerParticipating of QuizzerParticipating
      | CurrentQuizzerChanged of CurrentQuizzerChanged
+     | IndividualScoreChanged of IndividualScoreChanged

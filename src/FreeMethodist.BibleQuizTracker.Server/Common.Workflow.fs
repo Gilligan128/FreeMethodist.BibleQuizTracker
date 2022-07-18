@@ -68,7 +68,11 @@ type ParticipationState =
     | In
     | Out
 
-type CompletedQuestion = { answeringPlayer: Quizzer option }
+type AnsweredQuestion = { Answerer: Quizzer; AttemptedAnswerers: Quizzer list }
+
+type CompletedQuestion =
+    | Answered of Quizzer
+    | Unanswered of Quizzer list
 
 type QuizzerState =
     { Name: Quizzer
@@ -76,8 +80,8 @@ type QuizzerState =
       Score: TeamScore }
 
 type QuizQuestion =
-    | Completed of CompletedQuestion
-    | Upcoming
+    | Complete of CompletedQuestion
+    | Incomplete of Quizzer list
 
 type QuizTeamState =
     { Name: TeamName
