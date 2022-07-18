@@ -82,3 +82,15 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
             |> List.find (fun q -> q.Name = nonAnswerer.Name)
 
         Assert.Equal(nonAnswerer.Score, updatedQuizzer.Score))
+ 
+[<Fact>]
+let ``When Quizzer Answers then change current question`` () =
+    let quizzer = QuizzerState.create "Jim"
+
+    let initialQuiz =
+        { quizWithQuizzerOnTeamOne quizzer with CurrentQuestion = PositiveNumber.one }
+
+    let result =
+        updateQuiz quizzer.Name initialQuiz
+
+    assertSuccess result (fun updatedQuiz -> Assert.Equal(initialQuiz.CurrentQuestion |> PositiveNumber.increment, updatedQuiz.CurrentQuestion))

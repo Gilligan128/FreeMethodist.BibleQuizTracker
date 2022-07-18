@@ -19,7 +19,8 @@ let updateQuiz: UpdateQuiz =
     let updateQuizTeams (quiz: RunningTeamQuiz) teamOne teamTwo =
         { quiz with
             TeamOne = teamOne
-            TeamTwo = teamTwo }
+            TeamTwo = teamTwo
+            CurrentQuestion = quiz.CurrentQuestion |> PositiveNumber.increment }
 
     let updateAnweringQuizzer isQuizzer quizzers =
         quizzers
