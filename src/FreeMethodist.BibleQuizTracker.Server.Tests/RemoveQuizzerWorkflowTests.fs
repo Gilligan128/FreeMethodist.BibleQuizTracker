@@ -11,7 +11,7 @@ let initialTeamStateWithQuizzer quizzer =
             RunningTeamQuiz.identity.TeamOne.Quizzers
             @ [ { Name = quizzer
                   Participation = In
-                  Score = TeamScore.identity } ] }
+                  Score = TeamScore.initial } ] }
 
 [<Fact>]
 let ``Given there is no jump order, when current quizzer removed then there is no current quizzer`` () =

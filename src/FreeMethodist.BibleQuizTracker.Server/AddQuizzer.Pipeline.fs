@@ -45,7 +45,7 @@ let addQuizzerToQuiz: AddQuizzerToQuiz =
                     originalTeamState.Quizzers
                     @ [ { Name = input.Name
                           Participation = ParticipationState.In
-                          Score = TeamScore.identity } ] }
+                          Score = TeamScore.initial } ] }
 
         match input.Team with
         | TeamOne -> { quiz with TeamOne = newTeamState quiz.TeamOne }

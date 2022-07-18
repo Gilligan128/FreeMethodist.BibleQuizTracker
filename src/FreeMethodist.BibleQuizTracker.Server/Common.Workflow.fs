@@ -37,7 +37,7 @@ module TeamScore =
 
     let value (TeamScore score) = score
 
-    let identity: TeamScore = TeamScore 0
+    let initial: TeamScore = TeamScore 0
 
     let ofQuestions questionCount = TeamScore(questionCount * 20)
 
@@ -60,15 +60,17 @@ module PositiveNumber =
     let one = PositiveNumber 1
 
     let value (PositiveNumber number) = number
-    
-    let increment (PositiveNumber i) = PositiveNumber (i + 1)
-    let decrement (PositiveNumber i) = PositiveNumber (Math.Max(i - 1,1))
+
+    let increment (PositiveNumber i) = PositiveNumber(i + 1)
+    let decrement (PositiveNumber i) = PositiveNumber(Math.Max(i - 1, 1))
 
 type ParticipationState =
     | In
     | Out
 
-type AnsweredQuestion = { Answerer: Quizzer; AttemptedAnswerers: Quizzer list }
+type AnsweredQuestion =
+    { Answerer: Quizzer
+      AttemptedAnswerers: Quizzer list }
 
 type CompletedQuestion =
     | Answered of Quizzer
@@ -78,6 +80,12 @@ type QuizzerState =
     { Name: Quizzer
       Participation: ParticipationState
       Score: TeamScore }
+
+module QuizzerState =
+    let create name =
+        { Name = name
+          Participation = In
+          Score = TeamScore.initial }
 
 type QuizQuestion =
     | Complete of CompletedQuestion
@@ -98,7 +106,7 @@ type RunningTeamQuiz =
       CurrentQuizzer: Quizzer option
 
      }
-    
+
 //Jumps are outside of Quizzes so that we can handle having to save a bunch around the same time.
 type Jump =
     { Quiz: QuizCode
@@ -163,12 +171,12 @@ module RunningTeamQuiz =
         { Code = "Example"
           TeamOne =
             { Name = "LEFT"
-              Score = TeamScore.identity
+              Score = TeamScore.initial
               Captain = None
               Quizzers = [] }
           TeamTwo =
             { Name = "RIGHT"
-              Score = TeamScore.identity
+              Score = TeamScore.initial
               Captain = None
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
