@@ -74,7 +74,7 @@ type Message =
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of Quizzer * TeamPosition
     | SelectQuizzer of Quizzer
-    
+
 
 type ExternalMessage = Error of string
 
@@ -123,10 +123,13 @@ let init getQuiz connectToQuizEvents (handleEvents: ListenToRunQuizEvents<Messag
             do! connectToQuizEvents quizCode previousQuizCode
             let! quiz = getQuiz quizCode
             return Message.RefreshQuiz(Finished quiz)
-        } |> Cmd.OfAsync.result
+        }
+        |> Cmd.OfAsync.result
 
-    let listenToEventsCmd = (fun dispatch -> handleEvents dispatch |> ignore) |> Cmd.ofSub
-    
+    let listenToEventsCmd =
+        (fun dispatch -> handleEvents dispatch |> ignore)
+        |> Cmd.ofSub
+
     { emptyModel with Code = quizCode },
     Cmd.batch [ loadAndConnectToQuizCmd
                 listenToEventsCmd ]
@@ -160,13 +163,7 @@ let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (tea
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let update
-    (publishQuizEvent: PublishQuizEventTask)
-    getQuizAsync
-    saveQuizAsync
-    msg
-    model
-    =
+let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync msg model =
 
     let publishRunQuizEvent quiz event =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event

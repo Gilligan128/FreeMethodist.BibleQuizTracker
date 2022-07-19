@@ -58,13 +58,12 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
     fun quizCode ->
         async {
             let! quizJsonString =
-                    ( 
-                      localStorage
-                        .GetAsync<string>($"QUIZ-{quizCode}")
-                         .AsTask()
-                     |> Async.AwaitTask)
-                     |> Async.map (fun json -> json.Value)
-              
+                (localStorage
+                    .GetAsync<string>($"QUIZ-{quizCode}")
+                     .AsTask()
+                 |> Async.AwaitTask)
+                |> Async.map (fun json -> json.Value)
+
             return
                 (if quizJsonString = null then
                      None
@@ -77,6 +76,8 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
                     | Some quiz -> quiz
         }
 
+
+
 let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
     fun quiz ->
         async {
@@ -87,7 +88,12 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
                 | Official officialTeamQuiz -> officialTeamQuiz.Code
                 | Unvalidated unvalidatedTeamQuiz -> unvalidatedTeamQuiz.Code
 
-            let json = JsonSerializer.Serialize(quiz, options)
+            let json =
+                JsonSerializer.Serialize(quiz, options)
 
-            return! localStorage.SetAsync($"QUIZ-{code}", json).AsTask() |> Async.AwaitTask
+            return!
+                localStorage
+                    .SetAsync($"QUIZ-{code}", json)
+                    .AsTask()
+                |> Async.AwaitTask
         }

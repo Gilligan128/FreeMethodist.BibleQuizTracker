@@ -17,6 +17,7 @@ open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Control
+open Microsoft.JSInterop
 
 /// Routing endpoints definition.
 type Page =
@@ -58,8 +59,11 @@ let update
     : Model * Cmd<Message> =
     match message, model.quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
+        let oldCodeOpt =
+            (quizOption |> Option.map (fun q -> q.Code))
+
         let quizModel, cmd =
-            init getQuizAsync connectToQuizEvents handleEvent quizCode (quizOption |> Option.map (fun q -> q.Code))
+            init getQuizAsync connectToQuizEvents handleEvent quizCode oldCodeOpt
 
         { model with
             page = Quiz quizCode
@@ -69,7 +73,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update  publishQuizEvent getQuizAsync saveQuizAsync quizMsg quizModel
+            update publishQuizEvent getQuizAsync saveQuizAsync quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -145,18 +149,11 @@ type MyApp() =
     [<Inject>]
     member val SaveQuizAsync = Unchecked.defaultof<SaveTeamQuizAsync> with get, set
 
-    override this.Program =
-        let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore
+    [<Inject>]
+    member val HubConnection = Unchecked.defaultof<HubConnection> with get, set
 
-        let hubConnection =
-            HubConnectionBuilder()
-                .WithUrl($"{this.Navigator.BaseUri}QuizHub")
-                .WithAutomaticReconnect()
-                .ConfigureLogging(configureLogging)
-                .AddJsonProtocol(fun options ->
-                    options.PayloadSerializerOptions.Converters.Clear()
-                    options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
-                .Build()
+    override this.Program =
+        let hubConnection = this.HubConnection
 
         let connectToQuizEvents quizCode previousQuizCode =
             hubConnection.InvokeAsync("ConnectToQuiz", quizCode, previousQuizCode, CancellationToken.None)
@@ -174,9 +171,7 @@ type MyApp() =
             fun (dispatch: Dispatch<QuizPage.Message>) ->
                 hubConnection.On<RunQuizEvent>(
                     nameof clientStub.RunQuizEventOccurred,
-                    (fun _ ->
-                        if hubConnection.State = HubConnectionState.Connected then
-                            dispatch (Message.RefreshQuiz AsyncOperationStatus.Started))
+                    (fun event -> dispatch (Message.RefreshQuiz AsyncOperationStatus.Started))
                 )
 
         let update =

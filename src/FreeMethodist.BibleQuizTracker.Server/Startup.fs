@@ -7,10 +7,12 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
+open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.Extensions.DependencyInjection
 open Bolero
 open Bolero.Remoting.Server
@@ -50,6 +52,17 @@ type Startup() =
         services
             .AddScoped<GetTeamQuizAsync>(Func<IServiceProvider, GetTeamQuizAsync>(getTeam))
             .AddScoped<SaveTeamQuizAsync>(Func<IServiceProvider, SaveTeamQuizAsync>(saveTeam))
+            .AddScoped<HubConnection>(Func<IServiceProvider, HubConnection>(fun provider ->
+                 let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore
+                 let navigator = provider.GetRequiredService<NavigationManager>()
+                 HubConnectionBuilder()
+                    .WithUrl($"{navigator.BaseUri}QuizHub")
+                    .WithAutomaticReconnect()
+                    .ConfigureLogging(configureLogging)
+                    .AddJsonProtocol(fun options ->
+                        options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
+                    .Build()
+                ))
         |> ignore
 
         //So that Discriminated unions can bd serialized/deserialized
