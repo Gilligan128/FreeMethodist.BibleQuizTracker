@@ -6,7 +6,6 @@ open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 
-let connectToQuiz _ _ = Async.retn ()
 let publishQuiz _ _ _ = Async.retn ()
 
 let getQuiz _ =
@@ -20,7 +19,7 @@ let saveQuiz _ = ()
 let saveQuizAsync _= Async.retn ()
 
 let sut =
-    update connectToQuiz publishQuiz getQuizAsync saveQuizAsync
+    update publishQuiz getQuizAsync saveQuizAsync
 
 [<Fact>]
 let ``When Cancelled then AddQuizzer is Inert`` () =

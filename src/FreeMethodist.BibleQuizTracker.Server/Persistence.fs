@@ -1,10 +1,13 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Persistence
 
+open System
 open System.Text.Json
 open System.Text.Json.Serialization
+open System.Threading.Tasks
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+open Microsoft.JSInterop
 
 
 let initExample quizCode =
@@ -55,16 +58,18 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
     fun quizCode ->
         async {
             let! quizJsonString =
-                (localStorage
-                    .GetAsync<string>($"QUIZ-{quizCode}")
-                     .AsTask()
-                 |> Async.AwaitTask)
-
+                    ( 
+                      localStorage
+                        .GetAsync<string>($"QUIZ-{quizCode}")
+                         .AsTask()
+                     |> Async.AwaitTask)
+                     |> Async.map (fun json -> json.Value)
+              
             return
-                (if quizJsonString.Value = null then
+                (if quizJsonString = null then
                      None
                  else
-                     Some quizJsonString.Value)
+                     Some quizJsonString)
                 |> Option.map (fun json -> JsonSerializer.Deserialize<Quiz>(json, options))
                 |> fun quizOpt ->
                     match quizOpt with

@@ -8,6 +8,8 @@ open Bolero
 open Bolero.Html
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
+open FreeMethodist.BibleQuizTracker.Server.Common_Page
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components
@@ -50,12 +52,15 @@ let update
     publishQuizEvent
     getQuizAsync
     saveQuizAsync
+    handleEvent
     (message: Message)
     model
     : Model * Cmd<Message> =
     match message, model.quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
-        let quizModel, cmd = init quizCode (quizOption |> Option.map (fun q -> q.Code) ) 
+        let quizModel, cmd =
+            init getQuizAsync connectToQuizEvents handleEvent quizCode (quizOption |> Option.map (fun q -> q.Code))
+
         { model with
             page = Quiz quizCode
             quiz = Some quizModel },
@@ -64,7 +69,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents publishQuizEvent getQuizAsync saveQuizAsync quizMsg quizModel
+            update  publishQuizEvent getQuizAsync saveQuizAsync quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -128,19 +133,15 @@ let view model dispatch =
         )
         .Elt()
 
-let subscription hubConnection _ =
-    Cmd.batch [ Cmd.map Message.QuizMessage (subscribe hubConnection) ]
-
-
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
 
     [<Inject>]
     member val Navigator = Unchecked.defaultof<NavigationManager> with get, set
-    
+
     [<Inject>]
     member val GetQuizAsync = Unchecked.defaultof<GetTeamQuizAsync> with get, set
-    
+
     [<Inject>]
     member val SaveQuizAsync = Unchecked.defaultof<SaveTeamQuizAsync> with get, set
 
@@ -158,18 +159,28 @@ type MyApp() =
                 .Build()
 
         let connectToQuizEvents quizCode previousQuizCode =
-            hubConnection.InvokeAsync("ConnectToQuiz", quizCode, previousQuizCode, CancellationToken.None) |> Async.AwaitTask
-                
+            hubConnection.InvokeAsync("ConnectToQuiz", quizCode, previousQuizCode, CancellationToken.None)
+            |> Async.AwaitTask
+
         let publishQuizEvent =
             fun methodName quiz event ->
                 hubConnection.InvokeAsync(methodName, quiz, event, CancellationToken.None)
-                |> Async.AwaitTask 
-            
-        let update =
-            update connectToQuizEvents publishQuizEvent this.GetQuizAsync this.SaveQuizAsync
+                |> Async.AwaitTask
 
-        let subscription =
-            subscription hubConnection
+        let handleEvent =
+            let clientStub =
+                Unchecked.defaultof<QuizHub.Client>
+
+            fun (dispatch: Dispatch<QuizPage.Message>) ->
+                hubConnection.On<RunQuizEvent>(
+                    nameof clientStub.RunQuizEventOccurred,
+                    (fun _ ->
+                        if hubConnection.State = HubConnectionState.Connected then
+                            dispatch (Message.RefreshQuiz AsyncOperationStatus.Started))
+                )
+
+        let update =
+            update connectToQuizEvents publishQuizEvent this.GetQuizAsync this.SaveQuizAsync handleEvent
 
         Program.mkProgram
             (fun _ ->
@@ -178,7 +189,6 @@ type MyApp() =
             update
             view
         |> Program.withRouter router
-        |> Program.withSubscription subscription
 #if DEBUG
         |> Program.withHotReload
 #endif

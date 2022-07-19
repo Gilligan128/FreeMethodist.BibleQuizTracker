@@ -31,7 +31,7 @@ type Startup() =
             .AddAuthorization()
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie()
-            .Services.AddBoleroHost(server = true, prerendered = false)
+            .Services.AddBoleroHost(server = true)
 #if DEBUG
             .AddHotReload(
                 templateDir = __SOURCE_DIRECTORY__
@@ -41,7 +41,6 @@ type Startup() =
         let fsharpJsonOptions = JsonSerializerOptions()
         fsharpJsonOptions.Converters.Add(JsonFSharpConverter())
         
-        //since we are storing in-memory, we need to ensure this is a singleton across Blazor Circuits
         let getTeam (c:IServiceProvider) =
                 let localStorage = c.GetRequiredService<ProtectedLocalStorage>()
                 Persistence.getQuizFromLocalStorage localStorage fsharpJsonOptions
@@ -49,8 +48,8 @@ type Startup() =
             let localStorage = provider.GetRequiredService<ProtectedLocalStorage>()
             Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
         services
-            .AddSingleton<GetTeamQuizAsync>(Func<IServiceProvider, GetTeamQuizAsync>(getTeam))
-            .AddSingleton<SaveTeamQuizAsync>(Func<IServiceProvider, SaveTeamQuizAsync>(saveTeam))
+            .AddScoped<GetTeamQuizAsync>(Func<IServiceProvider, GetTeamQuizAsync>(getTeam))
+            .AddScoped<SaveTeamQuizAsync>(Func<IServiceProvider, SaveTeamQuizAsync>(saveTeam))
         |> ignore
 
         //So that Discriminated unions can bd serialized/deserialized

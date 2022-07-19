@@ -67,7 +67,6 @@ type AddQuizzerMessage =
 
 
 type Message =
-    | ConnectToQuizEvents of Option<QuizCode>
     | OverrideScore of int * TeamPosition
     | RefreshQuiz of AsyncOperationStatus<Quiz>
     | ChangeCurrentQuestion of int
@@ -75,6 +74,7 @@ type Message =
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of Quizzer * TeamPosition
     | SelectQuizzer of Quizzer
+    
 
 type ExternalMessage = Error of string
 
@@ -117,10 +117,20 @@ let private refreshModel (quiz: Quiz) =
     | Official _
     | Unvalidated _ -> emptyModel
 
-let init quizCode previousQuizCode =
+let init getQuiz connectToQuizEvents (handleEvents: ListenToRunQuizEvents<Message>) quizCode previousQuizCode =
+    let loadAndConnectToQuizCmd =
+        async {
+            do! connectToQuizEvents quizCode previousQuizCode
+            let! quiz = getQuiz quizCode
+            return Message.RefreshQuiz(Finished quiz)
+        } |> Cmd.OfAsync.result
+
+    let listenToEventsCmd = (fun dispatch -> handleEvents dispatch |> ignore) |> Cmd.ofSub
+    
     { emptyModel with Code = quizCode },
-    Message.ConnectToQuizEvents previousQuizCode
-    |> Cmd.ofMsg
+    Cmd.batch [ loadAndConnectToQuizCmd
+                listenToEventsCmd ]
+
 
 type OverrideScoreErrors =
     | DomainError of QuizStateError
@@ -129,22 +139,6 @@ type OverrideScoreErrors =
 type ChangeQuestionError =
     | FormError of string
     | QuizError of QuizStateError
-
-let subscribe (hubConnection: HubConnection) =
-    let sub (dispatch: Dispatch<Message>) =
-        hubConnection.On<QuizzerEntered>("EnteredQuiz", (fun (msg: QuizzerEntered) -> dispatch (Message.RefreshQuiz Started)))
-        |> ignore
-
-        let clientStub =
-            Unchecked.defaultof<QuizHub.Client>
-
-        hubConnection.On<RunQuizEvent>(
-            nameof clientStub.RunQuizEventOccurred,
-            (fun (msg) -> dispatch (Message.RefreshQuiz Started))
-        )
-        |> ignore
-
-    Cmd.ofSub sub
 
 let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =
     asyncResult {
@@ -167,7 +161,6 @@ let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
 let update
-    (connectToQuizEvents: ConnectToQuizEvents)
     (publishQuizEvent: PublishQuizEventTask)
     getQuizAsync
     saveQuizAsync
@@ -203,14 +196,6 @@ let update
         workflowCmdList newWorkflow mapToQuizEvent mapResult
 
     match msg with
-    | ConnectToQuizEvents previousQuiz ->
-        let task =
-            async {
-                do! connectToQuizEvents model.Code previousQuiz
-                return RefreshQuiz Started
-            }
-
-        model, Cmd.OfAsync.result task, None
     | OverrideScore (score, teamPosition) ->
         let mapResultToMessage result =
             match result with
@@ -232,13 +217,13 @@ let update
             workflowCmdSingle workflow mapEvent mapResultToMessage
 
         model, cmd, None
-    | RefreshQuiz Started->
+    | RefreshQuiz Started ->
         let getQuizToRefresh =
-            getQuizAsync model.Code |> Async.map (Finished >> RefreshQuiz)
-        
+            getQuizAsync model.Code
+            |> Async.map (Finished >> RefreshQuiz)
+
         model, Cmd.OfAsync.result getQuizToRefresh, None
-    | RefreshQuiz (Finished quiz) ->
-        refreshModel quiz, Cmd.none, None
+    | RefreshQuiz (Finished quiz) -> refreshModel quiz, Cmd.none, None
     | ChangeCurrentQuestion questionNumber ->
         let mapToQuizEvent event =
             event |> RunQuizEvent.CurrentQuestionChanged, event.Quiz
@@ -389,8 +374,7 @@ let update
               Data = { Quizzer = name } }
 
         let workflow =
-            fun () ->
-                SelectQuizzer_Pipeline.selectQuizzer getQuizAsync saveQuizAsync command
+            fun () -> SelectQuizzer_Pipeline.selectQuizzer getQuizAsync saveQuizAsync command
 
         model, (workflowCmdSingle workflow mapEvent mapResultToMessage), None
 

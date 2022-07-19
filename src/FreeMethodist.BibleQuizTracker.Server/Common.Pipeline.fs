@@ -2,8 +2,10 @@
 
 open System
 open System.ComponentModel.DataAnnotations
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
+open Elmish
 //We will eventually modularize this into separate files, probbaly by Workflow.
 
 //Domain Model
@@ -62,7 +64,9 @@ type PublishQuizEventTask = string ->  QuizCode -> obj -> Async<unit>
 type GetJumps = QuizCode -> Jump seq
 type SaveJump = Jump -> unit
 
+//Event Handling
 type ConnectToQuizEvents = QuizCode -> QuizCode option -> Async<unit>
+type ListenToRunQuizEvents<'Msg> = Dispatch<'Msg> -> IDisposable  
 
 type NotEnoughPlayersError =
     { teamName: TeamName
