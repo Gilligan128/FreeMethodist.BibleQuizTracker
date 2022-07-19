@@ -33,7 +33,7 @@ let ``Given there is no jump order, when current quizzer removed then there is n
     Assert.Equal(
         None,
         currentChangedEvent
-        |> Option.bind (fun event -> event.Quizzer)
+        |> Option.bind (fun event -> event.CurrentQuizzer)
     )
 
 [<Fact>]

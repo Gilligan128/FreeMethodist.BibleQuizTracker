@@ -8,6 +8,7 @@ open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
+open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
@@ -78,6 +79,7 @@ type Message =
     | RemoveQuizzer of AsyncOperationStatus<Quizzer * TeamPosition, Quiz>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, Quiz>
     | AnswerCorrectly of AsyncOperationStatus<unit, Quiz>
+    | AnswerIncorrectly of AsyncOperationStatus<unit, Quiz>
     | DoNothing
 
 
@@ -195,7 +197,10 @@ let update
 
     let workflowFormError =
         PublishEventError.FormError >> WorkflowError
-
+    
+    let createQuizStateWorkflowError _ = 
+        "Quiz is not running" |> workflowFormError
+    
     match msg with
     | DoNothing -> model, Cmd.none, None
 
@@ -389,9 +394,7 @@ let update
         let mapResultToMessage result =
             match result with
             | Ok quiz -> Message.SelectQuizzer(Finished quiz)
-            | Result.Error (SelectQuizzer.Error.QuizState quizStateError) ->
-                PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
-                |> WorkflowError
+            | Result.Error (SelectQuizzer.Error.QuizState quizStateError) -> createQuizStateWorkflowError quizStateError
             | Result.Error (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> Message.DoNothing
             | Result.Error (SelectQuizzer.Error.QuizzerNotParticipating quizzer) ->
                 PublishEventError.FormError $"Quizzer {quizzer} is not participating"
@@ -432,14 +435,33 @@ let update
             | Result.Error (AnswerCorrectly.QuizzerNotFound er) ->
                 $"Quizzer {er} was not found in this quiz"
                 |> workflowFormError
-            | Result.Error (AnswerCorrectly.Error.QuizStateError error) -> $"Quiz is not running" |> workflowFormError
+            | Result.Error (AnswerCorrectly.Error.QuizStateError error) -> createQuizStateWorkflowError error
             | Result.Error (AnswerCorrectly.Error.NoCurrentQuizzer) -> "No one has jumped yet" |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
 
         model, cmd, None
-    | AnswerCorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None    
+    | AnswerCorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
+    | AnswerIncorrectly (Started _) ->
+         let workflow =
+            fun () ->
+                AnswerIncorrectly.Pipeline.answerIncorrectly
+                    getQuizAsync
+                    saveQuizAsync
+                    { Quiz = model.Code; User = model.CurrentUser; Data = () }
+         let mapEvent event =
+             match event with
+             | AnswerIncorrectly.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e, e.Quiz
+             
+         let mapResult result =
+             match result with
+             | Ok quiz -> AnswerIncorrectly (Finished quiz)
+             | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
+             | Result.Error (AnswerIncorrectly.NoCurrentQuizzer) -> "No current Quizzer" |> workflowFormError
+         let cmd = workflowCmdList workflow mapEvent mapResult
+         model, cmd, None
+    | AnswerIncorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
 
 
 type private quizPage = Template<"wwwroot/Quiz.html">

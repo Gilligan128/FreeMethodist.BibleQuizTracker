@@ -19,7 +19,7 @@ type QuizzerParticipating = { Quizzer: Quizzer; Quiz: QuizCode }
 
 type CurrentQuizzerChanged =
     { Quiz: QuizCode
-      Quizzer: Quizzer option }
+      CurrentQuizzer: Quizzer option }
 
 type IndividualScoreChanged =
     { Quiz: QuizCode

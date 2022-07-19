@@ -68,7 +68,7 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
             if newQuiz.CurrentQuizzer <> quiz.CurrentQuizzer then
                 Some
                     { Quiz = quiz.Code
-                      Quizzer = newQuiz.CurrentQuizzer }
+                      CurrentQuizzer = newQuiz.CurrentQuizzer }
             else
                 None
 

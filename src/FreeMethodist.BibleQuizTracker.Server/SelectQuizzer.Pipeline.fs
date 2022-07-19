@@ -42,7 +42,7 @@ let changeCurrentQuizzer: ChangeCurrentQuizzer =
     fun quizzer quiz -> { quiz with CurrentQuizzer = Some quizzer }
 
 let createEvent: CreateEvent =
-    fun quiz quizzer -> { Quiz = quiz.Code; Quizzer = Some quizzer }
+    fun quiz quizzer -> { Quiz = quiz.Code; CurrentQuizzer = Some quizzer }
 
 let selectQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : SelectQuizzer.Workflow =
     fun command ->
