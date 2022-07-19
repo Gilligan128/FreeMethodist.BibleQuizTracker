@@ -59,8 +59,7 @@ let update
     : Model * Cmd<Message> =
     match message, model.quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
-        let oldCodeOpt =
-            (quizOption |> Option.map (fun q -> q.Code))
+        let oldCodeOpt = (quizOption |> Option.map (fun q -> q.Code))
 
         let quizModel, cmd =
             init getQuizAsync connectToQuizEvents handleEvent quizCode oldCodeOpt
@@ -87,8 +86,7 @@ let update
         { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
 
 /// Connects the routing system to the Elmish application.
-let router =
-    Router.infer SetPage (fun model -> model.page)
+let router = Router.infer SetPage (fun model -> model.page)
 
 type Main = Template<"wwwroot/main.html">
 
@@ -164,18 +162,14 @@ type MyApp() =
                 hubConnection.InvokeAsync(methodName, quiz, event, CancellationToken.None)
                 |> Async.AwaitTask
 
-        let handleEvent =
-            let clientStub =
-                Unchecked.defaultof<QuizHub.Client>
+        let onQuizEvent =
+            let clientStub = Unchecked.defaultof<QuizHub.Client>
 
-            fun (dispatch: Dispatch<QuizPage.Message>) ->
-                hubConnection.On<RunQuizEvent>(
-                    nameof clientStub.RunQuizEventOccurred,
-                    (fun event -> dispatch (Message.RefreshQuiz AsyncOperationStatus.Started))
-                )
+            fun (handler: RunQuizEvent -> unit) ->
+                hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
 
         let update =
-            update connectToQuizEvents publishQuizEvent this.GetQuizAsync this.SaveQuizAsync handleEvent
+            update connectToQuizEvents publishQuizEvent this.GetQuizAsync this.SaveQuizAsync onQuizEvent
 
         Program.mkProgram
             (fun _ ->

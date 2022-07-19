@@ -58,4 +58,4 @@ let selectQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : SelectQuizzer.Workflow
                 |> AsyncResult.ofAsync
 
             return createEvent validQuiz command.Data.Quizzer
-        }
+        } 

@@ -45,7 +45,7 @@ type AddQuizzerModel =
 
 type Model =
     { JoiningQuizzer: string
-      Code: string
+      Code: QuizCode
       TeamOne: TeamModel
       TeamTwo: TeamModel
       JumpOrder: string list
@@ -76,6 +76,7 @@ type Message =
     | RemoveQuizzer of Quizzer * TeamPosition
     | SelectQuizzer of Quizzer
     | AnswerCorrectly
+    | DoNothing
 
 
 type ExternalMessage = Error of string
@@ -119,7 +120,7 @@ let private refreshModel (quiz: Quiz) =
     | Official _
     | Unvalidated _ -> emptyModel
 
-let init getQuiz connectToQuizEvents (handleEvents: ListenToRunQuizEvents<Message>) quizCode previousQuizCode =
+let init getQuiz connectToQuizEvents onQuizEvent quizCode previousQuizCode =
     let loadAndConnectToQuizCmd =
         async {
             do! connectToQuizEvents quizCode previousQuizCode
@@ -127,9 +128,15 @@ let init getQuiz connectToQuizEvents (handleEvents: ListenToRunQuizEvents<Messag
             return Message.RefreshQuiz(Finished quiz)
         }
         |> Cmd.OfAsync.result
-
+  
     let listenToEventsCmd =
-        (fun dispatch -> handleEvents dispatch |> ignore)
+        (fun dispatch ->
+            let refreshQuizOnEvent _ =
+               getQuiz quizCode
+                |> Async.map (fun  quiz -> dispatch (Message.RefreshQuiz (Finished quiz)))
+                |> Async.StartImmediate //Run synchronously did not work here
+            onQuizEvent refreshQuizOnEvent |> ignore
+            ) 
         |> Cmd.ofSub
 
     { emptyModel with Code = quizCode },
@@ -181,12 +188,12 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
             |> Async.Parallel
 
         let workflowX = fun _ -> workflow ()
-
-        let workflowWithPublish x =
+        let workflowWithSideEffects x =
             workflowX x
             |> AsyncResult.bind (publishEvents >> AsyncResult.ofAsync)
+            |> AsyncResult.bind (fun _ -> (model.Code |> (getQuizAsync >> AsyncResult.ofAsync)))
 
-        Cmd.OfAsync.either workflowWithPublish () mapResult mapExceptionToPublishEventError
+        Cmd.OfAsync.either workflowWithSideEffects () mapResult mapExceptionToPublishEventError
 
     let workflowCmdSingle workflow mapToQuizEvent mapResult =
         let newWorkflow =
@@ -198,10 +205,11 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
         PublishEventError.FormError >> WorkflowError
 
     match msg with
+    | DoNothing -> model, Cmd.none, None
     | OverrideScore (score, teamPosition) ->
         let mapResultToMessage result =
             match result with
-            | Ok _ -> Message.RefreshQuiz Started
+            | Ok quiz -> Message.RefreshQuiz (Finished quiz)
             | Result.Error error ->
                 match error with
                 | OverrideScoreErrors.DomainError error ->
@@ -237,7 +245,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
                 | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
 
             match result with
-            | Ok _ -> RefreshQuiz Started
+            | Ok quiz -> RefreshQuiz (Finished quiz)
             | Result.Error error ->
                 error
                 |> moveQuestionErrorMessage
@@ -301,7 +309,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
         | AddQuizzerModel.Active (name, team) ->
             let mapResult result =
                 match result with
-                | Ok _ -> Message.RefreshQuiz Started
+                | Ok quiz -> Message.RefreshQuiz (Finished quiz)
                 | Result.Error error ->
                     match error with
                     | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
@@ -343,7 +351,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
 
         let mapResultToMessage result =
             match result with
-            | Ok _ -> RefreshQuiz Started
+            | Ok quiz -> Message.RefreshQuiz (Finished quiz)
             | Result.Error (RemoveQuizzer.QuizStateError quizStateError) ->
                 PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
                 |> WorkflowError
@@ -361,11 +369,11 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
 
         let mapResultToMessage result =
             match result with
-            | Ok _ -> RefreshQuiz Started
+            | Ok quiz -> Message.RefreshQuiz (Finished quiz)
             | Result.Error (SelectQuizzer.Error.QuizState quizStateError) ->
                 PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
                 |> WorkflowError
-            | Result.Error (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> RefreshQuiz Started
+            | Result.Error (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> Message.DoNothing
             | Result.Error (SelectQuizzer.Error.QuizzerNotParticipating quizzer) ->
                 PublishEventError.FormError $"Quizzer {quizzer} is not participating"
                 |> WorkflowError
@@ -397,7 +405,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
 
         let mapResult result =
             match result with
-            | Ok _ -> RefreshQuiz (Started)
+            | Ok quiz -> RefreshQuiz (Finished quiz)
             | Result.Error (AnswerCorrectly.Error.DuplicateQuizzer er) ->
                 $"There is more than one quizzer with name {er}"
                 |> workflowFormError

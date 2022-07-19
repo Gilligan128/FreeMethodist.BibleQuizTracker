@@ -66,7 +66,7 @@ type SaveJump = Jump -> unit
 
 //Event Handling
 type ConnectToQuizEvents = QuizCode -> QuizCode option -> Async<unit>
-type ListenToRunQuizEvents<'Msg> = Dispatch<'Msg> -> IDisposable  
+type ListenToRunQuizEvents<'Msg> = Dispatch<'Msg> -> unit  
 
 type NotEnoughPlayersError =
     { teamName: TeamName
