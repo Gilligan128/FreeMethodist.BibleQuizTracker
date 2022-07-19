@@ -1,6 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizPage
 
 open System
+open System.ComponentModel
 open Bolero
 open Bolero.Html
 open Elmish
@@ -71,7 +72,7 @@ type Message =
     | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Quiz>
     | OverrideScore of int * TeamPosition
     | RefreshQuiz of AsyncOperationStatus<unit, Quiz>
-    | ChangeCurrentQuestion of int
+    | ChangeCurrentQuestion of AsyncOperationStatus<int,Quiz>
     | WorkflowError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of Quizzer * TeamPosition
@@ -232,7 +233,7 @@ let update
                 let refreshQuizOnEvent _ =
                     getQuizAsync model.Code
                     |> Async.map (fun quiz -> dispatch (Message.RefreshQuiz(Finished quiz)))
-                    |> Async.StartImmediate //Run synchronously did not work here
+                    |> Async.StartImmediate //RunSynchronously did not work here
 
                 onQuizEvent refreshQuizOnEvent |> ignore)
             |> Cmd.ofSub
@@ -249,7 +250,7 @@ let update
 
         model, Cmd.OfAsync.result getQuizToRefresh, None
     | RefreshQuiz (Finished quiz) -> refreshModel quiz, Cmd.none, None
-    | ChangeCurrentQuestion questionNumber ->
+    | ChangeCurrentQuestion (Started questionNumber) ->
         let mapToQuizEvent event =
             event |> RunQuizEvent.CurrentQuestionChanged, event.Quiz
 
@@ -260,7 +261,7 @@ let update
                 | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
 
             match result with
-            | Ok quiz -> RefreshQuiz(Finished quiz)
+            | Ok quiz -> ChangeCurrentQuestion (Finished quiz)
             | Result.Error error ->
                 error
                 |> moveQuestionErrorMessage
@@ -289,7 +290,8 @@ let update
             workflowCmdSingle workflow mapToQuizEvent mapWorkflowResult
 
         model, cmd, None
-
+    | ChangeCurrentQuestion (Finished quiz) ->
+        refreshModel quiz, Cmd.none, None
     | Message.WorkflowError error ->
         let errorMessage =
             match error with
@@ -507,8 +509,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder, model.CurrentQuizzer) dispatch)
         .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer) dispatch)
         .CurrentQuestion(string model.CurrentQuestion)
-        .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(model.CurrentQuestion + 1)))
-        .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Math.Max(model.CurrentQuestion - 1, 1))))
+        .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion( Started (model.CurrentQuestion + 1))))
+        .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion( Started (Math.Max(model.CurrentQuestion - 1, 1)))))
         .CurrentQuizzer(
             match model.CurrentQuizzer with
             | Some q -> $"{q}'s Turn"
