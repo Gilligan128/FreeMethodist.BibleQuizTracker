@@ -549,4 +549,5 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
         .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
         .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
+        .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly (Started ())))
         .Elt()
