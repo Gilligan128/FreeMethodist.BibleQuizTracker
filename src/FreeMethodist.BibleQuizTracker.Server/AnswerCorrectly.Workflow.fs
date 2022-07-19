@@ -4,7 +4,7 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 module AnswerCorrectly = 
 
-    type Data = { Quizzer: Quizzer }
+    type Data = unit
 
     type Command = WithinQuizCommand<Data>
 
@@ -12,6 +12,7 @@ module AnswerCorrectly =
         | QuizStateError of QuizStateError
         | QuizzerNotFound of Quizzer
         | DuplicateQuizzer of Quizzer
+        | NoCurrentQuizzer 
 
     type Event =
         | IndividualScoreChanged of IndividualScoreChanged

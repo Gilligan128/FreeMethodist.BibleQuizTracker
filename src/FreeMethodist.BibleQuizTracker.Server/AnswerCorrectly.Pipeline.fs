@@ -11,7 +11,7 @@ open Microsoft.FSharp.Core
 type AnswerQuestion = Quizzer -> AnsweredQuestion
 
 
-type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerCorrectly.Error>
+type UpdateQuiz = Quizzer option -> RunningTeamQuiz -> Result<RunningTeamQuiz * Quizzer, AnswerCorrectly.Error>
 
 type CreateEvents = Quizzer -> RunningTeamQuiz -> AnswerCorrectly.Event list
 
@@ -75,24 +75,31 @@ let updateQuiz: UpdateQuiz =
         |> Option.map (fun team -> { team with Quizzers = team.Quizzers |> updateAnsweringQuizzer isQuizzer })
         |> Option.map (fun team -> { team with Score = team.Score |> TeamScore.correctAnswer })
 
-    fun quizzerName quiz ->
-        let isQuizzer (quizzer: QuizzerState) = quizzer.Name = quizzerName
-        let updateTeamOpt = updateTeamOpt isQuizzer
+    fun quizzerNameOpt quiz ->
+        result {
+            let! quizzerName =
+                quizzerNameOpt
+                |> Result.ofOption Error.NoCurrentQuizzer
 
-        let teamOneOpt =
-            (updateTeamOpt quiz.TeamOne)
+            let isQuizzer (quizzer: QuizzerState) = quizzer.Name = quizzerName
+            let updateTeamOpt = updateTeamOpt isQuizzer
 
-        let teamTwoOpt =
-            (updateTeamOpt quiz.TeamTwo)
+            let teamOneOpt =
+                (updateTeamOpt quiz.TeamOne)
 
-        let updatedQuizInfo =
-            updateQuizLevelInfo quizzerName quiz
+            let teamTwoOpt =
+                (updateTeamOpt quiz.TeamTwo)
 
-        match teamOneOpt, teamTwoOpt with
-        | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
-        | None, None -> Error(QuizzerNotFound quizzerName)
-        | Some teamOne, None -> Ok { updatedQuizInfo with TeamOne = teamOne }
-        | None, Some teamTwo -> Ok { updatedQuizInfo with TeamTwo = teamTwo }
+            let updatedQuizInfo =
+                updateQuizLevelInfo quizzerName quiz
+
+            return!
+                match teamOneOpt, teamTwoOpt with
+                | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
+                | None, None -> Error(QuizzerNotFound quizzerName)
+                | Some teamOne, None -> Ok({ updatedQuizInfo with TeamOne = teamOne }, quizzerName)
+                | None, Some teamTwo -> Ok({ updatedQuizInfo with TeamTwo = teamTwo }, quizzerName)
+        }
 
 
 let createEvents: CreateEvents =
@@ -147,7 +154,16 @@ let answerCorrectly getQuiz saveQuiz : Workflow =
                     |> Common.Pipeline.validateQuiz
                     |> AsyncResult.ofResult
                     |> AsyncResult.mapError Error.QuizStateError)
-            let! updatedQuiz = updateQuiz command.Data.Quizzer quiz  |> AsyncResult.ofResult
-            do! updatedQuiz |> Quiz.Running |> saveQuiz |> AsyncResult.ofAsync
-            return createEvents command.Data.Quizzer updatedQuiz
+
+            let! updatedQuiz, answerer =
+                updateQuiz quiz.CurrentQuizzer quiz
+                |> AsyncResult.ofResult
+
+            do!
+                updatedQuiz
+                |> Quiz.Running
+                |> saveQuiz
+                |> AsyncResult.ofAsync
+
+            return createEvents answerer updatedQuiz
         }

@@ -6,6 +6,7 @@ open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
@@ -74,6 +75,7 @@ type Message =
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of Quizzer * TeamPosition
     | SelectQuizzer of Quizzer
+    | AnswerCorrectly
 
 
 type ExternalMessage = Error of string
@@ -191,6 +193,9 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
             fun () -> workflow () |> AsyncResult.map List.singleton
 
         workflowCmdList newWorkflow mapToQuizEvent mapResult
+
+    let workflowFormError =
+        PublishEventError.FormError >> WorkflowError
 
     match msg with
     | OverrideScore (score, teamPosition) ->
@@ -374,6 +379,40 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
             fun () -> SelectQuizzer_Pipeline.selectQuizzer getQuizAsync saveQuizAsync command
 
         model, (workflowCmdSingle workflow mapEvent mapResultToMessage), None
+    | AnswerCorrectly ->
+        let mapEvent event =
+            match event with
+            | AnswerCorrectly.CurrentQuestionChanged e -> CurrentQuestionChanged e, e.Quiz
+            | AnswerCorrectly.IndividualScoreChanged e -> IndividualScoreChanged e, e.Quiz
+            | AnswerCorrectly.TeamScoreChanged e -> TeamScoreChanged e, e.Quiz
+
+        let workflow =
+            fun () ->
+                AnswerCorrectly_Pipeline.answerCorrectly
+                    getQuizAsync
+                    saveQuizAsync
+                    { Data = ()
+                      Quiz = model.Code
+                      User = model.CurrentUser }
+
+        let mapResult result =
+            match result with
+            | Ok _ -> RefreshQuiz (Started)
+            | Result.Error (AnswerCorrectly.Error.DuplicateQuizzer er) ->
+                $"There is more than one quizzer with name {er}"
+                |> workflowFormError
+            | Result.Error (AnswerCorrectly.QuizzerNotFound er) ->
+                $"Quizzer {er} was not found in this quiz"
+                |> workflowFormError
+            | Result.Error (AnswerCorrectly.Error.QuizStateError error) -> $"Quiz is not running" |> workflowFormError
+            | Result.Error (AnswerCorrectly.Error.NoCurrentQuizzer) -> "No one has jumped yet" |> workflowFormError
+
+        let cmd =
+            workflowCmdList workflow mapEvent mapResult
+
+        model, cmd, None
+
+
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
