@@ -47,7 +47,7 @@ type TeamPosition =
     | TeamOne
     | TeamTwo
 
-type PositiveNumber = PositiveNumber of int
+type PositiveNumber = private PositiveNumber of int
 
 type QuestionNumber = PositiveNumber
 
