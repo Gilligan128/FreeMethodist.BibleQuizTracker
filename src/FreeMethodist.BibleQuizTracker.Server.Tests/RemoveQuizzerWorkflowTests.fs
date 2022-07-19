@@ -23,13 +23,18 @@ let ``Given there is no jump order, when current quizzer removed then there is n
             CurrentQuizzer = Some input.Quizzer
             TeamOne = initialTeamStateWithQuizzer input.Quizzer }
 
-    let quiz,currentChangedEvent  =
+    let quiz, currentChangedEvent =
         RemoveQuizzer_Pipeline.removeQuizzerFromQuiz input initialQuizState []
 
-    Assert.NotEqual( Some input.Quizzer, quiz.CurrentQuizzer)
+    Assert.NotEqual(Some input.Quizzer, quiz.CurrentQuizzer)
     Assert.Equal(None, quiz.CurrentQuizzer)
     Assert.NotEqual(None, currentChangedEvent)
-    Assert.Equal(None, currentChangedEvent |> Option.bind (fun event -> event.Quizzer))
+
+    Assert.Equal(
+        None,
+        currentChangedEvent
+        |> Option.bind (fun event -> event.Quizzer)
+    )
 
 [<Fact>]
 let ``when a non-current quizzer removed then Current Quizzer remains the same`` () =

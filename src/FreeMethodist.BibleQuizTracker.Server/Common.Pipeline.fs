@@ -1,8 +1,5 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
-open System
-open System.ComponentModel.DataAnnotations
-open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open Elmish
@@ -58,7 +55,7 @@ type GetTeamQuizAsync = QuizCode -> Async<Quiz>
 type SaveTeamQuiz = Quiz -> unit
 type SaveTeamQuizAsync = Quiz -> Async<unit>
 
-type PublishQuizEventTask = string ->  QuizCode -> obj -> Async<unit>
+type PublishQuizEventTask = string -> QuizCode -> obj -> Async<unit>
 
 
 type GetJumps = QuizCode -> Jump seq
@@ -66,7 +63,7 @@ type SaveJump = Jump -> unit
 
 //Event Handling
 type ConnectToQuizEvents = QuizCode -> QuizCode option -> Async<unit>
-type ListenToRunQuizEvents<'Msg> = Dispatch<'Msg> -> unit  
+type ListenToRunQuizEvents<'Msg> = Dispatch<'Msg> -> unit
 
 type NotEnoughPlayersError =
     { teamName: TeamName

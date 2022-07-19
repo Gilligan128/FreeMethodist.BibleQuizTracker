@@ -40,9 +40,9 @@ module TeamScore =
     let initial: TeamScore = TeamScore 0
 
     let ofQuestions questionCount = TeamScore(questionCount * 20)
-    
-    let correctAnswer (TeamScore value) = TeamScore (value + 20) 
-        
+
+    let correctAnswer (TeamScore value) = TeamScore(value + 20)
+
 type TeamPosition =
     | TeamOne
     | TeamTwo
@@ -101,12 +101,11 @@ type QuizTeamState =
 
 type RunningTeamQuiz =
     { Code: QuizCode
-      Questions: Map<PositiveNumber,QuizQuestion> 
+      Questions: Map<PositiveNumber, QuizQuestion>
       TeamOne: QuizTeamState
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
-      CurrentQuizzer: Quizzer option
-     }
+      CurrentQuizzer: Quizzer option }
 
 //Jumps are outside of Quizzes so that we can handle having to save a bunch around the same time.
 type Jump =

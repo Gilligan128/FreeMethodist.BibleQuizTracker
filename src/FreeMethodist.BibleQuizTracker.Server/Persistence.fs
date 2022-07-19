@@ -1,13 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Persistence
 
-open System
 open System.Text.Json
-open System.Text.Json.Serialization
-open System.Threading.Tasks
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-open Microsoft.JSInterop
 
 
 let initExample quizCode =

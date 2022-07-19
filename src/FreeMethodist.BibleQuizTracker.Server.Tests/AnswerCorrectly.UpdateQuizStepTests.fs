@@ -1,6 +1,5 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AnswerCorrectly.UpdateQuizStepTests
 
-open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
@@ -97,7 +96,7 @@ let ``When Quizzer Answers then increment the current question`` () =
     let result =
         updateQuiz (Some quizzer.Name) initialQuiz
 
-    assertSuccess result (fun (updatedQuiz,quizzer) ->
+    assertSuccess result (fun (updatedQuiz, quizzer) ->
         Assert.Equal(
             initialQuiz.CurrentQuestion
             |> PositiveNumber.increment,

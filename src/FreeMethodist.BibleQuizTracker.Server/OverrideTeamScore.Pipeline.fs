@@ -4,7 +4,6 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.FSharp.Core
 
 
@@ -25,7 +24,7 @@ let createEvent: CreateEvent =
           NewScore = score.NewScore
           Quiz = quiz.Code }
 
-let overrideTeamScoreAsync getQuiz (saveQuiz:SaveTeamQuizAsync) : OverrideTeamScore.Workflow =
+let overrideTeamScoreAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : OverrideTeamScore.Workflow =
     fun command ->
         asyncResult {
             let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
@@ -36,4 +35,3 @@ let overrideTeamScoreAsync getQuiz (saveQuiz:SaveTeamQuizAsync) : OverrideTeamSc
             do! saveQuiz (Running quiz) |> AsyncResult.ofAsync
             return event
         }
-        

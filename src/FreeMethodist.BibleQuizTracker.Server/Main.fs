@@ -1,23 +1,18 @@
 module FreeMethodist.BibleQuizTracker.Server.Main
 
 open System
-open System.Text.Json.Serialization
 open System.Threading
 open Elmish
 open Bolero
 open Bolero.Html
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
-open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.SignalR.Client
-open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Control
-open Microsoft.JSInterop
 
 /// Routing endpoints definition.
 type Page =
@@ -50,19 +45,20 @@ type Message =
 
 let update
     connectToQuizEvents
+    onQuizEvent
     publishQuizEvent
     getQuizAsync
     saveQuizAsync
-    handleEvent
     (message: Message)
     model
     : Model * Cmd<Message> =
     match message, model.quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
-        let oldCodeOpt = (quizOption |> Option.map (fun q -> q.Code))
+        let oldCodeOpt =
+            (quizOption |> Option.map (fun q -> q.Code))
 
         let quizModel, cmd =
-            init getQuizAsync connectToQuizEvents handleEvent quizCode oldCodeOpt
+            init quizCode oldCodeOpt
 
         { model with
             page = Quiz quizCode
@@ -72,7 +68,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update publishQuizEvent getQuizAsync saveQuizAsync quizMsg quizModel
+            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync saveQuizAsync quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -86,7 +82,8 @@ let update
         { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
 
 /// Connects the routing system to the Elmish application.
-let router = Router.infer SetPage (fun model -> model.page)
+let router =
+    Router.infer SetPage (fun model -> model.page)
 
 type Main = Template<"wwwroot/main.html">
 
@@ -163,13 +160,14 @@ type MyApp() =
                 |> Async.AwaitTask
 
         let onQuizEvent =
-            let clientStub = Unchecked.defaultof<QuizHub.Client>
+            let clientStub =
+                Unchecked.defaultof<QuizHub.Client>
 
             fun (handler: RunQuizEvent -> unit) ->
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
 
         let update =
-            update connectToQuizEvents publishQuizEvent this.GetQuizAsync this.SaveQuizAsync onQuizEvent
+            update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync
 
         Program.mkProgram
             (fun _ ->

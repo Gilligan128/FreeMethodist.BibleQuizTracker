@@ -56,24 +56,26 @@
         <div class="modal-card">
             <header class="modal-card-head">
                 <p class="modal-card-title">Add Quizzer</p>
-                <button class="delete" aria-label="close" onclick="${AddQuizzerCancel}"></button>
+                <button aria-label="close" class="delete" onclick="${AddQuizzerCancel}"></button>
             </header>
             <section class="modal-card-body">
                 <div class="field">
                     <label class="label">Name</label>
                     <div class="control">
-                        <input class="input" type="text" placeholder="Text input" bind-onchange="${AddQuizzerName}">
+                        <input bind-onchange="${AddQuizzerName}" class="input" placeholder="Text input" type="text">
                     </div>
                 </div>
                 <div class="field">
                     <label class="label">Team</label>
                     <div class="control">
                         <label class="radio">
-                            <input type="radio" name="answer" checked="${AddQuizzerIsTeamOne}" onchange="${SetAddQuizzerTeamOne}">
+                            <input checked="${AddQuizzerIsTeamOne}" name="answer" onchange="${SetAddQuizzerTeamOne}"
+                                   type="radio">
                             ${TeamOneName}
                         </label>
                         <label class="radio">
-                            <input type="radio" name="answer" checked="${AddQuizzerIsTeamTwo}" onchange="${SetAddQuizzerTeamTwo}">
+                            <input checked="${AddQuizzerIsTeamTwo}" name="answer" onchange="${SetAddQuizzerTeamTwo}"
+                                   type="radio">
                             ${TeamTwoName}
                         </label>
                     </div>
@@ -99,7 +101,7 @@
                 </div>
                 <div class="column">
                     <div class="field has-addons">
-                        <p class="control"><input class="input" type="number" bind-onchange="${Score}"/></p>
+                        <p class="control"><input bind-onchange="${Score}" class="input" type="number"/></p>
                         <p class="control"><a class="button is-static ">pts</a></p>
                     </div>
                 </div>

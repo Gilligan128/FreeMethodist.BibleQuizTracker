@@ -68,8 +68,9 @@ type AddQuizzerMessage =
 
 
 type Message =
+    | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Quiz>
     | OverrideScore of int * TeamPosition
-    | RefreshQuiz of AsyncOperationStatus<Quiz>
+    | RefreshQuiz of AsyncOperationStatus<unit, Quiz>
     | ChangeCurrentQuestion of int
     | WorkflowError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
@@ -120,29 +121,8 @@ let private refreshModel (quiz: Quiz) =
     | Official _
     | Unvalidated _ -> emptyModel
 
-let init getQuiz connectToQuizEvents onQuizEvent quizCode previousQuizCode =
-    let loadAndConnectToQuizCmd =
-        async {
-            do! connectToQuizEvents quizCode previousQuizCode
-            let! quiz = getQuiz quizCode
-            return Message.RefreshQuiz(Finished quiz)
-        }
-        |> Cmd.OfAsync.result
-  
-    let listenToEventsCmd =
-        (fun dispatch ->
-            let refreshQuizOnEvent _ =
-               getQuiz quizCode
-                |> Async.map (fun  quiz -> dispatch (Message.RefreshQuiz (Finished quiz)))
-                |> Async.StartImmediate //Run synchronously did not work here
-            onQuizEvent refreshQuizOnEvent |> ignore
-            ) 
-        |> Cmd.ofSub
-
-    { emptyModel with Code = quizCode },
-    Cmd.batch [ loadAndConnectToQuizCmd
-                listenToEventsCmd ]
-
+let init quizCode previousQuizCode =
+    { emptyModel with Code = quizCode }, Cmd.ofMsg (InitializeQuizAndConnections (Started previousQuizCode))
 
 type OverrideScoreErrors =
     | DomainError of QuizStateError
@@ -172,7 +152,15 @@ let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (tea
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync msg model =
+let update
+    connectToQuizEvents
+    onQuizEvent
+    (publishQuizEvent: PublishQuizEventTask)
+    getQuizAsync
+    saveQuizAsync
+    msg
+    model
+    =
 
     let publishRunQuizEvent quiz event =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
@@ -188,10 +176,13 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
             |> Async.Parallel
 
         let workflowX = fun _ -> workflow ()
+
         let workflowWithSideEffects x =
             workflowX x
             |> AsyncResult.bind (publishEvents >> AsyncResult.ofAsync)
-            |> AsyncResult.bind (fun _ -> (model.Code |> (getQuizAsync >> AsyncResult.ofAsync)))
+            |> AsyncResult.bind (fun _ ->
+                (model.Code
+                 |> (getQuizAsync >> AsyncResult.ofAsync)))
 
         Cmd.OfAsync.either workflowWithSideEffects () mapResult mapExceptionToPublishEventError
 
@@ -209,7 +200,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
     | OverrideScore (score, teamPosition) ->
         let mapResultToMessage result =
             match result with
-            | Ok quiz -> Message.RefreshQuiz (Finished quiz)
+            | Ok quiz -> Message.RefreshQuiz(Finished quiz)
             | Result.Error error ->
                 match error with
                 | OverrideScoreErrors.DomainError error ->
@@ -227,7 +218,31 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
             workflowCmdSingle workflow mapEvent mapResultToMessage
 
         model, cmd, None
-    | RefreshQuiz Started ->
+    | InitializeQuizAndConnections (Started previousQuizCode) ->
+        let loadAndConnectToQuizCmd =
+            async {
+                do! connectToQuizEvents model.Code previousQuizCode
+                let! quiz = getQuizAsync model.Code
+                return Message.RefreshQuiz(Finished quiz)
+            }
+            |> Cmd.OfAsync.result
+
+        let listenToEventsCmd =
+            (fun dispatch ->
+                let refreshQuizOnEvent _ =
+                    getQuizAsync model.Code
+                    |> Async.map (fun quiz -> dispatch (Message.RefreshQuiz(Finished quiz)))
+                    |> Async.StartImmediate //Run synchronously did not work here
+
+                onQuizEvent refreshQuizOnEvent |> ignore)
+            |> Cmd.ofSub
+
+        { emptyModel with Code = model.Code },
+        Cmd.batch [ loadAndConnectToQuizCmd
+                    listenToEventsCmd ],
+        None
+    | InitializeQuizAndConnections (Finished quiz) -> refreshModel quiz, Cmd.none, None
+    | RefreshQuiz (Started _) ->
         let getQuizToRefresh =
             getQuizAsync model.Code
             |> Async.map (Finished >> RefreshQuiz)
@@ -245,7 +260,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
                 | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
 
             match result with
-            | Ok quiz -> RefreshQuiz (Finished quiz)
+            | Ok quiz -> RefreshQuiz(Finished quiz)
             | Result.Error error ->
                 error
                 |> moveQuestionErrorMessage
@@ -309,7 +324,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
         | AddQuizzerModel.Active (name, team) ->
             let mapResult result =
                 match result with
-                | Ok quiz -> Message.RefreshQuiz (Finished quiz)
+                | Ok quiz -> Message.RefreshQuiz(Finished quiz)
                 | Result.Error error ->
                     match error with
                     | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
@@ -351,7 +366,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
 
         let mapResultToMessage result =
             match result with
-            | Ok quiz -> Message.RefreshQuiz (Finished quiz)
+            | Ok quiz -> Message.RefreshQuiz(Finished quiz)
             | Result.Error (RemoveQuizzer.QuizStateError quizStateError) ->
                 PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
                 |> WorkflowError
@@ -369,7 +384,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
 
         let mapResultToMessage result =
             match result with
-            | Ok quiz -> Message.RefreshQuiz (Finished quiz)
+            | Ok quiz -> Message.RefreshQuiz(Finished quiz)
             | Result.Error (SelectQuizzer.Error.QuizState quizStateError) ->
                 PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
                 |> WorkflowError
@@ -405,7 +420,7 @@ let update (publishQuizEvent: PublishQuizEventTask) getQuizAsync saveQuizAsync m
 
         let mapResult result =
             match result with
-            | Ok quiz -> RefreshQuiz (Finished quiz)
+            | Ok quiz -> RefreshQuiz(Finished quiz)
             | Result.Error (AnswerCorrectly.Error.DuplicateQuizzer er) ->
                 $"There is more than one quizzer with name {er}"
                 |> workflowFormError
