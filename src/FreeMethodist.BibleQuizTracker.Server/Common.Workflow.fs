@@ -49,6 +49,7 @@ type TeamPosition =
     | TeamTwo
 
 type PositiveNumber = private PositiveNumber of int
+           
 
 type QuestionNumber = PositiveNumber
 

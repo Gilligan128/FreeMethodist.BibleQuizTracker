@@ -437,7 +437,7 @@ let update
             | Result.Error (AnswerCorrectly.Error.QuizStateError error) -> createQuizStateWorkflowError error
             | Result.Error (AnswerCorrectly.Error.NoCurrentQuizzer) -> "No one has jumped yet" |> workflowFormError
             | Result.Error (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (quizzer, question)) ->
-                $"Quizzer {quizzer} already correctly answered question {question}"
+                $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
                 |> workflowFormError
 
         let cmd =
@@ -465,7 +465,7 @@ let update
             | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
             | Result.Error (AnswerIncorrectly.NoCurrentQuizzer) -> "No current Quizzer" |> workflowFormError
             | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (quizzer, question)) ->
-                $"Quizzer {quizzer} already answered question {question} incorrectly"
+                $"Quizzer {quizzer} already answered question {question |> PositiveNumber.value} incorrectly"
                 |> workflowFormError
 
         let cmd =
