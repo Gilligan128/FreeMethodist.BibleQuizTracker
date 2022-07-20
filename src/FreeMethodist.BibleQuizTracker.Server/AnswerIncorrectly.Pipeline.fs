@@ -38,7 +38,7 @@ let updateQuiz: UpdateQuiz =
 
             let updateScore revertedAnswer (quizzer: QuizzerState) =
                 match revertedAnswer with
-                | Reverted -> quizzer.Score |> TeamScore.revertCorrectAnswer
+                | Reverted q -> quizzer.Score |> TeamScore.revertCorrectAnswer
                 | NoChange -> quizzer.Score
 
             let updateQuizzerWithScore revertedAnswer (quizzer: QuizzerState) =

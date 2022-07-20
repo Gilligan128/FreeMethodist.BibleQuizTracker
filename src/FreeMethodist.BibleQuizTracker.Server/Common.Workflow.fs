@@ -85,26 +85,44 @@ type QuizzerState =
       Participation: ParticipationState
       Score: TeamScore }
 
+[<RequireQualifiedAccess>]
 module QuizzerState =
     let create name =
         { Name = name
           Participation = In
           Score = TeamScore.initial }
 
+    let isQuizzer quizzerName quizzerState = quizzerState.Name = quizzerName
+
+    let updateQuizzerIfInRoster updateFunction quizzerName quizzerRoster =
+        quizzerRoster
+        |> List.map (fun q ->
+            if isQuizzer quizzerName q then
+                updateFunction q
+            else
+                q)
+
 //don't initialize directly. Use the QuizQuestion module.
 type QuizQuestion =
     | Complete of CompletedQuestion
     | Incomplete of Quizzer list
+
 type RevertedCorrectAnswer =
-    | Reverted
+    | Reverted of Quizzer
     | NoChange
-    
+
+[<RequireQualifiedAccess>]
+module RevertedCorrectAnswer =
+    let toOption revertedAnswer =
+        match revertedAnswer with
+        | NoChange -> None
+        | Reverted q -> Some q
+
 [<RequireQualifiedAccess>]
 module QuizQuestion =
     type QuizzerAlreadyAnsweredCorrectly = QuizzerAlreadyAnsweredCorrectly of Quizzer * QuestionNumber
     type QuizzerAlreadyAnsweredIncorrectly = QuizzerAlreadyAnsweredIncorrectly of Quizzer * QuestionNumber
 
-    
     let create = Incomplete []
 
     let private CompletedAnswered =
@@ -118,46 +136,56 @@ module QuizQuestion =
         | Some (Complete (Answered questionState)) when quizzer = questionState.Answerer ->
             QuizzerAlreadyAnsweredCorrectly(quizzer, currentQuestionNumber)
             |> Error
-        | Some (Complete (Answered questionState)) -> questionState |> CompletedAnswered |> Ok
+        | Some (Complete (Answered questionState)) ->
+            ({ questionState with
+                Answerer = quizzer
+                IncorrectAnswerers =
+                    questionState.IncorrectAnswerers
+                    @ [ questionState.Answerer ] }
+             |> CompletedAnswered,
+             Reverted questionState.Answerer)
+            |> Ok
         | Some (Complete (Unanswered questionState)) ->
-            { Answerer = quizzer
-              IncorrectAnswerers = questionState |> withoutAnswerer quizzer }
-            |> Answered
-            |> Complete
+            ({ Answerer = quizzer
+               IncorrectAnswerers = questionState |> withoutAnswerer quizzer }
+             |> Answered
+             |> Complete,
+             NoChange)
             |> Ok
         | Some (Incomplete answerers) ->
-            CompletedAnswered
+            (CompletedAnswered
                 { Answerer = quizzer
-                  IncorrectAnswerers = answerers }
+                  IncorrectAnswerers = answerers },
+             NoChange)
             |> Ok
         | None ->
-            { Answerer = quizzer
-              IncorrectAnswerers = [] }
-            |> CompletedAnswered
+            ({ Answerer = quizzer
+               IncorrectAnswerers = [] }
+             |> CompletedAnswered,
+             NoChange)
             |> Ok
-            
+
     let answerIncorrectly quizzer currentQuestionNumber questionOpt =
-         let addQuizzerDistinct quizzer quizzers = quizzers @ [ quizzer ] |> List.distinct
-         
-         match questionOpt with
-         | None -> (Incomplete [ quizzer ], NoChange) |> Ok
-         | Some (Incomplete quizzers) ->
+        let addQuizzerDistinct quizzer quizzers = quizzers @ [ quizzer ] |> List.distinct
+
+        match questionOpt with
+        | None -> (Incomplete [ quizzer ], NoChange) |> Ok
+        | Some (Incomplete quizzers) ->
             (Incomplete(quizzers |> addQuizzerDistinct quizzer), NoChange)
             |> Ok
-         | Some (Complete (Answered answeredQuestion)) when quizzer = answeredQuestion.Answerer ->
+        | Some (Complete (Answered answeredQuestion)) when quizzer = answeredQuestion.Answerer ->
             (answeredQuestion.IncorrectAnswerers
              |> addQuizzerDistinct quizzer
              |> Unanswered
              |> Complete,
-             Reverted)
+             Reverted quizzer)
             |> Ok
-         | Some (Complete (Answered answeredQuestion)) when
+        | Some (Complete (Answered answeredQuestion)) when
             answeredQuestion.IncorrectAnswerers
             |> List.contains (quizzer)
             ->
-            Error(QuizzerAlreadyAnsweredIncorrectly(quizzer, currentQuestionNumber)
-            )
-         | Some (Complete (Answered answeredQuestion)) ->
+            Error(QuizzerAlreadyAnsweredIncorrectly(quizzer, currentQuestionNumber))
+        | Some (Complete (Answered answeredQuestion)) ->
             ({ answeredQuestion with
                 IncorrectAnswerers =
                     answeredQuestion.IncorrectAnswerers
@@ -166,22 +194,30 @@ module QuizQuestion =
              |> Complete,
              NoChange)
             |> Ok
-         | Some (Complete (Unanswered question)) when question |> List.contains (quizzer) ->
+        | Some (Complete (Unanswered question)) when question |> List.contains (quizzer) ->
             Error(QuizzerAlreadyAnsweredIncorrectly(quizzer, currentQuestionNumber))
-         | Some (Complete (Unanswered question)) ->
+        | Some (Complete (Unanswered question)) ->
             (question
              |> addQuizzerDistinct quizzer
              |> (Unanswered >> Complete),
              NoChange)
             |> Ok
 
-        
+
 
 type QuizTeamState =
     { Name: TeamName
       Score: TeamScore
       Quizzers: QuizzerState list
       Captain: Quizzer option }
+
+[<RequireQualifiedAccess>]
+module QuizTeamState =
+    let updateQuizzerIfFound updateFunction quizzer (team: QuizTeamState) =
+        { team with
+            Quizzers =
+                team.Quizzers
+                |> QuizzerState.updateQuizzerIfInRoster updateFunction quizzer }
 
 type RunningTeamQuiz =
     { Code: QuizCode
