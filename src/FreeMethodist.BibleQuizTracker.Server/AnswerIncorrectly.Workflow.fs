@@ -9,5 +9,6 @@ module AnswerIncorrectly =
         | CurrentQuizzerChanged of CurrentQuizzerChanged
     type Error =
         | QuizState of QuizStateError
-        | NoCurrentQuizzer 
+        | NoCurrentQuizzer
+        | QuizzerAlreadyAnsweredIncorrectly of Quizzer*QuestionNumber
     type Workflow = Command -> AsyncResult<Event list, Error>

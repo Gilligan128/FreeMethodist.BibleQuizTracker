@@ -8,7 +8,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
 type ValidCurrentQuizzer = private ValidCurrentQuizzer of Quizzer
 type ValidateCurrentQuizzer = RunningTeamQuiz -> Result<ValidCurrentQuizzer, AnswerIncorrectly.Error>
-type UpdateQuiz = ValidCurrentQuizzer -> RunningTeamQuiz -> RunningTeamQuiz
+type UpdateQuiz = ValidCurrentQuizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerIncorrectly.Error>
 type CreateEvents = RunningTeamQuiz -> AnswerIncorrectly.Event list
 
 type RevertedCorrectAnswer =
@@ -24,65 +24,80 @@ let validateQuizzer: ValidateCurrentQuizzer =
 let updateQuiz: UpdateQuiz =
     let addQuizzerDistinct quizzer quizzers = quizzers @ [ quizzer ] |> List.distinct
 
-    let updateOrAddQuestion quizzer questionOpt =
+    let updateOrAddQuestion quizzer questionNumber questionOpt =
         match questionOpt with
-        | None -> Incomplete [ quizzer ], NoChange
-        | Some (Incomplete quizzers) -> Incomplete(quizzers |> addQuizzerDistinct quizzer), NoChange
+        | None -> (Incomplete [ quizzer ], NoChange) |> Ok
+        | Some (Incomplete quizzers) ->
+            (Incomplete(quizzers |> addQuizzerDistinct quizzer), NoChange)
+            |> Ok
         | Some (Complete (Answered answeredQuestion)) when quizzer = answeredQuestion.Answerer ->
+            (answeredQuestion.IncorrectAnswerers
+             |> addQuizzerDistinct quizzer
+             |> Unanswered
+             |> Complete,
+             Reverted)
+            |> Ok
+        | Some (Complete (Answered answeredQuestion)) when
             answeredQuestion.IncorrectAnswerers
-            |> addQuizzerDistinct quizzer
-            |> Unanswered
-            |> Complete,
-            Reverted
+            |> List.contains (quizzer)
+            ->
+            Error(AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber))
         | Some (Complete (Answered answeredQuestion)) ->
-            { answeredQuestion with
+            ({ answeredQuestion with
                 IncorrectAnswerers =
                     answeredQuestion.IncorrectAnswerers
                     |> addQuizzerDistinct quizzer }
-            |> Answered
-            |> Complete,
-            NoChange
+             |> Answered
+             |> Complete,
+             NoChange)
+            |> Ok
+        | Some (Complete (Unanswered question)) when question |> List.contains (quizzer) ->
+            Error(AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber))
         | Some (Complete (Unanswered question)) ->
-            question
-            |> addQuizzerDistinct quizzer
-            |> (Unanswered >> Complete),
-            NoChange
+            (question
+             |> addQuizzerDistinct quizzer
+             |> (Unanswered >> Complete),
+             NoChange)
+            |> Ok
 
     fun (ValidCurrentQuizzer quizzer) quiz ->
-        let quizCurrentQuestion =
-            quiz.CurrentQuestion
+        result {
+            let quizCurrentQuestion =
+                quiz.CurrentQuestion
 
-        let currentQuestionRecord =
-            quiz.Questions.TryFind quizCurrentQuestion
+            let currentQuestionRecord =
+                quiz.Questions.TryFind quizCurrentQuestion
 
-        let changedQuestion, revertedCorrectAnswer =
-            updateOrAddQuestion quizzer currentQuestionRecord
+            let! changedQuestion, revertedCorrectAnswer =
+                updateOrAddQuestion quizzer quizCurrentQuestion currentQuestionRecord
 
-        let updateScore revertedAnswer (quizzer: QuizzerState) =
-            match revertedAnswer with
-            | Reverted -> quizzer.Score |> TeamScore.revertCorrectAnswer
-            | NoChange -> quizzer.Score
+            let updateScore revertedAnswer (quizzer: QuizzerState) =
+                match revertedAnswer with
+                | Reverted -> quizzer.Score |> TeamScore.revertCorrectAnswer
+                | NoChange -> quizzer.Score
 
-        let updateQuizzerWithScore revertedAnswer (quizzer: QuizzerState) =
-            { quizzer with Score = updateScore revertedAnswer quizzer }
+            let updateQuizzerWithScore revertedAnswer (quizzer: QuizzerState) =
+                { quizzer with Score = updateScore revertedAnswer quizzer }
 
-        let updateQuizzerInTeamIfFound quizzer (team: QuizTeamState) =
-            { team with
-                Quizzers =
-                    team.Quizzers
-                    |> List.map (fun q ->
-                        if q.Name = quizzer then
-                            (updateQuizzerWithScore revertedCorrectAnswer) q
-                        else
-                            q) }
+            let updateQuizzerInTeamIfFound quizzer (team: QuizTeamState) =
+                { team with
+                    Quizzers =
+                        team.Quizzers
+                        |> List.map (fun q ->
+                            if q.Name = quizzer then
+                                (updateQuizzerWithScore revertedCorrectAnswer) q
+                            else
+                                q) }
 
-        { quiz with
-            CurrentQuizzer = None
-            TeamOne = updateQuizzerInTeamIfFound quizzer quiz.TeamOne
-            TeamTwo = updateQuizzerInTeamIfFound quizzer quiz.TeamTwo
-            Questions =
-                quiz.Questions
-                |> Map.add quizCurrentQuestion changedQuestion }
+            return
+                { quiz with
+                    CurrentQuizzer = None
+                    TeamOne = updateQuizzerInTeamIfFound quizzer quiz.TeamOne
+                    TeamTwo = updateQuizzerInTeamIfFound quizzer quiz.TeamTwo
+                    Questions =
+                        quiz.Questions
+                        |> Map.add quizCurrentQuestion changedQuestion }
+        }
 
 let createEvents: CreateEvents =
     fun quiz ->
@@ -107,8 +122,9 @@ let answerIncorrectly getQuiz saveQuiz : Workflow =
                 validateQuizzer runningQuiz
                 |> AsyncResult.ofResult
 
-            let updatedQuiz =
+            let! updatedQuiz =
                 updateQuiz validQuizzer runningQuiz
+                |> AsyncResult.ofResult
 
             do!
                 updatedQuiz

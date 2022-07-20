@@ -100,9 +100,8 @@
                     <span class="has-text-white">Team ${Name}</span>
                 </div>
                 <div class="column">
-                    <div class="field has-addons">
-                        <p class="control"><input bind-onchange="${Score}" class="input" type="number"/></p>
-                        <p class="control"><a class="button is-static ">pts</a></p>
+                    <div class="has-text-weight-bold">
+                        <p>${ScoreReadOnly} pts</p>
                     </div>
                 </div>
             </div>
@@ -110,18 +109,16 @@
         </div>
     </template>
     <template id="Quizzer">
-        <div class="box  ${BackgroundColor} my-2 py-3">
+        <div class="box  ${BackgroundColor} my-2 py-3" onclick="${Select}">
             <div class="columns is-mobile is-centered">
                 <div class="column ">
                     <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
                 </div>
-                <div class="column is-one-third" onclick="${Select}">
+                <div class="column is-one-third" >
                     ${Name}
                 </div>
                 <div class="column is-one-third">
-                    <div class="field has-addons ">
-                        <p class="control"><input class="input " value="${Score}"/></p>
-                    </div>
+                        <p class="has-text-weight-bold">${Score} pts</p>
                 </div>
                 <div class="column">
                     <button class="button is-info is-light" onclick="${Remove}"> 

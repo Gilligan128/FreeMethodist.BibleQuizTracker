@@ -464,6 +464,9 @@ let update
             | Ok quiz -> AnswerIncorrectly(Finished quiz)
             | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
             | Result.Error (AnswerIncorrectly.NoCurrentQuizzer) -> "No current Quizzer" |> workflowFormError
+            | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (quizzer, question)) ->
+                $"Quizzer {quizzer} already answered question {question} incorrectly"
+                |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -482,7 +485,7 @@ let private teamView
     quizPage
         .Team()
         .Name(teamModel.Name)
-        .Score(teamModel.Score, (fun score -> dispatch (OverrideScore(Started(score, position)))))
+        .ScoreReadOnly(string teamModel.Score)
         .Quizzers(
             concat {
                 for quizzer in teamModel.Quizzers do

@@ -80,3 +80,8 @@ let validateQuiz: ValidateQuizIsRunning =
         | Quiz.Completed c -> Error(WrongQuizState(c.GetType()))
         | Quiz.Official o -> Error(WrongQuizState(o.GetType()))
         | Quiz.Unvalidated u -> Error(WrongQuizState(u.GetType()))
+
+//Score calculation
+type CalculateQuizzerScore = Map<QuestionNumber, QuizQuestion> -> Quizzer -> TeamScore
+type CalculateTeamScore = Map<Quizzer, TeamScore> -> TeamScore
+
