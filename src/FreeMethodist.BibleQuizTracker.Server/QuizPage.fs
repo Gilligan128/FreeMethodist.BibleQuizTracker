@@ -203,7 +203,6 @@ let update
     
     match msg with
     | DoNothing -> model, Cmd.none, None
-
     | InitializeQuizAndConnections (Started previousQuizCode) ->
         let loadAndConnectToQuizCmd =
             async {
@@ -572,4 +571,5 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
         .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
         .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly (Started ())))
+        .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly (Started ())))
         .Elt()

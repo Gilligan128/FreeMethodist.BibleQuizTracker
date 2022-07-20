@@ -3,13 +3,9 @@
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Tests.Common
 open Xunit
 
-
-let assertSuccess result assertion =
-    match result with
-    | Error errorValue -> Assert.True(false, $"Received {errorValue}")
-    | Ok success -> assertion success
 
 let quizWithQuizzerOnTeamOne quizzer =
     { RunningTeamQuiz.identity with TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ quizzer ] } }

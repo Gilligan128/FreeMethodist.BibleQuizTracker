@@ -42,6 +42,7 @@ module TeamScore =
     let ofQuestions questionCount = TeamScore(questionCount * 20)
 
     let correctAnswer (TeamScore value) = TeamScore(value + 20)
+    let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
 
 type TeamPosition =
     | TeamOne
