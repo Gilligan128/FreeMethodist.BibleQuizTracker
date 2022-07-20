@@ -116,4 +116,4 @@ let ``When Quizzer Answers then record answered question for history`` () =
         |> QuizQuestion.Complete
 
     assertSuccess result (fun (updatedQuiz, _) ->
-        Assert.Equal(Some expectedQuestion, updatedQuiz.Questions.TryFind updatedQuiz.CurrentQuestion))
+        Assert.Equal(Some expectedQuestion, updatedQuiz.Questions.TryFind initialQuiz.CurrentQuestion))

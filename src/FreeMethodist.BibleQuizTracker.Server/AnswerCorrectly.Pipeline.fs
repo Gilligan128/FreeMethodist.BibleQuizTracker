@@ -66,7 +66,7 @@ let updateQuiz: UpdateQuiz =
             CurrentQuestion = newCurrentQuestion
             Questions =
                 quiz.Questions
-                |> Map.add newCurrentQuestion updatedQuestion }
+                |> Map.add quiz.CurrentQuestion updatedQuestion }
 
     let updateTeamOpt isQuizzer team =
         team.Quizzers
