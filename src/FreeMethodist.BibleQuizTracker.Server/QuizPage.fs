@@ -197,10 +197,10 @@ let update
 
     let workflowFormError =
         PublishEventError.FormError >> WorkflowError
-    
-    let createQuizStateWorkflowError _ = 
+
+    let createQuizStateWorkflowError _ =
         "Quiz is not running" |> workflowFormError
-    
+
     match msg with
     | DoNothing -> model, Cmd.none, None
     | InitializeQuizAndConnections (Started previousQuizCode) ->
@@ -361,7 +361,7 @@ let update
             ExternalMessage.Error "How are you even submitting from an inert AddQuizzer state?"
             |> Some
     | AddQuizzer (Submit (Finished quiz)) -> refreshModel quiz, Cmd.none, None
-    | RemoveQuizzer (Started (name, teamPosition) )->
+    | RemoveQuizzer (Started (name, teamPosition)) ->
         let withinQuizCommand: RemoveQuizzer.Command =
             { Quiz = model.Code
               Data = { Quizzer = name; Team = teamPosition }
@@ -374,7 +374,7 @@ let update
 
         let mapResultToMessage result =
             match result with
-            | Ok quiz -> Message.RemoveQuizzer (Finished quiz)
+            | Ok quiz -> Message.RemoveQuizzer(Finished quiz)
             | Result.Error (RemoveQuizzer.QuizStateError quizStateError) ->
                 PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
                 |> WorkflowError
@@ -408,8 +408,8 @@ let update
             fun () -> SelectQuizzer_Pipeline.selectQuizzer getQuizAsync saveQuizAsync command
 
         model, (workflowCmdSingle workflow mapEvent mapResultToMessage), None
-    | SelectQuizzer (Finished quiz) -> refreshModel quiz, Cmd.none, None    
-    | AnswerCorrectly (Started _)->
+    | SelectQuizzer (Finished quiz) -> refreshModel quiz, Cmd.none, None
+    | AnswerCorrectly (Started _) ->
         let mapEvent event =
             match event with
             | AnswerCorrectly.CurrentQuestionChanged e -> CurrentQuestionChanged e, e.Quiz
@@ -436,6 +436,9 @@ let update
                 |> workflowFormError
             | Result.Error (AnswerCorrectly.Error.QuizStateError error) -> createQuizStateWorkflowError error
             | Result.Error (AnswerCorrectly.Error.NoCurrentQuizzer) -> "No one has jumped yet" |> workflowFormError
+            | Result.Error (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (quizzer, question)) ->
+                $"Quizzer {quizzer} already correctly answered question {question}"
+                |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -443,23 +446,29 @@ let update
         model, cmd, None
     | AnswerCorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
     | AnswerIncorrectly (Started _) ->
-         let workflow =
+        let workflow =
             fun () ->
                 AnswerIncorrectly.Pipeline.answerIncorrectly
                     getQuizAsync
                     saveQuizAsync
-                    { Quiz = model.Code; User = model.CurrentUser; Data = () }
-         let mapEvent event =
-             match event with
-             | AnswerIncorrectly.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e, e.Quiz
-             
-         let mapResult result =
-             match result with
-             | Ok quiz -> AnswerIncorrectly (Finished quiz)
-             | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
-             | Result.Error (AnswerIncorrectly.NoCurrentQuizzer) -> "No current Quizzer" |> workflowFormError
-         let cmd = workflowCmdList workflow mapEvent mapResult
-         model, cmd, None
+                    { Quiz = model.Code
+                      User = model.CurrentUser
+                      Data = () }
+
+        let mapEvent event =
+            match event with
+            | AnswerIncorrectly.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e, e.Quiz
+
+        let mapResult result =
+            match result with
+            | Ok quiz -> AnswerIncorrectly(Finished quiz)
+            | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
+            | Result.Error (AnswerIncorrectly.NoCurrentQuizzer) -> "No current Quizzer" |> workflowFormError
+
+        let cmd =
+            workflowCmdList workflow mapEvent mapResult
+
+        model, cmd, None
     | AnswerIncorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
 
 
@@ -495,8 +504,8 @@ let private teamView
                             | 0 -> "is-invisible"
                             | _ -> ""
                         )
-                        .Remove(fun _ -> dispatch (RemoveQuizzer (Started (quizzer.Name, position))))
-                        .Select(fun _ -> dispatch (SelectQuizzer (Started quizzer.Name)))
+                        .Remove(fun _ -> dispatch (RemoveQuizzer(Started(quizzer.Name, position))))
+                        .Select(fun _ -> dispatch (SelectQuizzer(Started quizzer.Name)))
                         .BackgroundColor(
                             currentQuizzer
                             |> Option.map (fun current ->
@@ -570,6 +579,6 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
         .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
         .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
-        .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly (Started ())))
-        .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly (Started ())))
+        .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly(Started())))
+        .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
         .Elt()

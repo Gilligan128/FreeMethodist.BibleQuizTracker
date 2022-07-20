@@ -117,3 +117,28 @@ let ``When Quizzer Answers then record answered question for history`` () =
 
     assertSuccess result (fun (updatedQuiz, _) ->
         Assert.Equal(Some expectedQuestion, updatedQuiz.Questions.TryFind initialQuiz.CurrentQuestion))
+
+[<Fact>]
+let ``Given Quizzer already answered correctly When Quizzer Answers then Error`` () =
+    let quizzer = QuizzerState.create "Jim"
+
+    let alreadyAnsweredQuestion =
+        { Answerer = quizzer.Name
+          IncorrectAnswerers = [] }
+        |> Answered
+        |> Complete
+
+    let quizWithQuizzerOnTeamOne =
+        (quizWithQuizzerOnTeamOne quizzer)
+
+    let initialQuiz =
+        { quizWithQuizzerOnTeamOne with
+            CurrentQuestion = PositiveNumber.one
+            Questions =
+                quizWithQuizzerOnTeamOne.Questions
+                |> Map.add PositiveNumber.one alreadyAnsweredQuestion }
+
+    let result =
+        updateQuiz (Some quizzer.Name) initialQuiz
+
+    Assert.Equal(Result.Error (AnswerCorrectly.QuizzerAlreadyAnsweredCorrectly (quizzer.Name, initialQuiz.CurrentQuestion)), result)

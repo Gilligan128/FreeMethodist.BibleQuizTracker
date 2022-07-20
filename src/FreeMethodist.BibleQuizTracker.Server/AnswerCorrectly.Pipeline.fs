@@ -27,46 +27,51 @@ let updateQuiz: UpdateQuiz =
             else
                 q)
 
-    let recordAnsweredQuestion quizzer (initialQuestionState) =
+    let recordAnsweredQuestion quizzer currentQuestion (initialQuestionState) =
         let CompletedAnswered = Answered >> Complete
 
         let withoutAnswerer =
             List.except [ quizzer ]
 
         match initialQuestionState with
-        | Some (Complete (Answered questionState)) ->
-            CompletedAnswered
-                { Answerer = quizzer
-                  IncorrectAnswerers =
-                    questionState.IncorrectAnswerers
-                    |> withoutAnswerer }
+        | Some (Complete (Answered questionState)) when quizzer = questionState.Answerer ->
+            QuizzerAlreadyAnsweredCorrectly(quizzer, currentQuestion)
+            |> Error
+        | Some (Complete (Answered questionState)) -> questionState |> CompletedAnswered |> Ok
         | Some (Complete (Unanswered questionState)) ->
-            CompletedAnswered
-                { Answerer = quizzer
-                  IncorrectAnswerers = questionState |> withoutAnswerer }
+            { Answerer = quizzer
+              IncorrectAnswerers = questionState |> withoutAnswerer }
+            |> Answered
+            |> Complete
+            |> Ok
         | Some (Incomplete answerers) ->
             CompletedAnswered
                 { Answerer = quizzer
                   IncorrectAnswerers = answerers }
+            |> Ok
         | None ->
-            CompletedAnswered
-                { Answerer = quizzer
-                  IncorrectAnswerers = [] }
+            { Answerer = quizzer
+              IncorrectAnswerers = [] }
+            |> CompletedAnswered
+            |> Ok
 
     let updateQuizLevelInfo quizzer (quiz: RunningTeamQuiz) =
-        let newCurrentQuestion =
-            quiz.CurrentQuestion |> PositiveNumber.increment
+        result {
+            let newCurrentQuestion =
+                quiz.CurrentQuestion |> PositiveNumber.increment
 
-        let updatedQuestion =
-            quiz.Questions
-            |> Map.tryFind newCurrentQuestion
-            |> recordAnsweredQuestion quizzer
-
-        { quiz with
-            CurrentQuestion = newCurrentQuestion
-            Questions =
+            let! updatedQuestion =
                 quiz.Questions
-                |> Map.add quiz.CurrentQuestion updatedQuestion }
+                |> Map.tryFind quiz.CurrentQuestion
+                |> recordAnsweredQuestion quizzer quiz.CurrentQuestion
+
+            return
+                { quiz with
+                    CurrentQuestion = newCurrentQuestion
+                    Questions =
+                        quiz.Questions
+                        |> Map.add quiz.CurrentQuestion updatedQuestion }
+        }
 
     let updateTeamOpt isQuizzer team =
         team.Quizzers
@@ -90,8 +95,7 @@ let updateQuiz: UpdateQuiz =
             let teamTwoOpt =
                 (updateTeamOpt quiz.TeamTwo)
 
-            let updatedQuizInfo =
-                updateQuizLevelInfo quizzerName quiz
+            let! updatedQuizInfo = updateQuizLevelInfo quizzerName quiz
 
             return!
                 match teamOneOpt, teamTwoOpt with
