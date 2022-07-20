@@ -95,12 +95,16 @@ module QuizzerState =
 type QuizQuestion =
     | Complete of CompletedQuestion
     | Incomplete of Quizzer list
-
+type RevertedCorrectAnswer =
+    | Reverted
+    | NoChange
+    
 [<RequireQualifiedAccess>]
 module QuizQuestion =
     type QuizzerAlreadyAnsweredCorrectly = QuizzerAlreadyAnsweredCorrectly of Quizzer * QuestionNumber
     type QuizzerAlreadyAnsweredIncorrectly = QuizzerAlreadyAnsweredIncorrectly of Quizzer * QuestionNumber
 
+    
     let create = Incomplete []
 
     let private CompletedAnswered =
@@ -132,7 +136,45 @@ module QuizQuestion =
             |> CompletedAnswered
             |> Ok
             
-    // let answerIncorrectly quizzer currentQuestionNumber previousQuestionState =
+    let answerIncorrectly quizzer currentQuestionNumber questionOpt =
+         let addQuizzerDistinct quizzer quizzers = quizzers @ [ quizzer ] |> List.distinct
+         
+         match questionOpt with
+         | None -> (Incomplete [ quizzer ], NoChange) |> Ok
+         | Some (Incomplete quizzers) ->
+            (Incomplete(quizzers |> addQuizzerDistinct quizzer), NoChange)
+            |> Ok
+         | Some (Complete (Answered answeredQuestion)) when quizzer = answeredQuestion.Answerer ->
+            (answeredQuestion.IncorrectAnswerers
+             |> addQuizzerDistinct quizzer
+             |> Unanswered
+             |> Complete,
+             Reverted)
+            |> Ok
+         | Some (Complete (Answered answeredQuestion)) when
+            answeredQuestion.IncorrectAnswerers
+            |> List.contains (quizzer)
+            ->
+            Error(QuizzerAlreadyAnsweredIncorrectly(quizzer, currentQuestionNumber)
+            )
+         | Some (Complete (Answered answeredQuestion)) ->
+            ({ answeredQuestion with
+                IncorrectAnswerers =
+                    answeredQuestion.IncorrectAnswerers
+                    |> addQuizzerDistinct quizzer }
+             |> Answered
+             |> Complete,
+             NoChange)
+            |> Ok
+         | Some (Complete (Unanswered question)) when question |> List.contains (quizzer) ->
+            Error(QuizzerAlreadyAnsweredIncorrectly(quizzer, currentQuestionNumber))
+         | Some (Complete (Unanswered question)) ->
+            (question
+             |> addQuizzerDistinct quizzer
+             |> (Unanswered >> Complete),
+             NoChange)
+            |> Ok
+
         
 
 type QuizTeamState =

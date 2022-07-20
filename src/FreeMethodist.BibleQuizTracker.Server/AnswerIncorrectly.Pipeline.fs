@@ -5,15 +5,12 @@ open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow.AnswerInco
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open Microsoft.FSharp.Core
 
 type ValidCurrentQuizzer = private ValidCurrentQuizzer of Quizzer
 type ValidateCurrentQuizzer = RunningTeamQuiz -> Result<ValidCurrentQuizzer, AnswerIncorrectly.Error>
 type UpdateQuiz = ValidCurrentQuizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerIncorrectly.Error>
 type CreateEvents = RunningTeamQuiz -> AnswerIncorrectly.Event list
-
-type RevertedCorrectAnswer =
-    | Reverted
-    | NoChange
 
 let validateQuizzer: ValidateCurrentQuizzer =
     fun quiz ->
@@ -22,51 +19,10 @@ let validateQuizzer: ValidateCurrentQuizzer =
         |> (Result.ofOption Error.NoCurrentQuizzer)
 
 let updateQuiz: UpdateQuiz =
-    let addQuizzerDistinct quizzer quizzers = quizzers @ [ quizzer ] |> List.distinct
 
     let updateOrAddQuestion quizzer questionNumber questionOpt =
-        match questionOpt with
-        | None -> (Incomplete [ quizzer ], NoChange) |> Ok
-        | Some (Incomplete quizzers) ->
-            (Incomplete(quizzers |> addQuizzerDistinct quizzer), NoChange)
-            |> Ok
-        | Some (Complete (Answered answeredQuestion)) when quizzer = answeredQuestion.Answerer ->
-            (answeredQuestion.IncorrectAnswerers
-             |> addQuizzerDistinct quizzer
-             |> Unanswered
-             |> Complete,
-             Reverted)
-            |> Ok
-        | Some (Complete (Answered answeredQuestion)) when
-            answeredQuestion.IncorrectAnswerers
-            |> List.contains (quizzer)
-            ->
-            Error(
-                AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(
-                    QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber)
-                )
-            )
-        | Some (Complete (Answered answeredQuestion)) ->
-            ({ answeredQuestion with
-                IncorrectAnswerers =
-                    answeredQuestion.IncorrectAnswerers
-                    |> addQuizzerDistinct quizzer }
-             |> Answered
-             |> Complete,
-             NoChange)
-            |> Ok
-        | Some (Complete (Unanswered question)) when question |> List.contains (quizzer) ->
-            Error(
-                AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(
-                    QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber)
-                )
-            )
-        | Some (Complete (Unanswered question)) ->
-            (question
-             |> addQuizzerDistinct quizzer
-             |> (Unanswered >> Complete),
-             NoChange)
-            |> Ok
+        questionOpt
+        |> QuizQuestion.answerIncorrectly quizzer questionNumber
 
     fun (ValidCurrentQuizzer quizzer) quiz ->
         result {
@@ -78,6 +34,7 @@ let updateQuiz: UpdateQuiz =
 
             let! changedQuestion, revertedCorrectAnswer =
                 updateOrAddQuestion quizzer quizCurrentQuestion currentQuestionRecord
+                |> Result.mapError Error.QuizzerAlreadyAnsweredIncorrectly
 
             let updateScore revertedAnswer (quizzer: QuizzerState) =
                 match revertedAnswer with

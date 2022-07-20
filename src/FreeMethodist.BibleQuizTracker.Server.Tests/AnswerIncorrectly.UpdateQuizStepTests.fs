@@ -87,10 +87,8 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
         |> Result.bind (fun q -> updateQuiz q initialQuiz)
 
     let expectedResult =
-        AnswerIncorrectly.Workflow.AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(
-            answerer.Name,
-            initialQuiz.CurrentQuestion
-        )
+        QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
+        |> AnswerIncorrectly.Workflow.AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly
         |> Result.Error
 
     Assert.Equal(expectedResult, result)
@@ -117,10 +115,8 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
         |> Result.bind (fun q -> updateQuiz q initialQuiz)
 
     let expectedResult =
-        AnswerIncorrectly.Workflow.AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(
-            answerer.Name,
-            initialQuiz.CurrentQuestion
-        )
+        QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
+        |> AnswerIncorrectly.Workflow.AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly
         |> Result.Error
 
     Assert.Equal(expectedResult, result)
