@@ -41,7 +41,11 @@ let updateQuiz: UpdateQuiz =
             answeredQuestion.IncorrectAnswerers
             |> List.contains (quizzer)
             ->
-            Error(AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber))
+            Error(
+                AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(
+                    QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber)
+                )
+            )
         | Some (Complete (Answered answeredQuestion)) ->
             ({ answeredQuestion with
                 IncorrectAnswerers =
@@ -52,7 +56,11 @@ let updateQuiz: UpdateQuiz =
              NoChange)
             |> Ok
         | Some (Complete (Unanswered question)) when question |> List.contains (quizzer) ->
-            Error(AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber))
+            Error(
+                AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly(
+                    QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(quizzer, questionNumber)
+                )
+            )
         | Some (Complete (Unanswered question)) ->
             (question
              |> addQuizzerDistinct quizzer

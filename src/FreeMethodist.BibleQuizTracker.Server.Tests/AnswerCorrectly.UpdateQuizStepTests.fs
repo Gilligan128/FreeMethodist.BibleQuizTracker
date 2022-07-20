@@ -141,4 +141,4 @@ let ``Given Quizzer already answered correctly When Quizzer Answers then Error``
     let result =
         updateQuiz (Some quizzer.Name) initialQuiz
 
-    Assert.Equal(Result.Error (AnswerCorrectly.QuizzerAlreadyAnsweredCorrectly (quizzer.Name, initialQuiz.CurrentQuestion)), result)
+    Assert.Equal(Result.Error (AnswerCorrectly.QuizzerAlreadyAnsweredCorrectly ( QuizQuestion.QuizzerAlreadyAnsweredCorrectly (quizzer.Name, initialQuiz.CurrentQuestion))), result)

@@ -28,42 +28,18 @@ let updateQuiz: UpdateQuiz =
                 q)
 
     let recordAnsweredQuestion quizzer currentQuestion (initialQuestionState) =
-        let CompletedAnswered = Answered >> Complete
-
-        let withoutAnswerer =
-            List.except [ quizzer ]
-
-        match initialQuestionState with
-        | Some (Complete (Answered questionState)) when quizzer = questionState.Answerer ->
-            QuizzerAlreadyAnsweredCorrectly(quizzer, currentQuestion)
-            |> Error
-        | Some (Complete (Answered questionState)) -> questionState |> CompletedAnswered |> Ok
-        | Some (Complete (Unanswered questionState)) ->
-            { Answerer = quizzer
-              IncorrectAnswerers = questionState |> withoutAnswerer }
-            |> Answered
-            |> Complete
-            |> Ok
-        | Some (Incomplete answerers) ->
-            CompletedAnswered
-                { Answerer = quizzer
-                  IncorrectAnswerers = answerers }
-            |> Ok
-        | None ->
-            { Answerer = quizzer
-              IncorrectAnswerers = [] }
-            |> CompletedAnswered
-            |> Ok
+        initialQuestionState |> QuizQuestion.answerCorrectly quizzer currentQuestion
 
     let updateQuizLevelInfo quizzer (quiz: RunningTeamQuiz) =
         result {
             let newCurrentQuestion =
                 quiz.CurrentQuestion |> PositiveNumber.increment
-
+            
             let! updatedQuestion =
                 quiz.Questions
                 |> Map.tryFind quiz.CurrentQuestion
                 |> recordAnsweredQuestion quizzer quiz.CurrentQuestion
+                |> Result.mapError (fun  error -> error |> Error.QuizzerAlreadyAnsweredCorrectly)
 
             return
                 { quiz with

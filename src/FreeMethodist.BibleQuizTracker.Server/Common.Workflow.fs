@@ -49,7 +49,7 @@ type TeamPosition =
     | TeamTwo
 
 type PositiveNumber = private PositiveNumber of int
-           
+
 
 type QuestionNumber = PositiveNumber
 
@@ -91,9 +91,49 @@ module QuizzerState =
           Participation = In
           Score = TeamScore.initial }
 
+//don't initialize directly. Use the QuizQuestion module.
 type QuizQuestion =
     | Complete of CompletedQuestion
     | Incomplete of Quizzer list
+
+[<RequireQualifiedAccess>]
+module QuizQuestion =
+    type QuizzerAlreadyAnsweredCorrectly = QuizzerAlreadyAnsweredCorrectly of Quizzer * QuestionNumber
+    type QuizzerAlreadyAnsweredIncorrectly = QuizzerAlreadyAnsweredIncorrectly of Quizzer * QuestionNumber
+
+    let create = Incomplete []
+
+    let private CompletedAnswered =
+        Answered >> Complete
+
+    let private withoutAnswerer quizzer = List.except [ quizzer ]
+
+    let answerCorrectly quizzer currentQuestionNumber previousQuestionState =
+
+        match previousQuestionState with
+        | Some (Complete (Answered questionState)) when quizzer = questionState.Answerer ->
+            QuizzerAlreadyAnsweredCorrectly(quizzer, currentQuestionNumber)
+            |> Error
+        | Some (Complete (Answered questionState)) -> questionState |> CompletedAnswered |> Ok
+        | Some (Complete (Unanswered questionState)) ->
+            { Answerer = quizzer
+              IncorrectAnswerers = questionState |> withoutAnswerer quizzer }
+            |> Answered
+            |> Complete
+            |> Ok
+        | Some (Incomplete answerers) ->
+            CompletedAnswered
+                { Answerer = quizzer
+                  IncorrectAnswerers = answerers }
+            |> Ok
+        | None ->
+            { Answerer = quizzer
+              IncorrectAnswerers = [] }
+            |> CompletedAnswered
+            |> Ok
+            
+    // let answerIncorrectly quizzer currentQuestionNumber previousQuestionState =
+        
 
 type QuizTeamState =
     { Name: TeamName
