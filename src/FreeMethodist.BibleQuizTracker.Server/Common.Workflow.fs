@@ -302,3 +302,6 @@ module RunningTeamQuiz =
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
           Questions = Map.empty }
+
+//Validation
+type NoCurrentQuizzer = NoCurrentQuizzer

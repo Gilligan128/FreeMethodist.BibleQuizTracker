@@ -14,6 +14,7 @@
         <Compile Include="SelectQuizzerWorkflowTests.fs" />
         <Compile Include="RemoveQuizzerWorkflowTests.fs" />
         <Compile Include="AnswerCorrectly.UpdateQuizStepTests.fs" />
+        <Compile Include="AnswerCorrectly.CreateEventsStepTests.fs" />
         <Compile Include="AnswerIncorrectly.UpdateQuizStepTests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>

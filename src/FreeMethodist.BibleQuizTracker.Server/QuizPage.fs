@@ -464,7 +464,7 @@ let update
             match result with
             | Ok quiz -> AnswerIncorrectly(Finished quiz)
             | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
-            | Result.Error (AnswerIncorrectly.NoCurrentQuizzer) -> "No current Quizzer" |> workflowFormError
+            | Result.Error (AnswerIncorrectly.NoCurrentQuizzer _) -> "No current Quizzer" |> workflowFormError
             | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizQuestion.QuizzerAlreadyAnsweredIncorrectly (quizzer,
                                                                                                                                  questionNumber))) ->
                 $"Quizzer {quizzer} already answered question { questionNumber |> PositiveNumber.value} incorrectly"

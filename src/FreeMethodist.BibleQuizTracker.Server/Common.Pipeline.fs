@@ -71,7 +71,17 @@ type NotEnoughPlayersError =
       minimumPlayerCount: int }
 
 type StartTeamQuizError = NotEnoughPlayers of NotEnoughPlayersError
+
+//Validation
 type ValidateQuizIsRunning = Quiz -> Result<RunningTeamQuiz, QuizStateError>
+type ValidateCurrentQuizzer = RunningTeamQuiz -> Result<Quizzer, NoCurrentQuizzer>
+
+let validateCurrentQuizzer: ValidateCurrentQuizzer =
+    fun quiz ->
+        quiz.CurrentQuizzer 
+        |> (Result.ofOption NoCurrentQuizzer)
+
+
 
 let validateQuiz: ValidateQuizIsRunning =
     fun quiz ->

@@ -7,16 +7,8 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.FSharp.Core
 
-type ValidCurrentQuizzer = private ValidCurrentQuizzer of Quizzer
-type ValidateCurrentQuizzer = RunningTeamQuiz -> Result<ValidCurrentQuizzer, AnswerIncorrectly.Error>
-type UpdateQuiz = ValidCurrentQuizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerIncorrectly.Error>
+type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerIncorrectly.Error>
 type CreateEvents = RunningTeamQuiz -> AnswerIncorrectly.Event list
-
-let validateQuizzer: ValidateCurrentQuizzer =
-    fun quiz ->
-        quiz.CurrentQuizzer
-        |> Option.map ValidCurrentQuizzer
-        |> (Result.ofOption Error.NoCurrentQuizzer)
 
 let updateQuiz: UpdateQuiz =
 
@@ -24,7 +16,7 @@ let updateQuiz: UpdateQuiz =
         questionOpt
         |> QuizQuestion.answerIncorrectly quizzer questionNumber
 
-    fun (ValidCurrentQuizzer quizzer) quiz ->
+    fun quizzer quiz ->
         result {
             let quizCurrentQuestion =
                 quiz.CurrentQuestion
@@ -84,7 +76,8 @@ let answerIncorrectly getQuiz saveQuiz : Workflow =
                 |> AsyncResult.mapError QuizState
 
             let! validQuizzer =
-                validateQuizzer runningQuiz
+                validateCurrentQuizzer runningQuiz
+                |> Result.mapError Error.NoCurrentQuizzer 
                 |> AsyncResult.ofResult
 
             let! updatedQuiz =

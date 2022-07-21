@@ -19,7 +19,7 @@ let ``Quizzer Answers who is not participating results in error`` () =
 
     let quizzer = "Not Participating"
 
-    let result = updateQuiz (Some quizzer) quiz
+    let result = updateQuiz quizzer quiz
 
     let error =
         Error(AnswerCorrectly.Error.QuizzerNotFound quizzer)
@@ -34,7 +34,7 @@ let ``When Quizzer Answers then individual score goes up`` () =
         quizWithQuizzerOnTeamOne quizzer
 
     let result =
-        updateQuiz (Some quizzer.Name) initialQuiz
+        updateQuiz quizzer.Name initialQuiz
 
     let expectedScore =
         TeamScore.initial |> TeamScore.correctAnswer
@@ -54,7 +54,7 @@ let ``When Quizzer Answers then team score goes up`` () =
         quizWithQuizzerOnTeamOne quizzer
 
     let result =
-        updateQuiz (Some quizzer.Name) initialQuiz
+        updateQuiz quizzer.Name initialQuiz
 
     let expectedScore = TeamScore.ofQuestions 1
     assertSuccess result (fun (updatedQuiz, _) -> Assert.Equal(expectedScore, updatedQuiz.TeamOne.Score))
@@ -73,7 +73,7 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
             TeamTwo = { RunningTeamQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
 
     let result =
-        updateQuiz (Some answerer.Name) quiz
+        updateQuiz answerer.Name quiz
 
     assertSuccess result (fun (updatedQuiz, _) ->
         let updatedQuizzer =
@@ -90,7 +90,7 @@ let ``When Quizzer Answers then increment the current question`` () =
         { quizWithQuizzerOnTeamOne quizzer with CurrentQuestion = PositiveNumber.one }
 
     let result =
-        updateQuiz (Some quizzer.Name) initialQuiz
+        updateQuiz quizzer.Name initialQuiz
 
     assertSuccess result (fun (updatedQuiz, quizzer) ->
         Assert.Equal(
@@ -107,7 +107,7 @@ let ``When Quizzer Answers then record answered question for history`` () =
         { (quizWithQuizzerOnTeamOne quizzer) with CurrentQuestion = PositiveNumber.one }
 
     let result =
-        updateQuiz (Some quizzer.Name) initialQuiz
+        updateQuiz quizzer.Name initialQuiz
 
     let expectedQuestion =
         { Answerer = quizzer.Name
@@ -139,6 +139,6 @@ let ``Given Quizzer already answered correctly When Quizzer Answers then Error``
                 |> Map.add PositiveNumber.one alreadyAnsweredQuestion }
 
     let result =
-        updateQuiz (Some quizzer.Name) initialQuiz
+        updateQuiz quizzer.Name initialQuiz
 
     Assert.Equal(Result.Error (AnswerCorrectly.QuizzerAlreadyAnsweredCorrectly ( QuizQuestion.QuizzerAlreadyAnsweredCorrectly (quizzer.Name, initialQuiz.CurrentQuestion))), result)

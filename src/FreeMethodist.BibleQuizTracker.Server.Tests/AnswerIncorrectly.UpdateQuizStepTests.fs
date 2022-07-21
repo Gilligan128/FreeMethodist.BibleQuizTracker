@@ -11,13 +11,11 @@ let ``When Answered Incorrectly record Question with incorrect answerer`` () =
     let answerer = QuizzerState.create "Jim"
 
     let initialQuiz =
-        { RunningTeamQuiz.identity with
-            Questions = Map.empty
-            CurrentQuizzer = (Some answerer.Name) }
-
-    let result =
-        validateQuizzer initialQuiz
-        |> Result.bind (fun q -> updateQuiz q initialQuiz)
+            { RunningTeamQuiz.identity with
+               Questions = Map.empty
+               CurrentQuizzer = (Some answerer.Name) }
+        
+    let result = updateQuiz answerer.Name initialQuiz
 
     assertSuccess result (fun quiz ->
         let question =
@@ -48,9 +46,7 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
                 Map.empty
                 |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyAnsweredQuestion }
 
-    let result =
-        validateQuizzer initialQuiz
-        |> Result.bind (fun q -> updateQuiz q initialQuiz)
+    let result = updateQuiz answerer.Name initialQuiz
 
     assertSuccess result (fun quiz ->
         let quizzerState =
@@ -82,9 +78,7 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
                 Map.empty
                 |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyAnsweredQuestion }
 
-    let result =
-        validateQuizzer initialQuiz
-        |> Result.bind (fun q -> updateQuiz q initialQuiz)
+    let result = updateQuiz answerer.Name initialQuiz
 
     let expectedResult =
         QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
@@ -110,9 +104,7 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
                 Map.empty
                 |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyUnansweredQuestion }
 
-    let result =
-        validateQuizzer initialQuiz
-        |> Result.bind (fun q -> updateQuiz q initialQuiz)
+    let result = updateQuiz answerer.Name initialQuiz
 
     let expectedResult =
         QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)

@@ -10,10 +10,14 @@ open Microsoft.FSharp.Core
 //Answer Question
 type AnswerQuestion = Quizzer -> AnsweredQuestion
 
+type UpdatedQuiz =
+    { QuizState: RunningTeamQuiz
+      RevertedAnswer: RevertedCorrectAnswer }
 
-type UpdateQuiz = Quizzer option -> RunningTeamQuiz -> Result<RunningTeamQuiz * Quizzer, AnswerCorrectly.Error>
 
-type CreateEvents = Quizzer  -> RunningTeamQuiz -> AnswerCorrectly.Event list
+type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz * Quizzer, AnswerCorrectly.Error>
+
+type CreateEvents = Quizzer -> RunningTeamQuiz -> AnswerCorrectly.Event list
 
 let updateQuiz: UpdateQuiz =
     let updateQuizzerScore (quizzer: QuizzerState) =
@@ -74,12 +78,8 @@ let updateQuiz: UpdateQuiz =
         |> Option.map (fun team -> { team with Quizzers = team.Quizzers |> updateAnsweringQuizzer isQuizzer })
         |> Option.map (fun team -> { team with Score = team.Score |> TeamScore.correctAnswer })
 
-    fun quizzerNameOpt quiz ->
+    fun quizzerName quiz ->
         result {
-            let! quizzerName =
-                quizzerNameOpt
-                |> Result.ofOption Error.NoCurrentQuizzer
-
             let isQuizzer (quizzer: QuizzerState) = quizzer.Name = quizzerName
             let updateTeamOpt = updateTeamOpt isQuizzer
 
@@ -101,7 +101,7 @@ let updateQuiz: UpdateQuiz =
 
 
 let createEvents: CreateEvents =
-    fun quizzer  quizState ->
+    fun quizzer quizState ->
         let updatedTeamScore (quiz: RunningTeamQuiz) teamPosition =
             match teamPosition with
             | TeamOne -> quiz.TeamOne.Score
@@ -153,8 +153,14 @@ let answerCorrectly getQuiz saveQuiz : Workflow =
                     |> AsyncResult.ofResult
                     |> AsyncResult.mapError Error.QuizStateError)
 
+            let! currentQuizzer =
+                quiz
+                |> validateCurrentQuizzer
+                |> Result.mapError (fun e -> Error.NoCurrentQuizzer)
+                |> AsyncResult.ofResult
+
             let! updatedQuiz, answerer =
-                updateQuiz quiz.CurrentQuizzer quiz
+                updateQuiz currentQuizzer quiz
                 |> AsyncResult.ofResult
 
             do!
