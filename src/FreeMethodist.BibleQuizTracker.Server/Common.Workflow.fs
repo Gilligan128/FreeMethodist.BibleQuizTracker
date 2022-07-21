@@ -50,6 +50,13 @@ type TeamPosition =
 
 type PositiveNumber = private PositiveNumber of int
 
+type AnsweredQuestion =
+    { Answerer: Quizzer
+      IncorrectAnswerers: Quizzer list }
+
+type CompletedQuestion =
+    | Answered of AnsweredQuestion
+    | Unanswered of Quizzer list
 
 type QuestionNumber = PositiveNumber
 
@@ -71,14 +78,6 @@ module PositiveNumber =
 type ParticipationState =
     | In
     | Out
-
-type AnsweredQuestion =
-    { Answerer: Quizzer
-      IncorrectAnswerers: Quizzer list }
-
-type CompletedQuestion =
-    | Answered of AnsweredQuestion
-    | Unanswered of Quizzer list
 
 type QuizzerState =
     { Name: Quizzer

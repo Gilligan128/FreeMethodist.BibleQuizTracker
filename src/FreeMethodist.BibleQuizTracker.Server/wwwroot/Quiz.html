@@ -109,16 +109,16 @@
         </div>
     </template>
     <template id="Quizzer">
-        <div class="box  ${BackgroundColor} my-2 py-3" onclick="${Select}">
+        <div class="box  ${BackgroundColor} my-2 py-3 " onclick="${Select}">
             <div class="columns is-mobile is-centered">
                 <div class="column ">
                     <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
                 </div>
-                <div class="column is-one-third" >
+                <div class="column is-one-third has-text-primary-dark" >
                     ${Name}
                 </div>
-                <div class="column is-one-third">
-                        <p class="has-text-weight-bold">${Score} pts</p>
+                <div class="column is-one-third ">
+                        <p class=" px-2 py-2 has-background-${AnswerColor} has-text-color-${AnswerColor}">${Score} pts</p>
                 </div>
                 <div class="column">
                     <button class="button is-info is-light" onclick="${Remove}"> 

@@ -27,10 +27,16 @@ type ConnectionStatus =
     | Disconnected of DateTimeOffset
     | Unknown
 
+type AnswerState =
+    | DidNotAnswer
+    | AnsweredCorrectly
+    | AnsweredIncorrectly
+
 type QuizzerModel =
     { Name: string
       Score: int
-      ConnectionStatus: ConnectionStatus }
+      ConnectionStatus: ConnectionStatus
+      AnswerState: AnswerState }
 
 type TeamModel =
     { Name: string
@@ -98,22 +104,45 @@ let public emptyModel =
       CurrentQuizzer = None }
 
 let private refreshModel (quiz: Quiz) =
-    let refreshQuizzer (quizzer: QuizzerState) =
+    let getAnswerState currentQuestion (quizzerState: QuizzerState) =
+        let quizzerWasIncorrect =
+            List.contains quizzerState.Name
+
+        match currentQuestion with
+        | Incomplete incorrectAnswerers when incorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
+        | Incomplete _ -> DidNotAnswer
+        | Complete (Answered question) when question.Answerer = quizzerState.Name -> AnsweredCorrectly
+        | Complete (Answered question) when question.IncorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
+        | Complete (Answered _) -> DidNotAnswer
+        | Complete (Unanswered question) when question |> quizzerWasIncorrect -> AnsweredIncorrectly
+        | Complete (Unanswered _) -> DidNotAnswer
+
+    let refreshQuizzer currentQuestion (quizzer: QuizzerState) =
         { Name = quizzer.Name
           Score = TeamScore.value quizzer.Score
-          ConnectionStatus = Unknown }
+          ConnectionStatus = Unknown
+          AnswerState = quizzer |> getAnswerState currentQuestion }
 
-    let refreshTeam (team: QuizTeamState) =
+    let refreshTeam currentQuestion (team: QuizTeamState) =
         { Name = team.Name
           Score = TeamScore.value team.Score
-          Quizzers = team.Quizzers |> List.map refreshQuizzer }
+          Quizzers =
+            team.Quizzers
+            |> List.map (refreshQuizzer currentQuestion) }
 
     match quiz with
     | Running runningQuiz ->
+        let currentQuestion =
+            runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
+            |> fun current ->
+                match current with
+                | None -> QuizQuestion.create
+                | Some q -> q
+
         { emptyModel with
             Code = runningQuiz.Code
-            TeamOne = runningQuiz.TeamOne |> refreshTeam
-            TeamTwo = runningQuiz.TeamTwo |> refreshTeam
+            TeamOne = runningQuiz.TeamOne |> refreshTeam currentQuestion
+            TeamTwo = runningQuiz.TeamTwo |> refreshTeam currentQuestion
             CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
             CurrentQuizzer = runningQuiz.CurrentQuizzer
             CurrentUser = Quizmaster
@@ -467,7 +496,7 @@ let update
             | Result.Error (AnswerIncorrectly.NoCurrentQuizzer _) -> "No current Quizzer" |> workflowFormError
             | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizQuestion.QuizzerAlreadyAnsweredIncorrectly (quizzer,
                                                                                                                                  questionNumber))) ->
-                $"Quizzer {quizzer} already answered question { questionNumber |> PositiveNumber.value} incorrectly"
+                $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
                 |> workflowFormError
 
         let cmd =
@@ -523,6 +552,10 @@ let private teamView
                                 | None -> ""
                                 | Some q -> q)
                         )
+                        .AnswerColor(match quizzer.AnswerState with
+                                      | DidNotAnswer -> ""
+                                      | AnsweredCorrectly -> "success"
+                                      | AnsweredIncorrectly -> "danger")
                         .Elt()
             }
         )
