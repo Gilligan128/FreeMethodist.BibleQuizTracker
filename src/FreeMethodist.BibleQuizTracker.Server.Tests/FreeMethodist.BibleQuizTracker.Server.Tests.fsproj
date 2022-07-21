@@ -17,6 +17,7 @@
         <Compile Include="AnswerCorrectly.CreateEventsStepTests.fs" />
         <Compile Include="AnswerIncorrectly.UpdateQuizStepTests.fs" />
         <Compile Include="AnswerIncorrectly.CreateEventsStepTests.fs" />
+        <Compile Include="ChangeCurrentQuestion.UpdateQuizStepTests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

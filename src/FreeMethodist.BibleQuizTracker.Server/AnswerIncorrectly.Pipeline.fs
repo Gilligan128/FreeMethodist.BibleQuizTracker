@@ -69,33 +69,23 @@ let createEvents: CreateEvents =
             quiz.RevertedAnswer
             |> RevertedCorrectAnswer.toOption
             |> Option.map (fun reverted -> RunningTeamQuiz.findQuizzerAndTeam reverted quiz.QuizState)
-
-        let revertedIndividualScoreEventOpt =
-            revertedQuizzerOpt
-            |> Option.map (fun (quizzer, team) ->
-                { Quiz = quiz.QuizState.Code
-                  Quizzer = quizzer.Name
-                  NewScore = quizzer.Score
-                  Question = quiz.QuizState.CurrentQuestion })
-            |> Option.map Event.IndividualScoreChanged
-
-        let revertedTeamScoreOpt =
-            revertedQuizzerOpt
-            |> Option.map (fun (quizzer, team) ->
-                { Quiz = quiz.QuizState.Code
-                  NewScore =
-                    quiz.QuizState
-                    |> RunningTeamQuiz.getTeam team
-                    |> fun team -> team.Score
-                  Team = team })
-            |> Option.map Event.TeamScoreChanged
-
+            
         let revertedEvents =
-            match revertedIndividualScoreEventOpt, revertedTeamScoreOpt with
-            | None, None -> []
-            | Some event, Some event2 -> [ event; event2 ]
-            | Some event, None -> [ event ]
-            | None, Some event -> [ event ]
+            revertedQuizzerOpt
+            |> Option.map (fun (quizzer, team) ->
+                [ { Quiz = quiz.QuizState.Code
+                    Quizzer = quizzer.Name
+                    NewScore = quizzer.Score
+                    Question = quiz.QuizState.CurrentQuestion }
+                  |> Event.IndividualScoreChanged
+                  { Quiz = quiz.QuizState.Code
+                    NewScore =
+                      quiz.QuizState
+                      |> RunningTeamQuiz.getTeam team
+                      |> fun team -> team.Score
+                    Team = team }
+                  |> Event.TeamScoreChanged ])
+            |> Option.defaultValue []
 
         let quizzerChanged =
             { Quiz = quiz.QuizState.Code
