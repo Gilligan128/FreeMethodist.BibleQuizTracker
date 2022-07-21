@@ -34,6 +34,36 @@ let updateQuiz: UpdateQuiz =
         initialQuestionState
         |> QuizQuestion.answerCorrectly quizzer currentQuestion
 
+    let revertTeamScoreIfQuizzerOnTeam quizzer (team: QuizTeamState) =
+        let quizzerFound =
+            team.Quizzers
+            |> List.exists (QuizzerState.isQuizzer quizzer)
+
+        if quizzerFound then
+            { team with Score = team.Score |> TeamScore.revertCorrectAnswer }
+        else
+            team
+
+    let possiblyRevertTeamAndIndividualScores revertedQuizzer team =
+        let revertQuizzerScore q : QuizzerState =
+            { q with Score = q.Score |> TeamScore.revertCorrectAnswer }
+
+        match revertedQuizzer with
+        | NoChange -> team
+        | Reverted reverted ->
+            team
+            |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
+            |> revertTeamScoreIfQuizzerOnTeam reverted
+
+    let possiblyRevertQuizScores revertedAnswer (quiz: RunningTeamQuiz) =
+        { quiz with
+            TeamOne =
+                quiz.TeamOne
+                |> possiblyRevertTeamAndIndividualScores revertedAnswer
+            TeamTwo =
+                quiz.TeamTwo
+                |> possiblyRevertTeamAndIndividualScores revertedAnswer }
+
     let updateQuizLevelInfo quizzer (quiz: RunningTeamQuiz) =
         result {
             let newCurrentQuestion =
@@ -45,28 +75,12 @@ let updateQuiz: UpdateQuiz =
                 |> recordAnsweredQuestion quizzer quiz.CurrentQuestion
                 |> Result.mapError (fun error -> error |> Error.QuizzerAlreadyAnsweredCorrectly)
 
-            let PossiblyRevertIndividualOnTeam revertedQuizzer team =
-                let revertQuizzerScore q : QuizzerState =
-                    { q with Score = q.Score |> TeamScore.revertCorrectAnswer }
-
-                match revertedQuizzer with
-                | NoChange -> team
-                | Reverted reverted ->
-                    quiz.TeamOne
-                    |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
-
             return
                 { quiz with
                     CurrentQuestion = newCurrentQuestion
                     Questions =
                         quiz.Questions
-                        |> Map.add quiz.CurrentQuestion updatedQuestion
-                    TeamOne =
-                        quiz.TeamOne
-                        |> PossiblyRevertIndividualOnTeam revertedQuizzer
-                    TeamTwo =
-                        quiz.TeamTwo
-                        |> PossiblyRevertIndividualOnTeam revertedQuizzer },
+                        |> Map.add quiz.CurrentQuestion updatedQuestion },
                 revertedQuizzer
         }
 
@@ -90,20 +104,19 @@ let updateQuiz: UpdateQuiz =
 
             let! updatedQuizInfo, revertedAnswer = updateQuizLevelInfo quizzerName quiz
 
-            return!
+            let! updatedQuizResult =
                 match teamOneOpt, teamTwoOpt with
                 | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
                 | None, None -> Error(QuizzerNotFound quizzerName)
-                | Some teamOne, None ->
-                    Ok(
-                        { QuizState = { updatedQuizInfo with TeamOne = teamOne }
-                          RevertedAnswer = revertedAnswer }
-                    )
-                | None, Some teamTwo ->
-                    Ok(
-                        { QuizState = { updatedQuizInfo with TeamTwo = teamTwo }
-                          RevertedAnswer = revertedAnswer }
-                    )
+                | Some teamOne, None -> Ok({ updatedQuizInfo with TeamOne = teamOne })
+                | None, Some teamTwo -> Ok({ updatedQuizInfo with TeamTwo = teamTwo })
+
+            return
+                updatedQuizResult
+                |> possiblyRevertQuizScores revertedAnswer
+                |> fun quiz ->
+                    { QuizState = quiz
+                      RevertedAnswer = revertedAnswer }
         }
 
 

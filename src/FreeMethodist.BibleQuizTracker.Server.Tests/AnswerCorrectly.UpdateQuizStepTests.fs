@@ -72,8 +72,7 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
             TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ nonAnswerer; answerer ] }
             TeamTwo = { RunningTeamQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
 
-    let result =
-        updateQuiz answerer.Name quiz
+    let result = updateQuiz answerer.Name quiz
 
     assertSuccess result (fun (updatedQuiz) ->
         let updatedQuizzer =
@@ -141,4 +140,108 @@ let ``Given Quizzer already answered correctly When Quizzer Answers then Error``
     let result =
         updateQuiz quizzer.Name initialQuiz
 
-    Assert.Equal(Result.Error (AnswerCorrectly.QuizzerAlreadyAnsweredCorrectly ( QuizQuestion.QuizzerAlreadyAnsweredCorrectly (quizzer.Name, initialQuiz.CurrentQuestion))), result)
+    Assert.Equal(
+        Result.Error(
+            AnswerCorrectly.QuizzerAlreadyAnsweredCorrectly(
+                QuizQuestion.QuizzerAlreadyAnsweredCorrectly(quizzer.Name, initialQuiz.CurrentQuestion)
+            )
+        ),
+        result
+    )
+
+[<Fact>]
+let ``Given someone lese previously answered correctly  When Quizzer Answers then revert previous quizzer's score`` () =
+    let quizzer = QuizzerState.create "Jim"
+
+    let previousAnswerer =
+        QuizzerState.create "Previous"
+
+    let alreadyAnsweredQuestion =
+        { Answerer = previousAnswerer.Name
+          IncorrectAnswerers = [] }
+        |> Answered
+        |> Complete
+
+    let setupQuiz (quiz: RunningTeamQuiz) =
+        { quiz with
+            TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] }
+            Questions =
+                quiz.Questions
+                |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
+
+         }
+
+    let initialQuiz =
+        RunningTeamQuiz.identity |> setupQuiz
+    result {
+     let! result =
+        updateQuiz quizzer.Name initialQuiz
+     let revertedQuizzerState = result.QuizState.TeamOne.Quizzers |> List.find (QuizzerState.isQuizzer previousAnswerer.Name)
+     let expectedScore = previousAnswerer.Score |> TeamScore.revertCorrectAnswer
+     Assert.Equal(expectedScore, revertedQuizzerState.Score)   
+    }
+
+[<Fact>]
+let ``Given someone lese previously answered correctly from other team When Quizzer Answers then revert previous quizzer's score`` () =
+    let quizzer = QuizzerState.create "Jim"
+
+    let previousAnswerer =
+        QuizzerState.create "Previous"
+
+    let alreadyAnsweredQuestion =
+        { Answerer = previousAnswerer.Name
+          IncorrectAnswerers = [] }
+        |> Answered
+        |> Complete
+
+    let setupQuiz (quiz: RunningTeamQuiz) =
+        { quiz with
+            TeamOne = { quiz.TeamOne with Quizzers = [ quizzer] }
+            TeamTwo = { quiz.TeamTwo with Quizzers = [previousAnswerer] }
+            Questions =
+                quiz.Questions
+                |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
+
+         }
+
+    let initialQuiz =
+        RunningTeamQuiz.identity |> setupQuiz
+    result {
+     let! result =
+        updateQuiz quizzer.Name initialQuiz
+     let revertedScore = result.QuizState.TeamTwo.Score
+     let expectedScore = initialQuiz.TeamTwo.Score |> TeamScore.revertCorrectAnswer
+     Assert.Equal(expectedScore, revertedScore)   
+    }
+    
+[<Fact>]
+let ``Given someone lese previously answered correctly from same team When Quizzer Answers then team score is unchanged`` () =
+    let quizzer = QuizzerState.create "Jim"
+
+    let previousAnswerer =
+        QuizzerState.create "Previous"
+
+    let alreadyAnsweredQuestion =
+        { Answerer = previousAnswerer.Name
+          IncorrectAnswerers = [] }
+        |> Answered
+        |> Complete
+
+    let setupQuiz (quiz: RunningTeamQuiz) =
+        { quiz with
+            TeamOne = { quiz.TeamOne with Quizzers = [ quizzer;previousAnswerer] }
+            Questions =
+                quiz.Questions
+                |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
+
+         }
+
+    let initialQuiz =
+        RunningTeamQuiz.identity |> setupQuiz
+    result {
+     let! result =
+        updateQuiz quizzer.Name initialQuiz
+     let revertedScore = result.QuizState.TeamOne.Score
+     let expectedScore = initialQuiz.TeamOne.Score 
+     Assert.Equal(expectedScore, revertedScore)   
+    }
