@@ -39,10 +39,10 @@ let ``When Quizzer Answers then individual score goes up`` () =
     let expectedScore =
         TeamScore.initial |> TeamScore.correctAnswer
 
-    assertSuccess result (fun (updatedQuiz, answerer) ->
+    assertSuccess result (fun (updatedQuiz) ->
         let updatedQuizzer =
-            updatedQuiz.TeamOne.Quizzers
-            |> List.find (fun q -> q.Name = answerer)
+            updatedQuiz.QuizState.TeamOne.Quizzers
+            |> List.find (fun q -> q.Name = quizzer.Name)
 
         Assert.Equal(expectedScore, updatedQuizzer.Score))
 
@@ -57,7 +57,7 @@ let ``When Quizzer Answers then team score goes up`` () =
         updateQuiz quizzer.Name initialQuiz
 
     let expectedScore = TeamScore.ofQuestions 1
-    assertSuccess result (fun (updatedQuiz, _) -> Assert.Equal(expectedScore, updatedQuiz.TeamOne.Score))
+    assertSuccess result (fun (updatedQuiz) -> Assert.Equal(expectedScore, updatedQuiz.QuizState.TeamOne.Score))
 
 
 [<Fact>]
@@ -75,9 +75,9 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
     let result =
         updateQuiz answerer.Name quiz
 
-    assertSuccess result (fun (updatedQuiz, _) ->
+    assertSuccess result (fun (updatedQuiz) ->
         let updatedQuizzer =
-            updatedQuiz.TeamOne.Quizzers
+            updatedQuiz.QuizState.TeamOne.Quizzers
             |> List.find (fun q -> q.Name = nonAnswerer.Name)
 
         Assert.Equal(nonAnswerer.Score, updatedQuizzer.Score))
@@ -92,11 +92,11 @@ let ``When Quizzer Answers then increment the current question`` () =
     let result =
         updateQuiz quizzer.Name initialQuiz
 
-    assertSuccess result (fun (updatedQuiz, quizzer) ->
+    assertSuccess result (fun (updatedQuiz) ->
         Assert.Equal(
             initialQuiz.CurrentQuestion
             |> PositiveNumber.increment,
-            updatedQuiz.CurrentQuestion
+            updatedQuiz.QuizState.CurrentQuestion
         ))
 
 [<Fact>]
@@ -115,8 +115,8 @@ let ``When Quizzer Answers then record answered question for history`` () =
         |> CompletedQuestion.Answered
         |> QuizQuestion.Complete
 
-    assertSuccess result (fun (updatedQuiz, _) ->
-        Assert.Equal(Some expectedQuestion, updatedQuiz.Questions.TryFind initialQuiz.CurrentQuestion))
+    assertSuccess result (fun (updatedQuiz) ->
+        Assert.Equal(Some expectedQuestion, updatedQuiz.QuizState.Questions.TryFind initialQuiz.CurrentQuestion))
 
 [<Fact>]
 let ``Given Quizzer already answered correctly When Quizzer Answers then Error`` () =

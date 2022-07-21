@@ -14,10 +14,9 @@ type UpdatedQuiz =
     { QuizState: RunningTeamQuiz
       RevertedAnswer: RevertedCorrectAnswer }
 
+type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<UpdatedQuiz, AnswerCorrectly.Error>
 
-type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz * Quizzer, AnswerCorrectly.Error>
-
-type CreateEvents = Quizzer -> RunningTeamQuiz -> AnswerCorrectly.Event list
+type CreateEvents = Quizzer -> UpdatedQuiz -> AnswerCorrectly.Event list
 
 let updateQuiz: UpdateQuiz =
     let updateQuizzerScore (quizzer: QuizzerState) =
@@ -46,29 +45,29 @@ let updateQuiz: UpdateQuiz =
                 |> recordAnsweredQuestion quizzer quiz.CurrentQuestion
                 |> Result.mapError (fun error -> error |> Error.QuizzerAlreadyAnsweredCorrectly)
 
-            return
-                match revertedQuizzer with
-                | NoChange ->
-                    { quiz with
-                        CurrentQuestion = newCurrentQuestion
-                        Questions =
-                            quiz.Questions
-                            |> Map.add quiz.CurrentQuestion updatedQuestion }
-                | Reverted reverted ->
-                    let revertQuizzerScore q : QuizzerState =
-                        { q with Score = q.Score |> TeamScore.revertCorrectAnswer }
+            let PossiblyRevertIndividualOnTeam revertedQuizzer team =
+                let revertQuizzerScore q : QuizzerState =
+                    { q with Score = q.Score |> TeamScore.revertCorrectAnswer }
 
-                    { quiz with
-                        CurrentQuestion = newCurrentQuestion
-                        Questions =
-                            quiz.Questions
-                            |> Map.add quiz.CurrentQuestion updatedQuestion
-                        TeamOne =
-                            quiz.TeamOne
-                            |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
-                        TeamTwo =
-                            quiz.TeamTwo
-                            |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted }
+                match revertedQuizzer with
+                | NoChange -> team
+                | Reverted reverted ->
+                    quiz.TeamOne
+                    |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
+
+            return
+                { quiz with
+                    CurrentQuestion = newCurrentQuestion
+                    Questions =
+                        quiz.Questions
+                        |> Map.add quiz.CurrentQuestion updatedQuestion
+                    TeamOne =
+                        quiz.TeamOne
+                        |> PossiblyRevertIndividualOnTeam revertedQuizzer
+                    TeamTwo =
+                        quiz.TeamTwo
+                        |> PossiblyRevertIndividualOnTeam revertedQuizzer },
+                revertedQuizzer
         }
 
     let updateTeamOpt isQuizzer team =
@@ -89,25 +88,35 @@ let updateQuiz: UpdateQuiz =
             let teamTwoOpt =
                 (updateTeamOpt quiz.TeamTwo)
 
-            let! updatedQuizInfo = updateQuizLevelInfo quizzerName quiz
+            let! updatedQuizInfo, revertedAnswer = updateQuizLevelInfo quizzerName quiz
 
             return!
                 match teamOneOpt, teamTwoOpt with
                 | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
                 | None, None -> Error(QuizzerNotFound quizzerName)
-                | Some teamOne, None -> Ok({ updatedQuizInfo with TeamOne = teamOne }, quizzerName)
-                | None, Some teamTwo -> Ok({ updatedQuizInfo with TeamTwo = teamTwo }, quizzerName)
+                | Some teamOne, None ->
+                    Ok(
+                        { QuizState = { updatedQuizInfo with TeamOne = teamOne }
+                          RevertedAnswer = revertedAnswer }
+                    )
+                | None, Some teamTwo ->
+                    Ok(
+                        { QuizState = { updatedQuizInfo with TeamTwo = teamTwo }
+                          RevertedAnswer = revertedAnswer }
+                    )
         }
 
 
 let createEvents: CreateEvents =
-    fun quizzer quizState ->
+    fun quizzer updatedQuiz ->
+        let quizState = updatedQuiz.QuizState
+
         let updatedTeamScore (quiz: RunningTeamQuiz) teamPosition =
             match teamPosition with
             | TeamOne -> quiz.TeamOne.Score
             | TeamTwo -> quiz.TeamTwo.Score
 
-        let findAnswerer (quiz: RunningTeamQuiz) =
+        let findAnswerer quizzer (quiz: RunningTeamQuiz) =
             [ yield!
                   (quiz.TeamOne.Quizzers
                    |> List.map (fun q -> (q, TeamOne)))
@@ -117,7 +126,41 @@ let createEvents: CreateEvents =
             |> List.find (fun (q, _) -> q.Name = quizzer)
 
         let answerer, teamUpdated =
-            findAnswerer quizState
+            findAnswerer quizzer quizState
+
+        let answererScoreChanged =
+            Event.IndividualScoreChanged
+                { NewScore = answerer.Score
+                  Quiz = quizState.Code
+                  Quizzer = quizzer
+                  Question = quizState.CurrentQuestion }
+
+        let revertedScoresChanged =
+            [ answererScoreChanged ]
+            @ match updatedQuiz.RevertedAnswer with
+              | NoChange -> []
+              | Reverted revertedQuizzer ->
+                  let revertedState, revertedTeam =
+                      quizState |> findAnswerer revertedQuizzer
+
+                  let scoreChanged =
+                      { NewScore = revertedState.Score
+                        Quiz = quizState.Code
+                        Quizzer = revertedQuizzer
+                        Question = quizState.CurrentQuestion }
+                      |> Event.IndividualScoreChanged
+
+                  let teamScoreChanged =
+                      if teamUpdated <> revertedTeam then
+                          [ Event.TeamScoreChanged
+                                { NewScore = updatedTeamScore quizState revertedTeam
+                                  Team = revertedTeam
+                                  Quiz = quizState.Code } ]
+                      else
+                          []
+
+                  [ scoreChanged
+                    yield! teamScoreChanged ]
 
         let teamScoreChanged =
             Event.TeamScoreChanged
@@ -125,21 +168,15 @@ let createEvents: CreateEvents =
                   Team = teamUpdated
                   Quiz = quizState.Code }
 
-        let individualScoreChanged =
-            Event.IndividualScoreChanged
-                { NewScore = answerer.Score
-                  Quiz = quizState.Code
-                  Quizzer = quizzer
-                  Question = quizState.CurrentQuestion }
-
         let currentQuestionChanged =
             Event.CurrentQuestionChanged
                 { Quiz = quizState.Code
                   NewQuestion = quizState.CurrentQuestion }
 
         [ teamScoreChanged
-          individualScoreChanged
-          currentQuestionChanged ]
+          answererScoreChanged
+          currentQuestionChanged
+          yield! revertedScoresChanged ]
 
 let answerCorrectly getQuiz saveQuiz : Workflow =
     fun command ->
@@ -159,15 +196,15 @@ let answerCorrectly getQuiz saveQuiz : Workflow =
                 |> Result.mapError (fun e -> Error.NoCurrentQuizzer)
                 |> AsyncResult.ofResult
 
-            let! updatedQuiz, answerer =
+            let! updatedQuiz =
                 updateQuiz currentQuizzer quiz
                 |> AsyncResult.ofResult
 
             do!
-                updatedQuiz
+                updatedQuiz.QuizState
                 |> Quiz.Running
                 |> saveQuiz
                 |> AsyncResult.ofAsync
 
-            return createEvents answerer updatedQuiz
+            return createEvents currentQuizzer updatedQuiz
         }

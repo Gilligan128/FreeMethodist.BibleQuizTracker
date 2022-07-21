@@ -1,6 +1,7 @@
 module FreeMethodist.BibleQuizTracker.Server.Tests.AnswerCorrectly.CreateEventsStepTests
 
 open FreeMethodist.BibleQuizTracker.Server
+open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
@@ -17,21 +18,31 @@ let ``Given Question was answered correctly When current quizzer answers correct
         let newAnswerer =
             QuizzerState.create "answerer"
 
+        let initialQuiz = RunningTeamQuiz.identity
+
         let! quizQuestion, _ =
             (Some QuizQuestion.create
-             |> QuizQuestion.answerCorrectly "previous" RunningTeamQuiz.identity.CurrentQuestion)
+             |> QuizQuestion.answerCorrectly "previous" initialQuiz.CurrentQuestion)
 
-        let setupQuiz (quiz: RunningTeamQuiz) =
-            { RunningTeamQuiz.identity with
-                Questions =
-                    RunningTeamQuiz.identity.Questions
-                    |> Map.add RunningTeamQuiz.identity.CurrentQuestion quizQuestion
-                TeamOne = { quiz.TeamOne with Quizzers = [ previousAnswerer; newAnswerer ] } }
+        let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
+            { QuizState =
+                { quiz with
+                    Questions =
+                        quiz.Questions
+                        |> Map.add quiz.CurrentQuestion quizQuestion
+                    TeamOne = { quiz.TeamOne with Quizzers = [ previousAnswerer; newAnswerer ] } }
+              RevertedAnswer = Reverted previousAnswerer.Name }
 
         let events =
-            RunningTeamQuiz.identity
+            initialQuiz
             |> setupQuiz
-            |> AnswerCorrectly_Pipeline.createEvents newAnswerer.Name
+            |> createEvents newAnswerer.Name
 
-        Assert.True(true)
+        let expectedEvent: IndividualScoreChanged =
+            { Quiz = initialQuiz.Code
+              Quizzer = previousAnswerer.Name
+              NewScore = previousAnswerer.Score
+              Question = initialQuiz.CurrentQuestion }
+
+        Assert.Contains(AnswerCorrectly.Event.IndividualScoreChanged expectedEvent, events)
     }
