@@ -301,6 +301,24 @@ module RunningTeamQuiz =
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
           Questions = Map.empty }
+ 
+
+    let getTeam teamPosition (quiz: RunningTeamQuiz) =
+        match teamPosition with
+        | TeamOne -> quiz.TeamOne
+        | TeamTwo -> quiz.TeamTwo
+    
+    let getTeamScore teamPosition (quiz: RunningTeamQuiz) =
+        (getTeam teamPosition quiz).Score
+        
+    let findQuizzerAndTeam quizzer (quiz: RunningTeamQuiz) =
+        [ yield!
+              (quiz.TeamOne.Quizzers
+               |> List.map (fun q -> (q, TeamOne)))
+          yield!
+              (quiz.TeamTwo.Quizzers
+               |> List.map (fun q -> (q, TeamTwo))) ]
+        |> List.find (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
 
 //Validation
 type NoCurrentQuizzer = NoCurrentQuizzer

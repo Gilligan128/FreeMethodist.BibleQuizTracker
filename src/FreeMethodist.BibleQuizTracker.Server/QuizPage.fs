@@ -488,6 +488,8 @@ let update
         let mapEvent event =
             match event with
             | AnswerIncorrectly.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e, e.Quiz
+            | AnswerIncorrectly.Event.IndividualScoreChanged e -> RunQuizEvent.IndividualScoreChanged e, e.Quiz
+            | AnswerIncorrectly.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
 
         let mapResult result =
             match result with

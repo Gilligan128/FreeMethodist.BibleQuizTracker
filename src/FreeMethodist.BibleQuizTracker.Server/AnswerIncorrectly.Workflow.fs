@@ -7,6 +7,8 @@ module AnswerIncorrectly =
     type Command = WithinQuizCommand<unit>
     type Event =
         | CurrentQuizzerChanged of CurrentQuizzerChanged
+        | IndividualScoreChanged of IndividualScoreChanged
+        | TeamScoreChanged of TeamScoreChanged
     type Error =
         | QuizState of QuizStateError
         | NoCurrentQuizzer of NoCurrentQuizzer

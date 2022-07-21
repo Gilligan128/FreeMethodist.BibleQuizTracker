@@ -19,7 +19,7 @@ let ``When Answered Incorrectly record Question with incorrect answerer`` () =
 
     assertSuccess result (fun quiz ->
         let question =
-            quiz.Questions[quiz.CurrentQuestion]
+            quiz.QuizState.Questions[quiz.QuizState.CurrentQuestion]
 
         let expectedQuestion =
             Incomplete [ answerer.Name ]
@@ -50,7 +50,7 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
 
     assertSuccess result (fun quiz ->
         let quizzerState =
-            quiz.TeamOne.Quizzers
+            quiz.QuizState.TeamOne.Quizzers
             |> List.find (fun q -> q.Name = answerer.Name)
 
         let expectedScore =

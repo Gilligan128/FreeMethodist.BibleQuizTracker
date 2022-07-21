@@ -1,5 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open Elmish
@@ -78,7 +79,7 @@ type ValidateCurrentQuizzer = RunningTeamQuiz -> Result<Quizzer, NoCurrentQuizze
 
 let validateCurrentQuizzer: ValidateCurrentQuizzer =
     fun quiz ->
-        quiz.CurrentQuizzer 
+        quiz.CurrentQuizzer
         |> (Result.ofOption NoCurrentQuizzer)
 
 
@@ -94,4 +95,8 @@ let validateQuiz: ValidateQuizIsRunning =
 //Score calculation
 type CalculateQuizzerScore = Map<QuestionNumber, QuizQuestion> -> Quizzer -> TeamScore
 type CalculateTeamScore = Map<Quizzer, TeamScore> -> TeamScore
+
+
+
+
 

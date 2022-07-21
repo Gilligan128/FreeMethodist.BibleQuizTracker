@@ -149,8 +149,7 @@ let createEvents: CreateEvents =
                   Question = quizState.CurrentQuestion }
 
         let revertedScoresChanged =
-            [ answererScoreChanged ]
-            @ match updatedQuiz.RevertedAnswer with
+           match updatedQuiz.RevertedAnswer with
               | NoChange -> []
               | Reverted revertedQuizzer ->
                   let revertedState, revertedTeam =

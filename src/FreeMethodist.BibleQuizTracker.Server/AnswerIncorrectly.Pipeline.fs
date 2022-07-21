@@ -1,5 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
 
+open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
 open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow.AnswerIncorrectly
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
@@ -7,8 +8,12 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.FSharp.Core
 
-type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<RunningTeamQuiz, AnswerIncorrectly.Error>
-type CreateEvents = RunningTeamQuiz -> AnswerIncorrectly.Event list
+type UpdatedQuiz =
+    { QuizState: RunningTeamQuiz
+      RevertedAnswer: RevertedCorrectAnswer }
+
+type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<UpdatedQuiz, AnswerIncorrectly.Error>
+type CreateEvents = UpdatedQuiz -> AnswerIncorrectly.Event list
 
 let updateQuiz: UpdateQuiz =
 
@@ -47,23 +52,58 @@ let updateQuiz: UpdateQuiz =
                                 q) }
 
             return
-                { quiz with
-                    CurrentQuizzer = None
-                    TeamOne = updateQuizzerInTeamIfFound quizzer quiz.TeamOne
-                    TeamTwo = updateQuizzerInTeamIfFound quizzer quiz.TeamTwo
-                    Questions =
-                        quiz.Questions
-                        |> Map.add quizCurrentQuestion changedQuestion }
+                { QuizState =
+                    { quiz with
+                        CurrentQuizzer = None
+                        TeamOne = updateQuizzerInTeamIfFound quizzer quiz.TeamOne
+                        TeamTwo = updateQuizzerInTeamIfFound quizzer quiz.TeamTwo
+                        Questions =
+                            quiz.Questions
+                            |> Map.add quizCurrentQuestion changedQuestion }
+                  RevertedAnswer = revertedCorrectAnswer }
         }
 
 let createEvents: CreateEvents =
     fun quiz ->
+        let revertedQuizzerOpt =
+            quiz.RevertedAnswer
+            |> RevertedCorrectAnswer.toOption
+            |> Option.map (fun reverted -> RunningTeamQuiz.findQuizzerAndTeam reverted quiz.QuizState)
+
+        let revertedIndividualScoreEventOpt =
+            revertedQuizzerOpt
+            |> Option.map (fun (quizzer, team) ->
+                { Quiz = quiz.QuizState.Code
+                  Quizzer = quizzer.Name
+                  NewScore = quizzer.Score
+                  Question = quiz.QuizState.CurrentQuestion })
+            |> Option.map Event.IndividualScoreChanged
+
+        let revertedTeamScoreOpt =
+            revertedQuizzerOpt
+            |> Option.map (fun (quizzer, team) ->
+                { Quiz = quiz.QuizState.Code
+                  NewScore =
+                    quiz.QuizState
+                    |> RunningTeamQuiz.getTeam team
+                    |> fun team -> team.Score
+                  Team = team })
+            |> Option.map Event.TeamScoreChanged
+
+        let revertedEvents =
+            match revertedIndividualScoreEventOpt, revertedTeamScoreOpt with
+            | None, None -> []
+            | Some event, Some event2 -> [ event; event2 ]
+            | Some event, None -> [ event ]
+            | None, Some event -> [ event ]
+
         let quizzerChanged =
-            { Quiz = quiz.Code
-              CurrentQuizzer = quiz.CurrentQuizzer }
+            { Quiz = quiz.QuizState.Code
+              CurrentQuizzer = quiz.QuizState.CurrentQuizzer }
             |> Event.CurrentQuizzerChanged
 
-        [ quizzerChanged ]
+        [ quizzerChanged
+          yield! revertedEvents ]
 
 let answerIncorrectly getQuiz saveQuiz : Workflow =
     fun command ->
@@ -77,7 +117,7 @@ let answerIncorrectly getQuiz saveQuiz : Workflow =
 
             let! validQuizzer =
                 validateCurrentQuizzer runningQuiz
-                |> Result.mapError Error.NoCurrentQuizzer 
+                |> Result.mapError Error.NoCurrentQuizzer
                 |> AsyncResult.ofResult
 
             let! updatedQuiz =
@@ -85,7 +125,7 @@ let answerIncorrectly getQuiz saveQuiz : Workflow =
                 |> AsyncResult.ofResult
 
             do!
-                updatedQuiz
+                updatedQuiz.QuizState
                 |> Running
                 |> saveQuiz
                 |> AsyncResult.ofAsync
