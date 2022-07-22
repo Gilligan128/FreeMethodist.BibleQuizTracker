@@ -16,18 +16,13 @@ let ``When Answered Incorrectly record Question with incorrect answerer`` () =
                 CurrentQuizzer = (Some answerer.Name) }
 
         let! result = updateQuiz answerer.Name initialQuiz
-
-        let questionDeprecated =
-            result.QuizState.QuestionsDeprecated[result.QuizState.CurrentQuestion]
-
+        
         let answer =
             result.QuizState.Questions[result.QuizState.CurrentQuestion]
                 .AnswerState
 
         let expectedQuestion =
             Incomplete [ answerer.Name ]
-
-        Assert.Equal(expectedQuestion, questionDeprecated)
         Assert.Equal(expectedQuestion, answer)
     }
 
@@ -62,6 +57,34 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
             answerer.Score |> TeamScore.revertCorrectAnswer
 
         Assert.Equal(expectedScore, quizzerState.Score)
+    }
+    
+[<Fact>]
+let ``Given Quizzer was recorded answering correctly for question earlier When Answered Incorrectly then quizzer is no longer answerer``
+    ()
+    =
+    result {
+        let answerer = QuizzerState.create "Jim"
+
+        let previouslyAnsweredQuestion =
+            ({ Answerer = answerer.Name
+               IncorrectAnswerers = [] }
+             |> Answered
+             |> Complete)
+
+        let setupQuiz quiz =
+            { quiz with
+                CurrentQuizzer = (Some answerer.Name)
+                TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] }}
+
+        let initialQuiz =
+            RunningTeamQuiz.identity |> setupQuiz |> insertCurrentAnswer previouslyAnsweredQuestion
+
+        let! result = updateQuiz answerer.Name initialQuiz
+
+        let question = result.QuizState.Questions[result.QuizState.CurrentQuestion]
+
+        Assert.Equal([answerer.Name] |> Unanswered |> Complete, question.AnswerState)
     }
 
 [<Fact>]
@@ -115,3 +138,4 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
         |> Result.Error
 
     Assert.Equal(expectedResult, result)
+

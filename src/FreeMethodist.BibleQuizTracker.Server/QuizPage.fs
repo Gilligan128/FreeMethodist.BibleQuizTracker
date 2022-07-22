@@ -158,17 +158,17 @@ let private refreshModel (quiz: Quiz) =
 
     match quiz with
     | Running runningQuiz ->
-        let currentQuestion =
-            runningQuiz.QuestionsDeprecated.TryFind(runningQuiz.CurrentQuestion)
+        let currentAnswer =
+            runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
             |> fun current ->
                 match current with
                 | None -> QuizAnswer.create
-                | Some q -> q
+                | Some q -> q.AnswerState
 
         { emptyModel with
             Code = runningQuiz.Code
-            TeamOne = runningQuiz.TeamOne |> refreshTeam currentQuestion
-            TeamTwo = runningQuiz.TeamTwo |> refreshTeam currentQuestion
+            TeamOne = runningQuiz.TeamOne |> refreshTeam currentAnswer
+            TeamTwo = runningQuiz.TeamTwo |> refreshTeam currentAnswer
             CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
             CurrentQuizzer = runningQuiz.CurrentQuizzer
             CurrentUser = Quizmaster

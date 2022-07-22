@@ -36,28 +36,6 @@ let initExample quizCode =
              |> PositiveNumber.increment
              |> PositiveNumber.increment)
           CurrentQuizzer = Some "Juni"
-          QuestionsDeprecated =
-            Map.empty
-            |> Map.add
-                PositiveNumber.one
-                ({ Answerer = "Jim"
-                   IncorrectAnswerers = [] }
-                 |> Answered
-                 |> Complete)
-            |> Map.add
-                (PositiveNumber.one |> PositiveNumber.increment)
-                ({ Answerer = "Jina"
-                   IncorrectAnswerers = [] }
-                 |> Answered
-                 |> Complete)
-            |> Map.add
-                (PositiveNumber.one
-                 |> PositiveNumber.increment
-                 |> PositiveNumber.increment)
-                ({ Answerer = "Jina"
-                   IncorrectAnswerers = [] }
-                 |> Answered
-                 |> Complete)
           Questions =
             Map.empty
             |> Map.add

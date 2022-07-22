@@ -8,25 +8,8 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 type CreateEvent = RunningTeamQuiz -> CurrentQuestionChanged
 
 let updateQuiz quiz question =
-    { quiz with
-        CurrentQuestion = question
-        QuestionsDeprecated =
-            quiz.QuestionsDeprecated
-            |> Map.change question (fun questionOpt ->
-                questionOpt
-                |> Option.defaultValue ([] |> Unanswered |> Complete)
-                |> Some)
-        Questions =
-            quiz.Questions
-            |> Map.change question (fun questionOpt ->
-                questionOpt
-                |> Option.defaultValue (
-                    []
-                    |> Unanswered
-                    |> Complete
-                    |> QuestionState.create
-                )
-                |> Some) }
+    { quiz with CurrentQuestion = question }
+    |> fun q -> { q with Questions = RunningTeamQuiz.changeCurrentAnswer q ([] |> Unanswered |> Complete) }
 
 let createEvent (quiz: RunningTeamQuiz) =
     { Quiz = quiz.Code

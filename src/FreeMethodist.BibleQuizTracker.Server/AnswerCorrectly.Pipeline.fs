@@ -69,25 +69,17 @@ let updateQuiz: UpdateQuiz =
             let newCurrentQuestion =
                 quiz.CurrentQuestion |> PositiveNumber.increment
 
-            let! updatedQuestion, revertedQuizzer =
-                quiz.QuestionsDeprecated
+            let! updatedAnswer, revertedQuizzer =
+                quiz.Questions
                 |> Map.tryFind quiz.CurrentQuestion
-              //  |> Option.map (fun q -> q.AnswerState)
+                |> Option.map (fun q -> q.AnswerState)
                 |> recordAnsweredQuestion quizzer quiz.CurrentQuestion
                 |> Result.mapError (fun error -> error |> Error.QuizzerAlreadyAnsweredCorrectly)
 
             return
                 { quiz with
                     CurrentQuestion = newCurrentQuestion
-                    QuestionsDeprecated =
-                        quiz.QuestionsDeprecated
-                        |> Map.add quiz.CurrentQuestion updatedQuestion
-                    Questions =
-                        quiz.Questions
-                        |> Map.change quiz.CurrentQuestion (fun q ->
-                            q
-                            |> Option.defaultValue QuestionState.initial
-                            |> fun q -> Some { q with AnswerState = updatedQuestion }) },
+                    Questions = RunningTeamQuiz.changeCurrentAnswer quiz updatedAnswer},
                 revertedQuizzer
         }
 

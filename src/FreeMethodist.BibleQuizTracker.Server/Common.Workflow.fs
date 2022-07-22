@@ -24,26 +24,6 @@ type WithinQuizCommand<'data> =
 
 type TeamScore = private TeamScore of int //increments of 20
 
-[<RequireQualifiedAccess>]
-module TeamScore =
-
-    let create score =
-        let scoreMod = score % 20
-
-        if scoreMod = 0 then
-            Ok(TeamScore score)
-        else
-            Error "Score not divisible by 20"
-
-    let value (TeamScore score) = score
-
-    let initial: TeamScore = TeamScore 0
-
-    let ofQuestions questionCount = TeamScore(questionCount * 20)
-
-    let correctAnswer (TeamScore value) = TeamScore(value + 20)
-    let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
-
 type TeamPosition =
     | TeamOne
     | TeamTwo
@@ -84,22 +64,7 @@ type QuizzerState =
       Participation: ParticipationState
       Score: TeamScore }
 
-[<RequireQualifiedAccess>]
-module QuizzerState =
-    let create name =
-        { Name = name
-          Participation = In
-          Score = TeamScore.initial }
 
-    let isQuizzer quizzerName quizzerState = quizzerState.Name = quizzerName
-
-    let updateQuizzerIfInRoster updateFunction quizzerName quizzerRoster =
-        quizzerRoster
-        |> List.map (fun q ->
-            if isQuizzer quizzerName q then
-                updateFunction q
-            else
-                q)
 
 //don't initialize directly. Use the QuizQuestion module.
 type QuizAnswer =
@@ -109,6 +74,109 @@ type QuizAnswer =
 type RevertedCorrectAnswer =
     | Reverted of Quizzer
     | NoChange
+
+type QuestionState =
+    { FailedAppeal: Quizzer option
+      AnswerState: QuizAnswer }
+
+type QuizTeamState =
+    { Name: TeamName
+      Score: TeamScore
+      Quizzers: QuizzerState list
+      Captain: Quizzer option }
+
+type RunningTeamQuiz =
+    { Code: QuizCode
+      Questions: Map<PositiveNumber, QuestionState>
+      TeamOne: QuizTeamState
+      TeamTwo: QuizTeamState
+      CurrentQuestion: QuestionNumber
+      CurrentQuizzer: Quizzer option }
+
+//Jumps are outside of Quizzes so that we can handle having to save a bunch around the same time.
+type Jump =
+    { Quiz: QuizCode
+      Quizzer: Quizzer
+      ServerTimestamp: DateTimeOffset }
+
+//Create Quiz Workflow
+type UnvalidatedTeamQuiz =
+    { Code: QuizCode
+      TeamOne: TeamName
+      TeamTwo: TeamName }
+
+type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
+
+//Enter Quiz Workflow
+type ParticipationType =
+    | Captain
+    | Active
+    | Substitute
+
+type UnvalidatedEntrance =
+    { Quizzer: Quizzer
+      Team: TeamName
+      Participation: ParticipationType
+      Timestamp: DateTimeOffset }
+
+type EnterTeamQuizCommand = WithinQuizCommand<UnvalidatedEntrance>
+
+type EnterQuizError =
+    | ThereIsAlreadyACaptain of Quizzer
+    | QuizNotFound of QuizCode
+    | QuizNotTeamQuiz of QuizCode
+    | QuizIsCompleted of QuizCode
+
+type QuizzerEntered =
+    { Quizzer: Quizzer
+      Quiz: QuizCode
+      Timestamp: DateTimeOffset }
+
+type EnterQuizWorkflow = EnterTeamQuizCommand -> Result<QuizzerEntered, EnterQuizError>
+
+//Jump workflow
+type UnvalidatedJump =
+    { Quizzer: Quizzer
+      timestamp: DateTimeOffset }
+
+type JumpCommand = WithinQuizCommand<UnvalidatedJump>
+type JumpOrderChanged = { Quiz: QuizCode; Order: Quizzer list }
+
+type JumpError =
+    | JumpingLocked
+    | QuizzerNotParticipating of Quizzer
+    | QuizRoomClosed of QuizCode
+
+type PlayerJumpsWorkflow = JumpCommand -> Result<JumpOrderChanged, JumpError>
+
+type QuizStateError = WrongQuizState of Type
+
+
+//Validation
+type NoCurrentQuizzer = NoCurrentQuizzer
+
+
+//Functions
+[<RequireQualifiedAccess>]
+module TeamScore =
+
+    let create score =
+        let scoreMod = score % 20
+
+        if scoreMod = 0 then
+            Ok(TeamScore score)
+        else
+            Error "Score not divisible by 20"
+
+    let value (TeamScore score) = score
+
+    let initial: TeamScore = TeamScore 0
+
+    let ofQuestions questionCount = TeamScore(questionCount * 20)
+
+    let correctAnswer (TeamScore value) = TeamScore(value + 20)
+    let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
+
 
 [<RequireQualifiedAccess>]
 module RevertedCorrectAnswer =
@@ -202,10 +270,6 @@ module QuizAnswer =
              NoChange)
             |> Ok
 
-type QuestionState =
-    { FailedAppeal: Quizzer option
-      AnswerState: QuizAnswer }
-
 [<RequireQualifiedAccess>]
 module QuestionState =
     let initial =
@@ -219,11 +283,23 @@ module QuestionState =
         |> Option.defaultValue initial
         |> fun q -> Some { q with AnswerState = answer }
 
-type QuizTeamState =
-    { Name: TeamName
-      Score: TeamScore
-      Quizzers: QuizzerState list
-      Captain: Quizzer option }
+[<RequireQualifiedAccess>]
+module QuizzerState =
+    let create name =
+        { Name = name
+          Participation = In
+          Score = TeamScore.initial }
+
+    let isQuizzer quizzerName (quizzerState: QuizzerState) = quizzerState.Name = quizzerName
+
+    let updateQuizzerIfInRoster (updateFunction : QuizzerState -> QuizzerState) quizzerName (quizzerRoster: QuizzerState list )=
+        quizzerRoster
+        |> List.map (fun q ->
+            if isQuizzer quizzerName q then
+                updateFunction q
+            else
+                q)
+        
 
 [<RequireQualifiedAccess>]
 module QuizTeamState =
@@ -233,72 +309,7 @@ module QuizTeamState =
                 team.Quizzers
                 |> QuizzerState.updateQuizzerIfInRoster updateFunction quizzer }
 
-type RunningTeamQuiz =
-    { Code: QuizCode
-      QuestionsDeprecated: Map<PositiveNumber, QuizAnswer>
-      Questions: Map<PositiveNumber, QuestionState>
-      TeamOne: QuizTeamState
-      TeamTwo: QuizTeamState
-      CurrentQuestion: QuestionNumber
-      CurrentQuizzer: Quizzer option }
 
-//Jumps are outside of Quizzes so that we can handle having to save a bunch around the same time.
-type Jump =
-    { Quiz: QuizCode
-      Quizzer: Quizzer
-      ServerTimestamp: DateTimeOffset }
-
-//Create Quiz Workflow
-type UnvalidatedTeamQuiz =
-    { Code: QuizCode
-      TeamOne: TeamName
-      TeamTwo: TeamName }
-
-type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
-
-//Enter Quiz Workflow
-type ParticipationType =
-    | Captain
-    | Active
-    | Substitute
-
-type UnvalidatedEntrance =
-    { Quizzer: Quizzer
-      Team: TeamName
-      Participation: ParticipationType
-      Timestamp: DateTimeOffset }
-
-type EnterTeamQuizCommand = WithinQuizCommand<UnvalidatedEntrance>
-
-type EnterQuizError =
-    | ThereIsAlreadyACaptain of Quizzer
-    | QuizNotFound of QuizCode
-    | QuizNotTeamQuiz of QuizCode
-    | QuizIsCompleted of QuizCode
-
-type QuizzerEntered =
-    { Quizzer: Quizzer
-      Quiz: QuizCode
-      Timestamp: DateTimeOffset }
-
-type EnterQuizWorkflow = EnterTeamQuizCommand -> Result<QuizzerEntered, EnterQuizError>
-
-//Jump workflow
-type UnvalidatedJump =
-    { Quizzer: Quizzer
-      timestamp: DateTimeOffset }
-
-type JumpCommand = WithinQuizCommand<UnvalidatedJump>
-type JumpOrderChanged = { Quiz: QuizCode; Order: Quizzer list }
-
-type JumpError =
-    | JumpingLocked
-    | QuizzerNotParticipating of Quizzer
-    | QuizRoomClosed of QuizCode
-
-type PlayerJumpsWorkflow = JumpCommand -> Result<JumpOrderChanged, JumpError>
-
-type QuizStateError = WrongQuizState of Type
 
 [<RequireQualifiedAccess>]
 module RunningTeamQuiz =
@@ -316,7 +327,6 @@ module RunningTeamQuiz =
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
-          QuestionsDeprecated = Map.empty
           Questions = Map.empty }
 
 
@@ -335,6 +345,10 @@ module RunningTeamQuiz =
               (quiz.TeamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.find (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
-
-//Validation
-type NoCurrentQuizzer = NoCurrentQuizzer
+    let changeCurrentAnswer quiz changedQuestion =
+        quiz.Questions
+        |> Map.change quiz.CurrentQuestion (fun q ->
+            q
+            |> Option.defaultValue QuestionState.initial
+            |> fun q -> { q with AnswerState = changedQuestion }
+            |> Some) 

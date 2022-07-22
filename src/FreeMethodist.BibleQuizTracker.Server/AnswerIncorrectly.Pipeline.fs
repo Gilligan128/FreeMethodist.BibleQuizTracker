@@ -26,11 +26,12 @@ let updateQuiz: UpdateQuiz =
             let quizCurrentQuestion =
                 quiz.CurrentQuestion
 
-            let currentQuestionRecord =
-                quiz.QuestionsDeprecated.TryFind quizCurrentQuestion
+            let currentAnswerRecord =
+                quiz.Questions.TryFind quizCurrentQuestion
+                |> Option.map (fun q -> q.AnswerState)
 
             let! changedQuestion, revertedCorrectAnswer =
-                updateOrAddQuestion quizzer quizCurrentQuestion currentQuestionRecord
+                updateOrAddQuestion quizzer quizCurrentQuestion currentAnswerRecord
                 |> Result.mapError Error.QuizzerAlreadyAnsweredIncorrectly
 
             let updateScore revertedAnswer (quizzer: QuizzerState) =
@@ -57,15 +58,7 @@ let updateQuiz: UpdateQuiz =
                         CurrentQuizzer = None
                         TeamOne = updateQuizzerInTeamIfFound quizzer quiz.TeamOne
                         TeamTwo = updateQuizzerInTeamIfFound quizzer quiz.TeamTwo
-                        QuestionsDeprecated =
-                            quiz.QuestionsDeprecated
-                            |> Map.add quizCurrentQuestion changedQuestion
-                        Questions =
-                            quiz.Questions
-                            |> Map.change quizCurrentQuestion (fun q ->
-                                q
-                                |> Option.defaultValue (QuestionState.create changedQuestion)
-                                |> Some) }
+                        Questions = RunningTeamQuiz.changeCurrentAnswer quiz changedQuestion }
                   RevertedAnswer = revertedCorrectAnswer }
         }
 
