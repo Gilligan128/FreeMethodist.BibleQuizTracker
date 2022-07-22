@@ -76,11 +76,33 @@ type StartTeamQuizError = NotEnoughPlayers of NotEnoughPlayersError
 //Validation
 type ValidateQuizIsRunning = Quiz -> Result<RunningTeamQuiz, QuizStateError>
 type ValidateCurrentQuizzer = RunningTeamQuiz -> Result<Quizzer, NoCurrentQuizzer>
+type ValidateCurrentQuizzerWithTeam = RunningTeamQuiz -> Result<Quizzer * TeamPosition, NoCurrentQuizzer>
 
 let validateCurrentQuizzer: ValidateCurrentQuizzer =
     fun quiz ->
         quiz.CurrentQuizzer
         |> (Result.ofOption NoCurrentQuizzer)
+
+let validateCurrentQuizzerWithTeam: ValidateCurrentQuizzerWithTeam =
+    fun quiz ->
+        let quizzerOpt quizzers q =
+            quizzers
+            |> List.tryFind (QuizzerState.isQuizzer q)
+            |> Option.map (fun _ -> q)
+
+        let teamOneOpt =
+            quiz.CurrentQuizzer
+            |> Option.bind (fun q -> q |> quizzerOpt quiz.TeamOne.Quizzers)
+
+        let teamTwoOpt =
+            quiz.CurrentQuizzer
+            |> Option.bind (fun q -> q |> quizzerOpt quiz.TeamTwo.Quizzers)
+
+        match teamOneOpt, teamTwoOpt with
+        | None, None -> Error NoCurrentQuizzer
+        | Some quizzer, None -> Ok (quizzer, TeamOne)
+        | None, Some quizzer -> Ok (quizzer, TeamTwo)
+        | Some quizzer1, Some _ -> Ok (quizzer1, TeamOne) //should be an error, really
 
 
 
@@ -95,8 +117,3 @@ let validateQuiz: ValidateQuizIsRunning =
 //Score calculation
 type CalculateQuizzerScore = Map<QuestionNumber, QuizAnswer> -> Quizzer -> TeamScore
 type CalculateTeamScore = Map<Quizzer, TeamScore> -> TeamScore
-
-
-
-
-
