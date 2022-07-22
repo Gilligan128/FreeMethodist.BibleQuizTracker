@@ -57,6 +57,7 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
             answerer.Score |> TeamScore.revertCorrectAnswer
 
         Assert.Equal(expectedScore, quizzerState.Score)
+        Assert.True(initialQuiz.TeamOne.Score > quiz.QuizState.TeamOne.Score)
     }
     
 [<Fact>]

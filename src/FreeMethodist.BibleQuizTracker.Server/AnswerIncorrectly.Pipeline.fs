@@ -52,12 +52,25 @@ let updateQuiz: UpdateQuiz =
                             else
                                 q) }
 
+            let revertTeamScoreIfRevertedQuizzerOnTeam revertedAnswer (team: QuizTeamState) =
+                revertedAnswer
+                |> RevertedCorrectAnswer.toOption
+                |> Option.bind (fun q ->
+                    team.Quizzers
+                    |> List.tryFind (QuizzerState.isQuizzer q))
+                |> Option.map (fun _ -> { team with Score = team.Score |> TeamScore.revertCorrectAnswer })
+                |> Option.defaultValue team
+
             return
                 { QuizState =
                     { quiz with
                         CurrentQuizzer = None
-                        TeamOne = updateQuizzerInTeamIfFound quizzer quiz.TeamOne
-                        TeamTwo = updateQuizzerInTeamIfFound quizzer quiz.TeamTwo
+                        TeamOne =
+                            (updateQuizzerInTeamIfFound quizzer quiz.TeamOne)
+                            |> revertTeamScoreIfRevertedQuizzerOnTeam revertedCorrectAnswer
+                        TeamTwo =
+                            (updateQuizzerInTeamIfFound quizzer quiz.TeamTwo)
+                            |> revertTeamScoreIfRevertedQuizzerOnTeam revertedCorrectAnswer
                         Questions = RunningTeamQuiz.changeCurrentAnswer quiz changedQuestion }
                   RevertedAnswer = revertedCorrectAnswer }
         }
