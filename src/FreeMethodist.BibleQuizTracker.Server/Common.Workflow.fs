@@ -176,10 +176,10 @@ module TeamScore =
 
     let correctAnswer (TeamScore value) = TeamScore(value + 20)
     let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
-    
+
     let failAppeal (TeamScore value) = TeamScore(value - 20)
-    
-    let revertAppealFailure (TeamScore value ) = TeamScore(value + 20 )
+
+    let revertAppealFailure (TeamScore value) = TeamScore(value + 20)
 
 [<RequireQualifiedAccess>]
 module RevertedCorrectAnswer =
@@ -286,6 +286,10 @@ module QuestionState =
         |> Option.defaultValue initial
         |> fun q -> Some { q with AnswerState = answer }
 
+    let failAppeal quizzer question =
+        { question with FailedAppeal = Some quizzer }
+
+
 [<RequireQualifiedAccess>]
 module QuizzerState =
     let create name =
@@ -295,14 +299,18 @@ module QuizzerState =
 
     let isQuizzer quizzerName (quizzerState: QuizzerState) = quizzerState.Name = quizzerName
 
-    let updateQuizzerIfInRoster (updateFunction : QuizzerState -> QuizzerState) quizzerName (quizzerRoster: QuizzerState list )=
+    let updateQuizzerIfInRoster
+        (updateFunction: QuizzerState -> QuizzerState)
+        quizzerName
+        (quizzerRoster: QuizzerState list)
+        =
         quizzerRoster
         |> List.map (fun q ->
             if isQuizzer quizzerName q then
                 updateFunction q
             else
                 q)
-        
+
 
 [<RequireQualifiedAccess>]
 module QuizTeamState =
@@ -348,7 +356,7 @@ module RunningTeamQuiz =
               (quiz.TeamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.find (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
-        
+
     let tryFindQuizzerAndTeam quizzer (quiz: RunningTeamQuiz) =
         [ yield!
               (quiz.TeamOne.Quizzers
@@ -357,11 +365,11 @@ module RunningTeamQuiz =
               (quiz.TeamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.tryFind (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
-        
+
     let changeCurrentAnswer quiz changedQuestion =
         quiz.Questions
         |> Map.change quiz.CurrentQuestion (fun q ->
             q
             |> Option.defaultValue QuestionState.initial
             |> fun q -> { q with AnswerState = changedQuestion }
-            |> Some) 
+            |> Some)

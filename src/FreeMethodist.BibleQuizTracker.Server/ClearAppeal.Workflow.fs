@@ -6,7 +6,9 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 module ClearAppeal =
     type Command = WithinQuizCommand<unit>
     
-    type Error = QuizState
+    type Error =
+        | QuizState of QuizStateError
+        | NoFailedAppeal
     
     type Event = TeamScoreChanged of TeamScoreChanged
     
