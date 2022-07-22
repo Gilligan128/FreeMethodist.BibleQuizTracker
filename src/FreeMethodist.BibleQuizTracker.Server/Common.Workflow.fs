@@ -211,8 +211,14 @@ module QuestionState =
     let initial =
         { FailedAppeal = None
           AnswerState = QuizAnswer.create }
-    let create answer =
-        {initial with AnswerState = answer}
+
+    let create answer = { initial with AnswerState = answer }
+
+    let changeAnswer answer questionStateOption =
+        questionStateOption
+        |> Option.defaultValue initial
+        |> fun q -> Some { q with AnswerState = answer }
+
 type QuizTeamState =
     { Name: TeamName
       Score: TeamScore

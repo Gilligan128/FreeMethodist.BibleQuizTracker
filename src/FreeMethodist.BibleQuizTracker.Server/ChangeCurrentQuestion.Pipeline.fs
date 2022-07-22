@@ -10,11 +10,22 @@ type CreateEvent = RunningTeamQuiz -> CurrentQuestionChanged
 let updateQuiz quiz question =
     { quiz with
         CurrentQuestion = question
-        QuestionsDeprecated = 
+        QuestionsDeprecated =
             quiz.QuestionsDeprecated
             |> Map.change question (fun questionOpt ->
                 questionOpt
                 |> Option.defaultValue ([] |> Unanswered |> Complete)
+                |> Some)
+        Questions =
+            quiz.Questions
+            |> Map.change question (fun questionOpt ->
+                questionOpt
+                |> Option.defaultValue (
+                    []
+                    |> Unanswered
+                    |> Complete
+                    |> QuestionState.create
+                )
                 |> Some) }
 
 let createEvent (quiz: RunningTeamQuiz) =

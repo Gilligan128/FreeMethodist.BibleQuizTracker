@@ -3,7 +3,7 @@
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Tests.Common
+open FreeMethodist.BibleQuizTracker.Server.Tests.Quiz
 open Xunit
 
 [<Fact>]
@@ -13,11 +13,9 @@ let ``When Answered Incorrectly record Question with incorrect answerer`` () =
 
         let initialQuiz =
             { RunningTeamQuiz.identity with
-                QuestionsDeprecated = Map.empty
                 CurrentQuizzer = (Some answerer.Name) }
 
-        let! result =
-            updateQuiz answerer.Name initialQuiz
+        let! result = updateQuiz answerer.Name initialQuiz
 
         let questionDeprecated =
             result.QuizState.QuestionsDeprecated[result.QuizState.CurrentQuestion]
@@ -37,26 +35,25 @@ let ``When Answered Incorrectly record Question with incorrect answerer`` () =
 let ``Given Quizzer was recorded answering correctly for question earlier When Answered Incorrectly then decrement score``
     ()
     =
-    let answerer = QuizzerState.create "Jim"
+    result {
+        let answerer = QuizzerState.create "Jim"
 
-    let previouslyAnsweredQuestion =
-        ({ Answerer = answerer.Name
-           IncorrectAnswerers = [] }
-         |> Answered
-         |> Complete)
+        let previouslyAnsweredQuestion =
+            ({ Answerer = answerer.Name
+               IncorrectAnswerers = [] }
+             |> Answered
+             |> Complete)
 
-    let initialQuiz =
-        { RunningTeamQuiz.identity with
-            CurrentQuizzer = (Some answerer.Name)
-            TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] }
-            QuestionsDeprecated =
-                Map.empty
-                |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyAnsweredQuestion }
+        let setupQuiz quiz =
+            { quiz with
+                CurrentQuizzer = (Some answerer.Name)
+                TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] }}
 
-    let result =
-        updateQuiz answerer.Name initialQuiz
+        let initialQuiz =
+            RunningTeamQuiz.identity |> setupQuiz |> insertCurrentAnswer previouslyAnsweredQuestion
 
-    assertSuccess result (fun quiz ->
+        let! quiz = updateQuiz answerer.Name initialQuiz
+
         let quizzerState =
             quiz.QuizState.TeamOne.Quizzers
             |> List.find (fun q -> q.Name = answerer.Name)
@@ -64,7 +61,8 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
         let expectedScore =
             answerer.Score |> TeamScore.revertCorrectAnswer
 
-        Assert.Equal(expectedScore, quizzerState.Score))
+        Assert.Equal(expectedScore, quizzerState.Score)
+    }
 
 [<Fact>]
 let ``Given Quizzer was recorded answering incorrectly for an answered question earlier When Answered Incorrectly then Error``
@@ -72,7 +70,7 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
     =
     let answerer = QuizzerState.create "Jim"
 
-    let previouslyAnsweredQuestion =
+    let previouslyAnswered =
         ({ Answerer = "Different"
            IncorrectAnswerers = [ answerer.Name ] }
          |> Answered
@@ -81,10 +79,7 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
     let initialQuiz =
         { RunningTeamQuiz.identity with
             CurrentQuizzer = (Some answerer.Name)
-            TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] }
-            QuestionsDeprecated =
-                Map.empty
-                |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyAnsweredQuestion }
+            TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] }} |> insertCurrentAnswer previouslyAnswered
 
     let result =
         updateQuiz answerer.Name initialQuiz
@@ -102,16 +97,14 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
     =
     let answerer = QuizzerState.create "Jim"
 
-    let previouslyUnansweredQuestion =
+    let previouslyUnanswered =
         ([ answerer.Name ] |> Unanswered |> Complete)
 
     let initialQuiz =
         { RunningTeamQuiz.identity with
             CurrentQuizzer = (Some answerer.Name)
-            TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] }
-            QuestionsDeprecated =
-                Map.empty
-                |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyUnansweredQuestion }
+            TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] } }
+        |> insertCurrentAnswer previouslyUnanswered
 
     let result =
         updateQuiz answerer.Name initialQuiz

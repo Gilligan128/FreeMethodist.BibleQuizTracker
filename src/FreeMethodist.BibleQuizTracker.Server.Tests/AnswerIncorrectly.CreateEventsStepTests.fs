@@ -4,6 +4,7 @@ open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Tests.Quiz
 open Xunit
 
 [<Fact>]
@@ -24,10 +25,8 @@ let ``Given current quizzer answered current question correctly When current qui
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
-                    QuestionsDeprecated =
-                        quiz.QuestionsDeprecated
-                        |> Map.add quiz.CurrentQuestion quizQuestion
                     TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }
+                |> insertCurrentAnswer quizQuestion
               RevertedAnswer = Reverted answerer.Name }
 
         let events =
@@ -53,17 +52,15 @@ let ``Given current quizzer answered current question correctly When current qui
 
         let initialQuiz = RunningTeamQuiz.identity
 
-        let! quizQuestion, _ =
+        let! quizAnswer, _ =
             (Some QuizAnswer.create
              |> QuizAnswer.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
 
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
-                    QuestionsDeprecated =
-                        quiz.QuestionsDeprecated
-                        |> Map.add quiz.CurrentQuestion quizQuestion
                     TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }
+                |> insertCurrentAnswer quizAnswer
               RevertedAnswer = Reverted answerer.Name }
 
         let events =

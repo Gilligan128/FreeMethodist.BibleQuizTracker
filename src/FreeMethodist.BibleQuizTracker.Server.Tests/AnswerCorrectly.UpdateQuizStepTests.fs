@@ -4,6 +4,7 @@ open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Tests.Common
+open FreeMethodist.BibleQuizTracker.Server.Tests.Quiz
 open Xunit
 
 
@@ -106,8 +107,8 @@ let ``When Quizzer Answers then record answered question for history`` () =
 
         let initialQuiz =
             { (quizWithQuizzerOnTeamOne quizzer) with CurrentQuestion = PositiveNumber.one }
-        let! result =
-            updateQuiz quizzer.Name initialQuiz
+
+        let! result = updateQuiz quizzer.Name initialQuiz
 
         let expectedAnswer =
             { Answerer = quizzer.Name
@@ -116,14 +117,19 @@ let ``When Quizzer Answers then record answered question for history`` () =
             |> QuizAnswer.Complete
 
         Assert.Equal(Some expectedAnswer, result.QuizState.QuestionsDeprecated.TryFind initialQuiz.CurrentQuestion)
-        Assert.Equal(Some expectedAnswer, result.QuizState.Questions.TryFind initialQuiz.CurrentQuestion |> Option.map (fun q -> q.AnswerState))
+
+        Assert.Equal(
+            Some expectedAnswer,
+            result.QuizState.Questions.TryFind initialQuiz.CurrentQuestion
+            |> Option.map (fun q -> q.AnswerState)
+        )
     }
 
 [<Fact>]
 let ``Given Quizzer already answered correctly When Quizzer Answers then Error`` () =
     let quizzer = QuizzerState.create "Jim"
 
-    let alreadyAnsweredQuestion =
+    let alreadyAnswered =
         { Answerer = quizzer.Name
           IncorrectAnswerers = [] }
         |> Answered
@@ -134,13 +140,11 @@ let ``Given Quizzer already answered correctly When Quizzer Answers then Error``
 
     let initialQuiz =
         { quizWithQuizzerOnTeamOne with
-            CurrentQuestion = PositiveNumber.one
-            QuestionsDeprecated =
-                quizWithQuizzerOnTeamOne.QuestionsDeprecated
-                |> Map.add PositiveNumber.one alreadyAnsweredQuestion }
+            CurrentQuestion = PositiveNumber.one}
+        |> insertCurrentAnswer alreadyAnswered
 
     let result =
-        updateQuiz quizzer.Name initialQuiz
+        updateQuiz quizzer.Name initialQuiz 
 
     Assert.Equal(
         Result.Error(
@@ -167,14 +171,10 @@ let ``Given someone else previously answered correctly  When Quizzer Answers the
     let setupQuiz (quiz: RunningTeamQuiz) =
         { quiz with
             TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] }
-            QuestionsDeprecated =
-                quiz.QuestionsDeprecated
-                |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
-
          }
 
     let initialQuiz =
-        RunningTeamQuiz.identity |> setupQuiz
+        RunningTeamQuiz.identity |> setupQuiz |> insertCurrentAnswer alreadyAnsweredQuestion
 
     result {
         let! result = updateQuiz quizzer.Name initialQuiz
@@ -199,7 +199,7 @@ let ``Given someone else previously answered correctly from other team When Quiz
     let previousAnswerer =
         QuizzerState.create "Previous"
 
-    let alreadyAnsweredQuestion =
+    let alreadyAnswered =
         { Answerer = previousAnswerer.Name
           IncorrectAnswerers = [] }
         |> Answered
@@ -209,14 +209,11 @@ let ``Given someone else previously answered correctly from other team When Quiz
         { quiz with
             TeamOne = { quiz.TeamOne with Quizzers = [ quizzer ] }
             TeamTwo = { quiz.TeamTwo with Quizzers = [ previousAnswerer ] }
-            QuestionsDeprecated =
-                quiz.QuestionsDeprecated
-                |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
 
          }
 
     let initialQuiz =
-        RunningTeamQuiz.identity |> setupQuiz
+        RunningTeamQuiz.identity |> setupQuiz |> insertCurrentAnswer alreadyAnswered
 
     result {
         let! result = updateQuiz quizzer.Name initialQuiz
@@ -249,14 +246,10 @@ let ``Given someone else previously answered correctly from same team When Quizz
     let setupQuiz (quiz: RunningTeamQuiz) =
         { quiz with
             TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] }
-            QuestionsDeprecated =
-                quiz.QuestionsDeprecated
-                |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
-
          }
 
     let initialQuiz =
-        RunningTeamQuiz.identity |> setupQuiz
+        RunningTeamQuiz.identity |> setupQuiz |> insertCurrentAnswer alreadyAnsweredQuestion
 
     result {
         let! result = updateQuiz quizzer.Name initialQuiz

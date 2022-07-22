@@ -176,8 +176,9 @@ let private refreshModel (quiz: Quiz) =
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked
             QuestionScores =
-                runningQuiz.QuestionsDeprecated
+                runningQuiz.Questions
                 |> sortedList
+                |> List.map (fun q -> q.AnswerState)
                 |> List.map refreshQuestionScore }
     | Quiz.Completed _
     | Official _
