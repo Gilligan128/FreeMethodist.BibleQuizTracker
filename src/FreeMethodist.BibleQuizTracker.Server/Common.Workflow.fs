@@ -176,7 +176,10 @@ module TeamScore =
 
     let correctAnswer (TeamScore value) = TeamScore(value + 20)
     let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
-
+    
+    let failAppeal (TeamScore value) = TeamScore(value - 20)
+    
+    let revertAppealFailure (TeamScore value ) = TeamScore(value + 20 )
 
 [<RequireQualifiedAccess>]
 module RevertedCorrectAnswer =
@@ -345,6 +348,16 @@ module RunningTeamQuiz =
               (quiz.TeamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.find (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
+        
+    let tryFindQuizzerAndTeam quizzer (quiz: RunningTeamQuiz) =
+        [ yield!
+              (quiz.TeamOne.Quizzers
+               |> List.map (fun q -> (q, TeamOne)))
+          yield!
+              (quiz.TeamTwo.Quizzers
+               |> List.map (fun q -> (q, TeamTwo))) ]
+        |> List.tryFind (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
+        
     let changeCurrentAnswer quiz changedQuestion =
         quiz.Questions
         |> Map.change quiz.CurrentQuestion (fun q ->
