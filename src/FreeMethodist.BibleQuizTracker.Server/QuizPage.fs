@@ -620,8 +620,7 @@ let private itemizedScoreView model dispatch =
                                     itemizedPage
                                         .Quizzer()
                                         .Score(
-                                            (quizzerRunningScore model.Questions (number + 1) quizzer.Name)
-                                            |> quizzerAnswer (question |> Map.tryFind quizzer.Name)
+                                            quizzerScore (question |> Map.tryFind quizzer.Name)
                                             |> formatScore
                                         )
                                         .Elt()
@@ -639,9 +638,8 @@ let private itemizedScoreView model dispatch =
                                 for quizzer in model.TeamTwo.Quizzers do
                                     itemizedPage
                                         .Quizzer()
-                                        .Score(
-                                            (quizzerRunningScore model.Questions (number + 1) quizzer.Name)
-                                            |> quizzerAnswer (question |> Map.tryFind quizzer.Name)
+                                        .Score( 
+                                            quizzerScore (question |> Map.tryFind quizzer.Name)
                                             |> formatScore
                                         )
                                         .Elt()

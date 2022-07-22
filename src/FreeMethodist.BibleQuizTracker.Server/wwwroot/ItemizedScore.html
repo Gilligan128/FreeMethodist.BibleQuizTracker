@@ -1,4 +1,8 @@
-﻿<div class="table-container">
+﻿
+<div>
+    <p class="title">Running Score</p>
+</div>
+<div class="table-container">
     <table class="table is-bordered is-striped is-fullwidth">
         <thead>
         <tr>
@@ -10,8 +14,8 @@
         <tr>
             <th>Question</th>
             ${TeamOneHeading}
-            <th>Running</th>
-            <th>Running</th>
+            <th>Running Total</th>
+            <th>Running Total</th>
             ${TeamTwoHeading}
         </tr>
         </thead>
@@ -20,11 +24,11 @@
         </tbody>
         <tfoot>
         <tr>
-            <td>TOTAL</td>
+            <td class="has-text-weight-bold">TOTAL</td>
             ${QuizzerFooter}
             ${TeamOneFooter}
-            <td>${TeamOneScore}</td>
-            <td>${TeamTwoScore}</td>
+            <td class="has-text-weight-bold">${TeamOneScore}</td>
+            <td  class="has-text-weight-bold">${TeamTwoScore}</td>
             ${TeamTwoFooter}
         </tr>
 
