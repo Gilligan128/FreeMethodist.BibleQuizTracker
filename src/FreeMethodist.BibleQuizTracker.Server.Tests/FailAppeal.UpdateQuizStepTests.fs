@@ -18,7 +18,7 @@ let ``Given Question has not been appealed When appeal fails Then record failure
         let initialQuiz =
             RunningTeamQuiz.identity |> setupCurrentQuizzer
 
-        let! result = updateQuiz (quizzer, TeamOne) initialQuiz
+        let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
 
         let expectedAppeal = Some quizzer
 
@@ -42,7 +42,7 @@ let ``When appeal fails Then change Team score`` () =
         let initialQuiz =
             RunningTeamQuiz.identity |> setupCurrentQuizzer
 
-        let! result = updateQuiz (quizzer, TeamOne) initialQuiz
+        let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
 
         let expectedAppeal =
             initialQuiz.TeamOne.Score |> TeamScore.failAppeal
@@ -78,7 +78,7 @@ let ``Given someone else preciously failed an appeal for this Question When appe
             |> setupCurrentQuizzer
             |> insertQuestion
 
-        let! result = updateQuiz (quizzer, TeamOne) initialQuiz
+        let! result,_ = updateQuiz (quizzer, TeamOne) initialQuiz
 
         let expectedAppeal =
             initialQuiz.TeamTwo.Score |> TeamScore.revertAppealFailure
