@@ -100,22 +100,24 @@ let ``When Quizzer Answers then increment the current question`` () =
 
 [<Fact>]
 let ``When Quizzer Answers then record answered question for history`` () =
-    let quizzer = QuizzerState.create "Jim"
 
-    let initialQuiz =
-        { (quizWithQuizzerOnTeamOne quizzer) with CurrentQuestion = PositiveNumber.one }
+    result {
+        let quizzer = QuizzerState.create "Jim"
 
-    let result =
-        updateQuiz quizzer.Name initialQuiz
+        let initialQuiz =
+            { (quizWithQuizzerOnTeamOne quizzer) with CurrentQuestion = PositiveNumber.one }
+        let! result =
+            updateQuiz quizzer.Name initialQuiz
 
-    let expectedQuestion =
-        { Answerer = quizzer.Name
-          IncorrectAnswerers = [] }
-        |> CompletedQuestion.Answered
-        |> QuizQuestion.Complete
+        let expectedAnswer =
+            { Answerer = quizzer.Name
+              IncorrectAnswerers = [] }
+            |> CompletedQuestion.Answered
+            |> QuizAnswer.Complete
 
-    assertSuccess result (fun (updatedQuiz) ->
-        Assert.Equal(Some expectedQuestion, updatedQuiz.QuizState.Questions.TryFind initialQuiz.CurrentQuestion))
+        Assert.Equal(Some expectedAnswer, result.QuizState.QuestionsDeprecated.TryFind initialQuiz.CurrentQuestion)
+        Assert.Equal(Some expectedAnswer, result.QuizState.Questions.TryFind initialQuiz.CurrentQuestion |> Option.map (fun q -> q.AnswerState))
+    }
 
 [<Fact>]
 let ``Given Quizzer already answered correctly When Quizzer Answers then Error`` () =
@@ -133,8 +135,8 @@ let ``Given Quizzer already answered correctly When Quizzer Answers then Error``
     let initialQuiz =
         { quizWithQuizzerOnTeamOne with
             CurrentQuestion = PositiveNumber.one
-            Questions =
-                quizWithQuizzerOnTeamOne.Questions
+            QuestionsDeprecated =
+                quizWithQuizzerOnTeamOne.QuestionsDeprecated
                 |> Map.add PositiveNumber.one alreadyAnsweredQuestion }
 
     let result =
@@ -143,7 +145,7 @@ let ``Given Quizzer already answered correctly When Quizzer Answers then Error``
     Assert.Equal(
         Result.Error(
             AnswerCorrectly.QuizzerAlreadyAnsweredCorrectly(
-                QuizQuestion.QuizzerAlreadyAnsweredCorrectly(quizzer.Name, initialQuiz.CurrentQuestion)
+                QuizAnswer.QuizzerAlreadyAnsweredCorrectly(quizzer.Name, initialQuiz.CurrentQuestion)
             )
         ),
         result
@@ -165,8 +167,8 @@ let ``Given someone else previously answered correctly  When Quizzer Answers the
     let setupQuiz (quiz: RunningTeamQuiz) =
         { quiz with
             TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] }
-            Questions =
-                quiz.Questions
+            QuestionsDeprecated =
+                quiz.QuestionsDeprecated
                 |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
 
          }
@@ -207,8 +209,8 @@ let ``Given someone else previously answered correctly from other team When Quiz
         { quiz with
             TeamOne = { quiz.TeamOne with Quizzers = [ quizzer ] }
             TeamTwo = { quiz.TeamTwo with Quizzers = [ previousAnswerer ] }
-            Questions =
-                quiz.Questions
+            QuestionsDeprecated =
+                quiz.QuestionsDeprecated
                 |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
 
          }
@@ -247,8 +249,8 @@ let ``Given someone else previously answered correctly from same team When Quizz
     let setupQuiz (quiz: RunningTeamQuiz) =
         { quiz with
             TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] }
-            Questions =
-                quiz.Questions
+            QuestionsDeprecated =
+                quiz.QuestionsDeprecated
                 |> Map.add quiz.CurrentQuestion alreadyAnsweredQuestion
 
          }

@@ -102,7 +102,7 @@ module QuizzerState =
                 q)
 
 //don't initialize directly. Use the QuizQuestion module.
-type QuizQuestion =
+type QuizAnswer =
     | Complete of CompletedQuestion
     | Incomplete of Quizzer list
 
@@ -118,7 +118,7 @@ module RevertedCorrectAnswer =
         | Reverted q -> Some q
 
 [<RequireQualifiedAccess>]
-module QuizQuestion =
+module QuizAnswer =
     type QuizzerAlreadyAnsweredCorrectly = QuizzerAlreadyAnsweredCorrectly of Quizzer * QuestionNumber
     type QuizzerAlreadyAnsweredIncorrectly = QuizzerAlreadyAnsweredIncorrectly of Quizzer * QuestionNumber
 
@@ -202,8 +202,17 @@ module QuizQuestion =
              NoChange)
             |> Ok
 
+type QuestionState =
+    { FailedAppeal: Quizzer option
+      AnswerState: QuizAnswer }
 
-
+[<RequireQualifiedAccess>]
+module QuestionState =
+    let initial =
+        { FailedAppeal = None
+          AnswerState = QuizAnswer.create }
+    let create answer =
+        {initial with AnswerState = answer}
 type QuizTeamState =
     { Name: TeamName
       Score: TeamScore
@@ -220,7 +229,8 @@ module QuizTeamState =
 
 type RunningTeamQuiz =
     { Code: QuizCode
-      Questions: Map<PositiveNumber, QuizQuestion>
+      QuestionsDeprecated: Map<PositiveNumber, QuizAnswer>
+      Questions: Map<PositiveNumber, QuestionState>
       TeamOne: QuizTeamState
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
@@ -300,17 +310,17 @@ module RunningTeamQuiz =
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
+          QuestionsDeprecated = Map.empty
           Questions = Map.empty }
- 
+
 
     let getTeam teamPosition (quiz: RunningTeamQuiz) =
         match teamPosition with
         | TeamOne -> quiz.TeamOne
         | TeamTwo -> quiz.TeamTwo
-    
-    let getTeamScore teamPosition (quiz: RunningTeamQuiz) =
-        (getTeam teamPosition quiz).Score
-        
+
+    let getTeamScore teamPosition (quiz: RunningTeamQuiz) = (getTeam teamPosition quiz).Score
+
     let findQuizzerAndTeam quizzer (quiz: RunningTeamQuiz) =
         [ yield!
               (quiz.TeamOne.Quizzers

@@ -21,14 +21,14 @@ let ``Given Question was answered correctly When current quizzer answers correct
         let initialQuiz = RunningTeamQuiz.identity
 
         let! quizQuestion, _ =
-            (Some QuizQuestion.create
-             |> QuizQuestion.answerCorrectly "previous" initialQuiz.CurrentQuestion)
+            (Some QuizAnswer.create
+             |> QuizAnswer.answerCorrectly "previous" initialQuiz.CurrentQuestion)
 
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
-                    Questions =
-                        quiz.Questions
+                    QuestionsDeprecated =
+                        quiz.QuestionsDeprecated
                         |> Map.add quiz.CurrentQuestion quizQuestion
                     TeamOne = { quiz.TeamOne with Quizzers = [ previousAnswerer; newAnswerer ] } }
               RevertedAnswer = Reverted previousAnswerer.Name }

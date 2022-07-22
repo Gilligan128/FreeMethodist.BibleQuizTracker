@@ -133,7 +133,7 @@ let private refreshModel (quiz: Quiz) =
             team.Quizzers
             |> List.map (refreshQuizzer currentQuestion) }
 
-    let refreshQuestionScore (question: QuizQuestion) =
+    let refreshQuestionScore (question: QuizAnswer) =
         let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
 
         let toMap questionScores =
@@ -159,10 +159,10 @@ let private refreshModel (quiz: Quiz) =
     match quiz with
     | Running runningQuiz ->
         let currentQuestion =
-            runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
+            runningQuiz.QuestionsDeprecated.TryFind(runningQuiz.CurrentQuestion)
             |> fun current ->
                 match current with
-                | None -> QuizQuestion.create
+                | None -> QuizAnswer.create
                 | Some q -> q
 
         { emptyModel with
@@ -176,7 +176,7 @@ let private refreshModel (quiz: Quiz) =
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked
             QuestionScores =
-                runningQuiz.Questions
+                runningQuiz.QuestionsDeprecated
                 |> sortedList
                 |> List.map refreshQuestionScore }
     | Quiz.Completed _
@@ -495,7 +495,7 @@ let update
                 |> workflowFormError
             | Result.Error (AnswerCorrectly.Error.QuizStateError error) -> createQuizStateWorkflowError error
             | Result.Error (AnswerCorrectly.Error.NoCurrentQuizzer) -> "No one has jumped yet" |> workflowFormError
-            | Result.Error (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (QuizQuestion.QuizzerAlreadyAnsweredCorrectly (quizzer,
+            | Result.Error (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (QuizAnswer.QuizzerAlreadyAnsweredCorrectly (quizzer,
                                                                                                                                  question))) ->
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
                 |> workflowFormError
@@ -526,7 +526,7 @@ let update
             | Ok quiz -> AnswerIncorrectly(Finished quiz)
             | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
             | Result.Error (AnswerIncorrectly.NoCurrentQuizzer _) -> "No current Quizzer" |> workflowFormError
-            | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizQuestion.QuizzerAlreadyAnsweredIncorrectly (quizzer,
+            | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizAnswer.QuizzerAlreadyAnsweredIncorrectly (quizzer,
                                                                                                                                  questionNumber))) ->
                 $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
                 |> workflowFormError

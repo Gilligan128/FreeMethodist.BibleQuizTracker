@@ -19,7 +19,7 @@ let updateQuiz: UpdateQuiz =
 
     let updateOrAddQuestion quizzer questionNumber questionOpt =
         questionOpt
-        |> QuizQuestion.answerIncorrectly quizzer questionNumber
+        |> QuizAnswer.answerIncorrectly quizzer questionNumber
 
     fun quizzer quiz ->
         result {
@@ -27,7 +27,7 @@ let updateQuiz: UpdateQuiz =
                 quiz.CurrentQuestion
 
             let currentQuestionRecord =
-                quiz.Questions.TryFind quizCurrentQuestion
+                quiz.QuestionsDeprecated.TryFind quizCurrentQuestion
 
             let! changedQuestion, revertedCorrectAnswer =
                 updateOrAddQuestion quizzer quizCurrentQuestion currentQuestionRecord
@@ -57,9 +57,15 @@ let updateQuiz: UpdateQuiz =
                         CurrentQuizzer = None
                         TeamOne = updateQuizzerInTeamIfFound quizzer quiz.TeamOne
                         TeamTwo = updateQuizzerInTeamIfFound quizzer quiz.TeamTwo
+                        QuestionsDeprecated =
+                            quiz.QuestionsDeprecated
+                            |> Map.add quizCurrentQuestion changedQuestion
                         Questions =
                             quiz.Questions
-                            |> Map.add quizCurrentQuestion changedQuestion }
+                            |> Map.change quizCurrentQuestion (fun q ->
+                                q
+                                |> Option.defaultValue (QuestionState.create changedQuestion)
+                                |> Some) }
                   RevertedAnswer = revertedCorrectAnswer }
         }
 
@@ -69,7 +75,7 @@ let createEvents: CreateEvents =
             quiz.RevertedAnswer
             |> RevertedCorrectAnswer.toOption
             |> Option.map (fun reverted -> RunningTeamQuiz.findQuizzerAndTeam reverted quiz.QuizState)
-            
+
         let revertedEvents =
             revertedQuizzerOpt
             |> Option.map (fun (quizzer, team) ->

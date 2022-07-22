@@ -10,8 +10,8 @@ type CreateEvent = RunningTeamQuiz -> CurrentQuestionChanged
 let updateQuiz quiz question =
     { quiz with
         CurrentQuestion = question
-        Questions = 
-            quiz.Questions
+        QuestionsDeprecated = 
+            quiz.QuestionsDeprecated
             |> Map.change question (fun questionOpt ->
                 questionOpt
                 |> Option.defaultValue ([] |> Unanswered |> Complete)

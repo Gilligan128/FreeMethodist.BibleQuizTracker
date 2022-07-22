@@ -8,23 +8,30 @@ open Xunit
 
 [<Fact>]
 let ``When Answered Incorrectly record Question with incorrect answerer`` () =
-    let answerer = QuizzerState.create "Jim"
+    result {
+        let answerer = QuizzerState.create "Jim"
 
-    let initialQuiz =
+        let initialQuiz =
             { RunningTeamQuiz.identity with
-               Questions = Map.empty
-               CurrentQuizzer = (Some answerer.Name) }
-        
-    let result = updateQuiz answerer.Name initialQuiz
+                QuestionsDeprecated = Map.empty
+                CurrentQuizzer = (Some answerer.Name) }
 
-    assertSuccess result (fun quiz ->
-        let question =
-            quiz.QuizState.Questions[quiz.QuizState.CurrentQuestion]
+        let! result =
+            updateQuiz answerer.Name initialQuiz
+
+        let questionDeprecated =
+            result.QuizState.QuestionsDeprecated[result.QuizState.CurrentQuestion]
+
+        let answer =
+            result.QuizState.Questions[result.QuizState.CurrentQuestion]
+                .AnswerState
 
         let expectedQuestion =
             Incomplete [ answerer.Name ]
 
-        Assert.Equal(expectedQuestion, question))
+        Assert.Equal(expectedQuestion, questionDeprecated)
+        Assert.Equal(expectedQuestion, answer)
+    }
 
 [<Fact>]
 let ``Given Quizzer was recorded answering correctly for question earlier When Answered Incorrectly then decrement score``
@@ -42,11 +49,12 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
         { RunningTeamQuiz.identity with
             CurrentQuizzer = (Some answerer.Name)
             TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] }
-            Questions =
+            QuestionsDeprecated =
                 Map.empty
                 |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyAnsweredQuestion }
 
-    let result = updateQuiz answerer.Name initialQuiz
+    let result =
+        updateQuiz answerer.Name initialQuiz
 
     assertSuccess result (fun quiz ->
         let quizzerState =
@@ -74,14 +82,15 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
         { RunningTeamQuiz.identity with
             CurrentQuizzer = (Some answerer.Name)
             TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] }
-            Questions =
+            QuestionsDeprecated =
                 Map.empty
                 |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyAnsweredQuestion }
 
-    let result = updateQuiz answerer.Name initialQuiz
+    let result =
+        updateQuiz answerer.Name initialQuiz
 
     let expectedResult =
-        QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
+        QuizAnswer.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
         |> AnswerIncorrectly.Workflow.AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly
         |> Result.Error
 
@@ -100,14 +109,15 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
         { RunningTeamQuiz.identity with
             CurrentQuizzer = (Some answerer.Name)
             TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ answerer ] }
-            Questions =
+            QuestionsDeprecated =
                 Map.empty
                 |> Map.add RunningTeamQuiz.identity.CurrentQuestion previouslyUnansweredQuestion }
 
-    let result = updateQuiz answerer.Name initialQuiz
+    let result =
+        updateQuiz answerer.Name initialQuiz
 
     let expectedResult =
-        QuizQuestion.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
+        QuizAnswer.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
         |> AnswerIncorrectly.Workflow.AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly
         |> Result.Error
 

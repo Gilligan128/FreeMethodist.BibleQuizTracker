@@ -36,6 +36,28 @@ let initExample quizCode =
              |> PositiveNumber.increment
              |> PositiveNumber.increment)
           CurrentQuizzer = Some "Juni"
+          QuestionsDeprecated =
+            Map.empty
+            |> Map.add
+                PositiveNumber.one
+                ({ Answerer = "Jim"
+                   IncorrectAnswerers = [] }
+                 |> Answered
+                 |> Complete)
+            |> Map.add
+                (PositiveNumber.one |> PositiveNumber.increment)
+                ({ Answerer = "Jina"
+                   IncorrectAnswerers = [] }
+                 |> Answered
+                 |> Complete)
+            |> Map.add
+                (PositiveNumber.one
+                 |> PositiveNumber.increment
+                 |> PositiveNumber.increment)
+                ({ Answerer = "Jina"
+                   IncorrectAnswerers = [] }
+                 |> Answered
+                 |> Complete)
           Questions =
             Map.empty
             |> Map.add
@@ -57,7 +79,8 @@ let initExample quizCode =
                 ({ Answerer = "Jina"
                    IncorrectAnswerers = [] }
                  |> Answered
-                 |> Complete) }
+                 |> Complete)
+            |> Map.map (fun key value -> { QuestionState.initial with AnswerState = value }) }
 
 let mutable private exampleQuiz: Quiz =
     initExample "Example"

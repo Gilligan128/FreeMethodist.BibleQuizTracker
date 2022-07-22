@@ -14,7 +14,7 @@ module AnswerCorrectly =
         | QuizzerNotFound of Quizzer
         | DuplicateQuizzer of Quizzer
         | NoCurrentQuizzer
-        | QuizzerAlreadyAnsweredCorrectly of QuizQuestion.QuizzerAlreadyAnsweredCorrectly
+        | QuizzerAlreadyAnsweredCorrectly of QuizAnswer.QuizzerAlreadyAnsweredCorrectly
 
     type Event =
         | IndividualScoreChanged of IndividualScoreChanged

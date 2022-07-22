@@ -12,5 +12,5 @@ module AnswerIncorrectly =
     type Error =
         | QuizState of QuizStateError
         | NoCurrentQuizzer of NoCurrentQuizzer
-        | QuizzerAlreadyAnsweredIncorrectly of QuizQuestion.QuizzerAlreadyAnsweredIncorrectly
+        | QuizzerAlreadyAnsweredIncorrectly of QuizAnswer.QuizzerAlreadyAnsweredIncorrectly
     type Workflow = Command -> AsyncResult<Event list, Error>

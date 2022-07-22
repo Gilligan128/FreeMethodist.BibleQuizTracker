@@ -18,14 +18,14 @@ let ``Given current quizzer answered current question correctly When current qui
         let initialQuiz = RunningTeamQuiz.identity
 
         let! quizQuestion, _ =
-            (Some QuizQuestion.create
-             |> QuizQuestion.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
+            (Some QuizAnswer.create
+             |> QuizAnswer.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
 
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
-                    Questions =
-                        quiz.Questions
+                    QuestionsDeprecated =
+                        quiz.QuestionsDeprecated
                         |> Map.add quiz.CurrentQuestion quizQuestion
                     TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }
               RevertedAnswer = Reverted answerer.Name }
@@ -54,14 +54,14 @@ let ``Given current quizzer answered current question correctly When current qui
         let initialQuiz = RunningTeamQuiz.identity
 
         let! quizQuestion, _ =
-            (Some QuizQuestion.create
-             |> QuizQuestion.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
+            (Some QuizAnswer.create
+             |> QuizAnswer.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
 
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
-                    Questions =
-                        quiz.Questions
+                    QuestionsDeprecated =
+                        quiz.QuestionsDeprecated
                         |> Map.add quiz.CurrentQuestion quizQuestion
                     TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }
               RevertedAnswer = Reverted answerer.Name }
