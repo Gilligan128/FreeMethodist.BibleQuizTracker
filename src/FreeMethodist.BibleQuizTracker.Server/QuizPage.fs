@@ -548,23 +548,56 @@ type ItemizedScoreModel =
 type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
 
 let private itemizedScoreView model dispatch =
-    let quizzerScore answerState =
+
+    let quizzerAnswer answerState value =
         match answerState with
         | None -> 0
-        | Some AnsweredCorrectly -> 20
+        | Some AnsweredCorrectly -> value
         | Some AnsweredIncorrectly -> 0
         | Some DidNotAnswer -> 0
 
+    let quizzerScore answerState = quizzerAnswer answerState 20
+
+    let quizzerRunningScore questions questionNumber quizzer =
+        (questions
+         |> List.take (questionNumber)
+         |> List.map (fun qs -> qs |> Map.tryFind (quizzer))
+         |> List.map quizzerScore
+         |> List.sum)
+
+    let teamAnswered team question =
+        team.Quizzers
+        |> List.map (fun qz -> question |> Map.tryFind (qz.Name))
+        |> List.exists (fun q -> q |> (Option.defaultValue AnsweredIncorrectly) = AnsweredCorrectly)
+
+    let runningScore questions questionNumber team =
+        team.Quizzers
+        |> List.fold
+            (fun state qz ->
+                state
+                + quizzerRunningScore questions questionNumber qz.Name)
+            0
+
+    let formatScore score =
+        match score with
+        | 0 -> "-"
+        | number -> $"{number}"
+
+
     itemizedPage()
+        .TeamOneName(model.TeamOne.Name)
+        .TeamOneColspan((model.TeamOne.Quizzers |> List.length) + 1)
         .TeamOneHeading(
             concat {
                 for quizzer in model.TeamOne.Quizzers do
                     th { quizzer.Name }
             }
         )
+        .TeamTwoName(model.TeamTwo.Name)
+        .TeamTwoColspan((model.TeamTwo.Quizzers |> List.length) + 1)
         .TeamTwoHeading(
             concat {
-                for quizzer in model.TeamOne.Quizzers do
+                for quizzer in model.TeamTwo.Quizzers do
                     th { quizzer.Name }
             }
         )
@@ -573,36 +606,70 @@ let private itemizedScoreView model dispatch =
                 for (number, question) in model.Questions |> List.indexed do
                     itemizedPage
                         .Question()
-                        .Number(number+1 |> string)
-                        .Quizzers(
+                        .Number(number + 1 |> string)
+                        .TeamOneScore(
+                            if teamAnswered model.TeamOne question then
+                                runningScore model.Questions (number + 1) model.TeamOne
+                                |> formatScore
+                            else
+                                "-"
+                        )
+                        .TeamOneQuizzers(
                             concat {
                                 for quizzer in model.TeamOne.Quizzers do
                                     itemizedPage
                                         .Quizzer()
                                         .Score(
-                                            question
-                                            |> Map.tryFind (quizzer.Name)
-                                            |> quizzerScore
-                                            |> string
+                                            (quizzerRunningScore model.Questions (number + 1) quizzer.Name)
+                                            |> quizzerAnswer (question |> Map.tryFind quizzer.Name)
+                                            |> formatScore
                                         )
                                         .Elt()
-
+                            }
+                        )
+                        .TeamTwoScore(
+                            if teamAnswered model.TeamTwo question then
+                                runningScore model.Questions (number + 1) model.TeamTwo
+                                |> formatScore
+                            else
+                                "-"
+                        )
+                        .TeamTwoQuizzers(
+                            concat {
                                 for quizzer in model.TeamTwo.Quizzers do
                                     itemizedPage
                                         .Quizzer()
                                         .Score(
-                                            question
-                                            |> Map.tryFind (quizzer.Name)
-                                            |> quizzerScore
-                                            |> string
+                                            (quizzerRunningScore model.Questions (number + 1) quizzer.Name)
+                                            |> quizzerAnswer (question |> Map.tryFind quizzer.Name)
+                                            |> formatScore
                                         )
                                         .Elt()
-
                             }
                         )
                         .Elt()
             }
         )
+        .TeamOneFooter(
+            concat {
+                for quizzer in model.TeamOne.Quizzers do
+                    td {
+                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name 
+                        |> formatScore
+                    }
+            }
+        )
+        .TeamOneScore(model.TeamOne.Score |> string)
+        .TeamTwoFooter(
+            concat {
+                for quizzer in model.TeamTwo.Quizzers do
+                    td {
+                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
+                        |> formatScore
+                    }
+            }
+        )
+        .TeamTwoScore(model.TeamTwo.Score |> string)
         .Elt()
 
 let private teamView

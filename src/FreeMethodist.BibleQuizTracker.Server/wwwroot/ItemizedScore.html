@@ -1,18 +1,48 @@
-﻿<table class="table is-bordered is-striped">
-    <thead>
-    <tr><th>Question<th colspan="7">Quizzers</th></tr>
-    <tr><th></th> ${TeamOneHeading} ${TeamTwoHeading}</tr>
-    </thead>
-    <tbody>
-    ${Questions}
-    </tbody>
-    <tfoot>
-    
-    </tfoot>
-</table>
+﻿<div class="table-container">
+    <table class="table is-bordered is-striped is-fullwidth">
+        <thead>
+        <tr>
+            <th></th>
+            <th colspan="${TeamOneColspan}">Team ${TeamOneName}</th>
+            <th colspan="${TeamTwoColspan}">Team ${TeamTwoName}</th>
+        </tr>
+        <tr></tr>
+        <tr>
+            <th>Question</th>
+            ${TeamOneHeading}
+            <th>Running</th>
+            <th>Running</th>
+            ${TeamTwoHeading}
+        </tr>
+        </thead>
+        <tbody>
+        ${Questions}
+        </tbody>
+        <tfoot>
+        <tr>
+            <td>TOTAL</td>
+            ${QuizzerFooter}
+            ${TeamOneFooter}
+            <td>${TeamOneScore}</td>
+            <td>${TeamTwoScore}</td>
+            ${TeamTwoFooter}
+        </tr>
+
+        </tfoot>
+    </table>
+</div>
 <template id="Question">
-  <tr><td>${Number}</td> ${Quizzers}</tr>
+    <tr>
+        <td>${Number}</td>
+        ${TeamOneQuizzers}
+        <td>${TeamOneScore}</td>
+        <td>${TeamTwoScore}</td>
+        ${TeamTwoQuizzers}
+    </tr>
 </template>
 <template id="Quizzer">
     <td>${Score}</td>
+</template>
+<template id="TeamHeading">
+
 </template>

@@ -36,7 +36,28 @@ let initExample quizCode =
              |> PositiveNumber.increment
              |> PositiveNumber.increment)
           CurrentQuizzer = Some "Juni"
-          Questions = Map.empty }
+          Questions =
+            Map.empty
+            |> Map.add
+                PositiveNumber.one
+                ({ Answerer = "Jim"
+                   IncorrectAnswerers = [] }
+                 |> Answered
+                 |> Complete)
+            |> Map.add
+                (PositiveNumber.one |> PositiveNumber.increment)
+                ({ Answerer = "Jina"
+                   IncorrectAnswerers = [] }
+                 |> Answered
+                 |> Complete)
+            |> Map.add
+                (PositiveNumber.one
+                 |> PositiveNumber.increment
+                 |> PositiveNumber.increment)
+                ({ Answerer = "Jina"
+                   IncorrectAnswerers = [] }
+                 |> Answered
+                 |> Complete) }
 
 let mutable private exampleQuiz: Quiz =
     initExample "Example"
