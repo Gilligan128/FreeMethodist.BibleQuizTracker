@@ -1,0 +1,18 @@
+﻿<table class="table is-bordered is-striped">
+    <thead>
+    <tr><th>Question<th colspan="7">Quizzers</th></tr>
+    <tr><th></th> ${TeamOneHeading} ${TeamTwoHeading}</tr>
+    </thead>
+    <tbody>
+    ${Questions}
+    </tbody>
+    <tfoot>
+    
+    </tfoot>
+</table>
+<template id="Question">
+  <tr><td>${Number}</td> ${Quizzers}</tr>
+</template>
+<template id="Quizzer">
+    <td>${Score}</td>
+</template>

@@ -1,135 +1,141 @@
-﻿<div class="column is-two-fifths">
-    <div class="columns">
-        <div class="column">
-            <div>Quiz Code: ${QuizCode}</div>
-            <div class="box has-background-grey-light has-text-centered">You are: <strong>${CurrentUser}</strong></div>
-            <div class="columns">
-                <div class="column">
-                    ${TeamOne}
+﻿<div class="columns">
+    <div class="column is-two-fifths">
+        <div class="columns">
+            <div class="column">
+                <div>Quiz Code: ${QuizCode}</div>
+                <div class="box has-background-grey-light has-text-centered">You are: <strong>${CurrentUser}</strong>
                 </div>
-                <div class="column">
-                    ${TeamTwo}
+                <div class="columns">
+                    <div class="column">
+                        ${TeamOne}
+                    </div>
+                    <div class="column">
+                        ${TeamTwo}
+                    </div>
                 </div>
-            </div>
-            <div class="box has-text-centered" id="current-quizzer-section">
-                <div class="block">
-                    <button class="button is-info is-responsive" disabled>
-                        Undo
-                    </button>
-                    <span class="is-size-4 is-size-5-mobile">${CurrentQuizzer}</span>
-                    <button class="button is-info is-responsive" disabled>
-                        Next
-                    </button>
+                <div class="box has-text-centered" id="current-quizzer-section">
+                    <div class="block">
+                        <button class="button is-info is-responsive" disabled>
+                            Undo
+                        </button>
+                        <span class="is-size-4 is-size-5-mobile">${CurrentQuizzer}</span>
+                        <button class="button is-info is-responsive" disabled>
+                            Next
+                        </button>
+                    </div>
+                    <div class="buttons is-centered">
+                        <button class="button is-info is-responsive " disabled>${JumpLockToggleAction} Jumps</button>
+                        <button class="button is-primary is-responsive" onclick="${AnswerCorrectly}">Correct</button>
+                        <button class="button is-danger is-responsive " onclick="${AnswerIncorrectly}">Incorrect
+                        </button>
+                        <button class="button is-danger is-responsive " disabled>Incorrect Prejump</button>
+                    </div>
                 </div>
-                <div class="buttons is-centered">
-                    <button class="button is-info is-responsive " disabled>${JumpLockToggleAction} Jumps</button>
-                    <button class="button is-primary is-responsive" onclick="${AnswerCorrectly}">Correct</button>
-                    <button class="button is-danger is-responsive "  onclick="${AnswerIncorrectly}">Incorrect</button>
-                    <button class="button is-danger is-responsive " disabled>Incorrect Prejump</button>
-                </div>
-            </div>
-            <div class="box has-text-centered" id="question-section">
-                <button class="button is-info is-responsive " onclick="${UndoQuestion}">
+                <div class="box has-text-centered" id="question-section">
+                    <button class="button is-info is-responsive " onclick="${UndoQuestion}">
                     <span class="icon">
                       <i class="fas fa-caret-left"></i>
                     </span>
-                </button>
-                <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
-                <button class="button is-info is-responsive" onclick="${NextQuestion}">
+                    </button>
+                    <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
+                    <button class="button is-info is-responsive" onclick="${NextQuestion}">
                     <span class="icon">
                       <i class="fas fa-caret-right"></i>
                     </span>
-                </button>
+                    </button>
+                </div>
+                <div class="box">
+                    <div class="buttons is-centered">
+                        <span class="is-size-5">Quiz Options:</span>
+                        <button class="button is-primary is-responsive " disabled>Complete</button>
+                        <button class="button is-danger is-responsive " disabled>Reset</button>
+                        <button class="button is-info is-responsive" onclick="${AddQuizzerStart}">Add Quizzer</button>
+                    </div>
+                </div>
             </div>
+        </div>
+        <div class="modal ${AddQuizzerActive}" id="addquizzer-modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Add Quizzer</p>
+                    <button aria-label="close" class="delete" onclick="${AddQuizzerCancel}"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="field">
+                        <label class="label">Name</label>
+                        <div class="control">
+                            <input bind-onchange="${AddQuizzerName}" class="input" placeholder="Text input" type="text">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Team</label>
+                        <div class="control">
+                            <label class="radio">
+                                <input checked="${AddQuizzerIsTeamOne}" name="answer" onchange="${SetAddQuizzerTeamOne}"
+                                       type="radio">
+                                ${TeamOneName}
+                            </label>
+                            <label class="radio">
+                                <input checked="${AddQuizzerIsTeamTwo}" name="answer" onchange="${SetAddQuizzerTeamTwo}"
+                                       type="radio">
+                                ${TeamTwoName}
+                            </label>
+                        </div>
+                    </div>
+                </section>
+                <footer class="modal-card-foot">
+                    <div class="field is-grouped">
+                        <div class="control">
+                            <button class="button is-link" onclick="${AddQuizzerSubmit}">Submit</button>
+                        </div>
+                        <div class="control">
+                            <button class="button is-link is-light" onclick="${AddQuizzerCancel}">Cancel</button>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+        <template id="Team">
             <div class="box">
-                <div class="buttons is-centered">
-                    <span class="is-size-5">Quiz Options:</span>
-                    <button class="button is-primary is-responsive " disabled>Complete</button>
-                    <button class="button is-danger is-responsive " disabled>Reset</button>
-                    <button class="button is-info is-responsive" onclick="${AddQuizzerStart}">Add Quizzer</button>
+                <div class="columns is-mobile has-background-info">
+                    <div class="column ">
+                        <span class="has-text-white">Team ${Name}</span>
+                    </div>
+                    <div class="column">
+                        <div class="has-text-weight-bold">
+                            <p>${ScoreReadOnly} pts</p>
+                        </div>
+                    </div>
                 </div>
+                ${Quizzers}
             </div>
-        </div>
-    </div>
-    <div class="modal ${AddQuizzerActive}" id="addquizzer-modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Add Quizzer</p>
-                <button aria-label="close" class="delete" onclick="${AddQuizzerCancel}"></button>
-            </header>
-            <section class="modal-card-body">
-                <div class="field">
-                    <label class="label">Name</label>
-                    <div class="control">
-                        <input bind-onchange="${AddQuizzerName}" class="input" placeholder="Text input" type="text">
+        </template>
+        <template id="Quizzer">
+            <div class="box  ${BackgroundColor} my-2 py-3 " onclick="${Select}">
+                <div class="columns is-mobile is-centered">
+                    <div class="column ">
+                        <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
                     </div>
-                </div>
-                <div class="field">
-                    <label class="label">Team</label>
-                    <div class="control">
-                        <label class="radio">
-                            <input checked="${AddQuizzerIsTeamOne}" name="answer" onchange="${SetAddQuizzerTeamOne}"
-                                   type="radio">
-                            ${TeamOneName}
-                        </label>
-                        <label class="radio">
-                            <input checked="${AddQuizzerIsTeamTwo}" name="answer" onchange="${SetAddQuizzerTeamTwo}"
-                                   type="radio">
-                            ${TeamTwoName}
-                        </label>
+                    <div class="column is-one-third has-text-primary-dark">
+                        ${Name}
                     </div>
-                </div>
-            </section>
-            <footer class="modal-card-foot">
-                <div class="field is-grouped">
-                    <div class="control">
-                        <button class="button is-link" onclick="${AddQuizzerSubmit}">Submit</button>
+                    <div class="column is-one-third ">
+                        <p class=" px-2 py-2 has-background-${AnswerColor} has-text-color-${AnswerColor}">${Score}
+                            pts</p>
                     </div>
-                    <div class="control">
-                        <button class="button is-link is-light" onclick="${AddQuizzerCancel}">Cancel</button>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    </div>
-    <template id="Team">
-        <div class="box">
-            <div class="columns is-mobile has-background-info">
-                <div class="column ">
-                    <span class="has-text-white">Team ${Name}</span>
-                </div>
-                <div class="column">
-                    <div class="has-text-weight-bold">
-                        <p>${ScoreReadOnly} pts</p>
-                    </div>
-                </div>
-            </div>
-            ${Quizzers}
-        </div>
-    </template>
-    <template id="Quizzer">
-        <div class="box  ${BackgroundColor} my-2 py-3 " onclick="${Select}">
-            <div class="columns is-mobile is-centered">
-                <div class="column ">
-                    <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
-                </div>
-                <div class="column is-one-third has-text-primary-dark" >
-                    ${Name}
-                </div>
-                <div class="column is-one-third ">
-                        <p class=" px-2 py-2 has-background-${AnswerColor} has-text-color-${AnswerColor}">${Score} pts</p>
-                </div>
-                <div class="column">
-                    <button class="button is-info is-light" onclick="${Remove}"> 
+                    <div class="column">
+                        <button class="button is-info is-light" onclick="${Remove}"> 
                     <span class="icon ">
                         <i class="fas fa-times-circle"></i>
                     </span>
-                    </button>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    </template>
+        </template>
+    </div>
+    <div class="column">
+        ${ItemizedScore}
+    </div>
 </div>
-
-

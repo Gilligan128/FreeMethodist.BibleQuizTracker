@@ -1,6 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizPage
 
 open System
+open System.Collections.ObjectModel
 open System.ComponentModel
 open Bolero
 open Bolero.Html
@@ -61,7 +62,8 @@ type Model =
       CurrentUser: User
       JumpState: JumpState
       AddQuizzer: AddQuizzerModel
-      CurrentQuizzer: Quizzer option }
+      CurrentQuizzer: Quizzer option
+      QuestionScores: Map<Quizzer, AnswerState> list }
 
 type PublishEventError =
     | FormError of string
@@ -101,7 +103,8 @@ let public emptyModel =
       CurrentUser = User.Quizmaster
       JumpState = Unlocked
       AddQuizzer = Inert
-      CurrentQuizzer = None }
+      CurrentQuizzer = None
+      QuestionScores = [] }
 
 let private refreshModel (quiz: Quiz) =
     let getAnswerState currentQuestion (quizzerState: QuizzerState) =
@@ -130,6 +133,29 @@ let private refreshModel (quiz: Quiz) =
             team.Quizzers
             |> List.map (refreshQuizzer currentQuestion) }
 
+    let refreshQuestionScore (question: QuizQuestion) =
+        let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
+
+        let toMap questionScores =
+            questionScores
+            |> List.fold (fun map (q, answerState) -> map |> Map.add q answerState) Map.empty
+
+        match question with
+        | Incomplete quizzers -> quizzers |> List.map incorrectAnswer |> toMap
+        | Complete (Answered question) ->
+            [ (question.Answerer, AnsweredCorrectly) ]
+            @ (question.IncorrectAnswerers
+               |> List.map incorrectAnswer)
+            |> toMap
+        | Complete (Unanswered question) -> question |> List.map incorrectAnswer |> toMap
+
+    let sortedList questionMap =
+        questionMap
+        |> Map.keys
+        |> Seq.sortBy (fun k -> k |> PositiveNumber.value)
+        |> Seq.map (fun k -> questionMap[k])
+        |> Seq.toList
+
     match quiz with
     | Running runningQuiz ->
         let currentQuestion =
@@ -148,7 +174,11 @@ let private refreshModel (quiz: Quiz) =
             CurrentUser = Quizmaster
             JoiningQuizzer = ""
             JumpOrder = [ "Jim"; "Juni"; "John" ]
-            JumpState = Unlocked }
+            JumpState = Unlocked
+            QuestionScores =
+                runningQuiz.Questions
+                |> sortedList
+                |> List.map refreshQuestionScore }
     | Quiz.Completed _
     | Official _
     | Unvalidated _ -> emptyModel
@@ -510,6 +540,71 @@ let update
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
+type ItemizedScoreModel =
+    { TeamOne: TeamModel
+      TeamTwo: TeamModel
+      Questions: Map<Quizzer, AnswerState> list }
+
+type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
+
+let private itemizedScoreView model dispatch =
+    let quizzerScore answerState =
+        match answerState with
+        | None -> 0
+        | Some AnsweredCorrectly -> 20
+        | Some AnsweredIncorrectly -> 0
+        | Some DidNotAnswer -> 0
+
+    itemizedPage()
+        .TeamOneHeading(
+            concat {
+                for quizzer in model.TeamOne.Quizzers do
+                    th { quizzer.Name }
+            }
+        )
+        .TeamTwoHeading(
+            concat {
+                for quizzer in model.TeamOne.Quizzers do
+                    th { quizzer.Name }
+            }
+        )
+        .Questions(
+            concat {
+                for (number, question) in model.Questions |> List.indexed do
+                    itemizedPage
+                        .Question()
+                        .Number(number+1 |> string)
+                        .Quizzers(
+                            concat {
+                                for quizzer in model.TeamOne.Quizzers do
+                                    itemizedPage
+                                        .Quizzer()
+                                        .Score(
+                                            question
+                                            |> Map.tryFind (quizzer.Name)
+                                            |> quizzerScore
+                                            |> string
+                                        )
+                                        .Elt()
+
+                                for quizzer in model.TeamTwo.Quizzers do
+                                    itemizedPage
+                                        .Quizzer()
+                                        .Score(
+                                            question
+                                            |> Map.tryFind (quizzer.Name)
+                                            |> quizzerScore
+                                            |> string
+                                        )
+                                        .Elt()
+
+                            }
+                        )
+                        .Elt()
+            }
+        )
+        .Elt()
+
 let private teamView
     position
     ((teamModel, jumpOrder, currentQuizzer): TeamModel * string list * Option<Quizzer>)
@@ -554,10 +649,12 @@ let private teamView
                                 | None -> ""
                                 | Some q -> q)
                         )
-                        .AnswerColor(match quizzer.AnswerState with
-                                      | DidNotAnswer -> ""
-                                      | AnsweredCorrectly -> "success"
-                                      | AnsweredIncorrectly -> "danger")
+                        .AnswerColor(
+                            match quizzer.AnswerState with
+                            | DidNotAnswer -> ""
+                            | AnsweredCorrectly -> "success"
+                            | AnsweredIncorrectly -> "danger"
+                        )
                         .Elt()
             }
         )
@@ -621,4 +718,11 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
         .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly(Started())))
         .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
+        .ItemizedScore(
+            itemizedScoreView
+                { TeamOne = model.TeamOne
+                  TeamTwo = model.TeamTwo
+                  Questions = model.QuestionScores }
+                dispatch
+        )
         .Elt()

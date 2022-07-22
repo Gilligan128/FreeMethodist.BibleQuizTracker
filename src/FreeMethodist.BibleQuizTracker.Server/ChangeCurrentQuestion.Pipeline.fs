@@ -10,7 +10,7 @@ type CreateEvent = RunningTeamQuiz -> CurrentQuestionChanged
 let updateQuiz quiz question =
     { quiz with
         CurrentQuestion = question
-        Questions =
+        Questions = 
             quiz.Questions
             |> Map.change question (fun questionOpt ->
                 questionOpt
