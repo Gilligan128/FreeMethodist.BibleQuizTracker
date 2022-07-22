@@ -1,8 +1,10 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.FailAppeal.Pipeline
 
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
+open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow.FailAppeal
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
 type UpdateQuiz =
     Quizzer * TeamPosition -> RunningTeamQuiz -> Result<RunningTeamQuiz * TeamPosition option, FailAppeal.Error>
@@ -79,3 +81,16 @@ let createEvents: CreateEvents =
             |> Option.defaultValue []
 
         failingEvents @ revertedEvents
+
+let failAppeal getQuiz saveQuiz : Workflow =
+    fun command ->
+        asyncResult {
+            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! validQuiz = validateQuiz quiz |> Result.mapError Error.QuizState |> AsyncResult.ofResult
+            let! quizzer, team = validateCurrentQuizzerWithTeam validQuiz |> AsyncResult.ofResult |> AsyncResult.mapError Error.NoCurrentQuizzer
+            let! updatedQuiz, revertedTeam = updateQuiz (quizzer,team) validQuiz |> AsyncResult.ofResult
+            
+            do! updatedQuiz |> Running |> saveQuiz
+            
+            return createEvents team (updatedQuiz, revertedTeam) 
+        }

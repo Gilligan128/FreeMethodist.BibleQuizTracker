@@ -7,7 +7,7 @@ module FailAppeal =
     type Command = WithinQuizCommand<unit>
 
     type Error =
-        | QuizState
+        | QuizState of QuizStateError
         | NoCurrentQuizzer of NoCurrentQuizzer
         | AppealAlreadyFailed of Quizzer
 
