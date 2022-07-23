@@ -76,7 +76,7 @@ let ``Given someone  preciously failed an appeal for this Question When appeal c
     }
 
 [<Fact>]
-let ``Given noe on failed an appeal for this Question When appeal clears Then Error``
+let ``Given no one failed an appeal for this Question When appeal clears Then Error``
     ()
     =
     let quizzer = "Jim"

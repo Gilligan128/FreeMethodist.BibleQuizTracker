@@ -11,16 +11,19 @@ type UpdateQuiz =
 
 type CreateEvents = TeamPosition -> RunningTeamQuiz * TeamPosition option -> FailAppeal.Event list
 
-
-
 let updateQuiz: UpdateQuiz =
     fun (currentQuizzer, teamPosition) quiz ->
         result {
-            let changedQuestion, revertingAppealer =
+            let! changedQuestion, revertingAppealer =
                 quiz.Questions
                 |> Map.tryFind quiz.CurrentQuestion
                 |> Option.defaultValue QuestionState.initial
-                |> fun original -> { original with FailedAppeal = Some currentQuizzer }, original.FailedAppeal
+                |> fun original ->
+                    match original.FailedAppeal with
+                    | Some failure when failure = currentQuizzer ->
+                        Error(FailAppeal.Error.AppealAlreadyFailed currentQuizzer)
+                    | _ -> Ok({ original with FailedAppeal = Some currentQuizzer }, original.FailedAppeal)
+
 
 
             let updateCurrentQuestion changedQuestion quiz =
@@ -86,11 +89,22 @@ let failAppeal getQuiz saveQuiz : Workflow =
     fun command ->
         asyncResult {
             let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
-            let! validQuiz = validateQuiz quiz |> Result.mapError Error.QuizState |> AsyncResult.ofResult
-            let! quizzer, team = validateCurrentQuizzerWithTeam validQuiz |> AsyncResult.ofResult |> AsyncResult.mapError Error.NoCurrentQuizzer
-            let! updatedQuiz, revertedTeam = updateQuiz (quizzer,team) validQuiz |> AsyncResult.ofResult
-            
+
+            let! validQuiz =
+                validateQuiz quiz
+                |> Result.mapError Error.QuizState
+                |> AsyncResult.ofResult
+
+            let! quizzer, team =
+                validateCurrentQuizzerWithTeam validQuiz
+                |> AsyncResult.ofResult
+                |> AsyncResult.mapError Error.NoCurrentQuizzer
+
+            let! updatedQuiz, revertedTeam =
+                updateQuiz (quizzer, team) validQuiz
+                |> AsyncResult.ofResult
+
             do! updatedQuiz |> Running |> saveQuiz
-            
-            return createEvents team (updatedQuiz, revertedTeam) 
+
+            return createEvents team (updatedQuiz, revertedTeam)
         }
