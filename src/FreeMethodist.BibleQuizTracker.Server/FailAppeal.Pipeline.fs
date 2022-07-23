@@ -104,7 +104,7 @@ let failAppeal getQuiz saveQuiz : Workflow =
                 updateQuiz (quizzer, team) validQuiz
                 |> AsyncResult.ofResult
 
-            do! updatedQuiz |> Running |> saveQuiz
+            do! updatedQuiz |> Running |> saveQuiz |> AsyncResult.ofAsync
 
             return createEvents team (updatedQuiz, revertedTeam)
         }

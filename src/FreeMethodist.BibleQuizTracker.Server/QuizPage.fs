@@ -18,6 +18,8 @@ open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
+open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Core
 open FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline
@@ -499,7 +501,7 @@ let update
             | Result.Error (AnswerCorrectly.Error.QuizStateError error) -> createQuizStateWorkflowError error
             | Result.Error (AnswerCorrectly.Error.NoCurrentQuizzer) -> "No one has jumped yet" |> workflowFormError
             | Result.Error (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (QuizAnswer.QuizzerAlreadyAnsweredCorrectly (quizzer,
-                                                                                                                                 question))) ->
+                                                                                                                               question))) ->
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
                 |> workflowFormError
 
@@ -530,7 +532,7 @@ let update
             | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
             | Result.Error (AnswerIncorrectly.NoCurrentQuizzer _) -> "No current Quizzer" |> workflowFormError
             | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizAnswer.QuizzerAlreadyAnsweredIncorrectly (quizzer,
-                                                                                                                                 questionNumber))) ->
+                                                                                                                               questionNumber))) ->
                 $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
                 |> workflowFormError
 
@@ -539,7 +541,53 @@ let update
 
         model, cmd, None
     | AnswerIncorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
+    | FailAppeal (Started _) ->
+        let workflow =
+            fun _ ->
+                { Quiz = model.Code
+                  Data = ()
+                  User = model.CurrentUser }
+                |> FailAppeal.Pipeline.failAppeal getQuizAsync saveQuizAsync
 
+        let mapEvent event =
+            match event with
+            | FailAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
+
+        let mapResult result =
+            match result with
+            | Ok quiz -> quiz |> Finished |> FailAppeal
+            | Result.Error (FailAppeal.Error.QuizState _) -> "Wrong Quiz state" |> workflowFormError
+            | Result.Error (FailAppeal.Error.AppealAlreadyFailed _) -> "Appeal already failed" |> workflowFormError
+            | Result.Error (FailAppeal.Error.NoCurrentQuizzer _) -> "No current quizzer" |> workflowFormError
+
+        let cmd =
+            workflowCmdList workflow mapEvent mapResult
+
+        model, cmd, None
+    | FailAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
+    | ClearAppeal (Started _) ->
+       let workflow =
+            fun _ ->
+                { Quiz = model.Code
+                  Data = ()
+                  User = model.CurrentUser }
+                |> ClearAppeal.Pipeline.clearAppeal getQuizAsync saveQuizAsync
+
+       let mapEvent event =
+            match event with
+            | ClearAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
+
+       let mapResult result =
+            match result with
+            | Ok quiz -> quiz |> Finished |> ClearAppeal
+            | Result.Error (ClearAppeal.Error.QuizState _) -> "Wrong Quiz state" |> workflowFormError
+            | Result.Error (ClearAppeal.Error.NoFailedAppeal _) -> "There is no failed appeal to clear" |> workflowFormError
+
+       let cmd =
+            workflowCmdList workflow mapEvent mapResult
+
+       model, cmd, None
+    | ClearAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
@@ -641,7 +689,7 @@ let private itemizedScoreView model dispatch =
                                 for quizzer in model.TeamTwo.Quizzers do
                                     itemizedPage
                                         .Quizzer()
-                                        .Score( 
+                                        .Score(
                                             quizzerScore (question |> Map.tryFind quizzer.Name)
                                             |> formatScore
                                         )
@@ -655,7 +703,7 @@ let private itemizedScoreView model dispatch =
             concat {
                 for quizzer in model.TeamOne.Quizzers do
                     td {
-                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name 
+                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
                         |> formatScore
                     }
             }
@@ -786,8 +834,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
         .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly(Started())))
         .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
-        .FailAppeal(fun _ -> dispatch (FailAppeal (Started ())))
-        .ClearAppeal(fun _ -> dispatch (ClearAppeal (Started ())))
+        .FailAppeal(fun _ -> dispatch (FailAppeal(Started())))
+        .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
         .ItemizedScore(
             itemizedScoreView
                 { TeamOne = model.TeamOne

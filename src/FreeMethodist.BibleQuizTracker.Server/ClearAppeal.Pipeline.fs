@@ -80,7 +80,7 @@ let clearAppeal getQuiz saveQuiz : Workflow =
                 updateQuiz validQuiz
                 |> AsyncResult.ofResult
 
-            do! updatedQuiz |> Running |> saveQuiz
+            do! updatedQuiz |> Running |> saveQuiz |> AsyncResult.ofAsync
 
             return createEvents (updatedQuiz, revertedTeam)
         }
