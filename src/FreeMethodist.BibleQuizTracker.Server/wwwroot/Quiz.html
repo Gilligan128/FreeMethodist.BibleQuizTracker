@@ -28,21 +28,27 @@
                         <button class="button is-primary is-responsive" onclick="${AnswerCorrectly}">Correct</button>
                         <button class="button is-danger is-responsive " onclick="${AnswerIncorrectly}">Incorrect
                         </button>
+                        <button class="button is-danger is-responsive" onclick="${FailAppeal}">Fail Appeal</button>
                         <button class="button is-danger is-responsive " disabled>Incorrect Prejump</button>
                     </div>
                 </div>
                 <div class="box has-text-centered" id="question-section">
-                    <button class="button is-info is-responsive " onclick="${UndoQuestion}">
+                    <div>
+                        <button class="button is-info is-responsive " onclick="${UndoQuestion}">
                     <span class="icon">
                       <i class="fas fa-caret-left"></i>
                     </span>
-                    </button>
-                    <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
-                    <button class="button is-info is-responsive" onclick="${NextQuestion}">
+                        </button>
+                        <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
+                        <button class="button is-info is-responsive" onclick="${NextQuestion}">
                     <span class="icon">
                       <i class="fas fa-caret-right"></i>
                     </span>
-                    </button>
+                        </button>
+                    </div>
+                    <div class="buttons is-centered">
+                        <button class="button is-success is-responsive" disabled onclick="${ClearAppeal}">Clear Appeal</button>
+                    </div>
                 </div>
                 <div class="box">
                     <div class="buttons is-centered">
@@ -103,7 +109,7 @@
                         <span class="has-text-white">Team ${Name}</span>
                     </div>
                     <div class="column">
-                        <div class="has-text-weight-bold">
+                        <div class="has-text-weight-bold has-text-white">
                             <p>${ScoreReadOnly} pts</p>
                         </div>
                     </div>

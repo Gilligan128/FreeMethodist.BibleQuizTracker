@@ -88,6 +88,8 @@ type Message =
     | SelectQuizzer of AsyncOperationStatus<Quizzer, Quiz>
     | AnswerCorrectly of AsyncOperationStatus<unit, Quiz>
     | AnswerIncorrectly of AsyncOperationStatus<unit, Quiz>
+    | FailAppeal of AsyncOperationStatus<unit, Quiz>
+    | ClearAppeal of AsyncOperationStatus<unit, Quiz>
     | DoNothing
 
 
@@ -784,6 +786,8 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
         .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
         .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly(Started())))
         .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
+        .FailAppeal(fun _ -> dispatch (FailAppeal (Started ())))
+        .ClearAppeal(fun _ -> dispatch (ClearAppeal (Started ())))
         .ItemizedScore(
             itemizedScoreView
                 { TeamOne = model.TeamOne
