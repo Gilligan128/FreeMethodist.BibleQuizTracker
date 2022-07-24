@@ -38,14 +38,14 @@ let page =
 
                     a {
                         attr.``class`` "navbar-item has-text-weight-bold is-size-5"
-                        attr.href "https://fsbolero.io"
+                        attr.href "https://dev.fmquizzing.net/"
 
                         img {
-                            attr.style "height:40px"
-                            attr.src "https://github.com/fsbolero/website/raw/master/src/Website/img/wasm-fsharp.png"
+                            attr.style "height:60px"
+                            attr.src "https://dev.fmquizzing.net/resources/logos/FMBQ-logo.png"
                         }
 
-                        "  Bolero"
+                        "  Free Methodist Bible Quizzing"
                     }
                 }
             }
