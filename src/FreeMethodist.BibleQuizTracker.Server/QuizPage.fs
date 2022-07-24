@@ -43,7 +43,8 @@ type QuizzerModel =
     { Name: string
       Score: int
       ConnectionStatus: ConnectionStatus
-      AnswerState: AnswerState }
+      AnswerState: AnswerState
+      AppealState: AppealState }
 
 type TeamModel =
     { Name: string
@@ -115,11 +116,11 @@ let public emptyModel =
       QuestionScores = [] }
 
 let private refreshModel (quiz: Quiz) =
-    let getAnswerState currentQuestion (quizzerState: QuizzerState) =
+    let getAnswerState quizAnswer (quizzerState: QuizzerState) =
         let quizzerWasIncorrect =
             List.contains quizzerState.Name
 
-        match currentQuestion with
+        match quizAnswer with
         | Incomplete incorrectAnswerers when incorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
         | Incomplete _ -> DidNotAnswer
         | Complete (Answered question) when question.Answerer = quizzerState.Name -> AnsweredCorrectly
@@ -127,12 +128,19 @@ let private refreshModel (quiz: Quiz) =
         | Complete (Answered _) -> DidNotAnswer
         | Complete (Unanswered question) when question |> quizzerWasIncorrect -> AnsweredIncorrectly
         | Complete (Unanswered _) -> DidNotAnswer
-
-    let refreshQuizzer currentQuestion (quizzer: QuizzerState) =
+    
+    let getAppealState appeal quizzer =
+        match appeal with
+        | None -> NoFailure
+        | Some appealer when appealer = quizzer-> AppealFailure
+        | Some _ -> NoFailure
+    
+    let refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerState) =
         { Name = quizzer.Name
           Score = TeamScore.value quizzer.Score
           ConnectionStatus = Unknown
-          AnswerState = quizzer |> getAnswerState currentQuestion }
+          AnswerState = quizzer |> getAnswerState currentQuestion.AnswerState
+          AppealState = quizzer.Name |> getAppealState currentQuestion.FailedAppeal }
 
     let refreshTeam currentQuestion (team: QuizTeamState) =
         { Name = team.Name
@@ -182,17 +190,14 @@ let private refreshModel (quiz: Quiz) =
 
     match quiz with
     | Running runningQuiz ->
-        let currentAnswer =
+        let currentQuestion =
             runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
-            |> fun current ->
-                match current with
-                | None -> QuizAnswer.create
-                | Some q -> q.AnswerState
+            |> Option.defaultValue QuestionState.initial 
 
         { emptyModel with
             Code = runningQuiz.Code
-            TeamOne = runningQuiz.TeamOne |> refreshTeam currentAnswer
-            TeamTwo = runningQuiz.TeamTwo |> refreshTeam currentAnswer
+            TeamOne = runningQuiz.TeamOne |> refreshTeam currentQuestion
+            TeamTwo = runningQuiz.TeamTwo |> refreshTeam currentQuestion
             CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
             CurrentQuizzer = runningQuiz.CurrentQuizzer
             CurrentUser = Quizmaster
@@ -676,20 +681,46 @@ let private itemizedScoreView model dispatch =
         team.Quizzers
         |> List.fold
             (fun state qz ->
-                let int32s = 
+                let int32s =
                     scoreList questions questionNumber qz.Name
                     |> List.map (fun (f, s) -> f + s)
+
                 state
                 + (int32s //appeals are scored at team level
                    |> List.sum))
             0
 
+    let findQuestionQuizzerState question (quizzer:QuizzerModel) =
+        question |> Map.tryFind quizzer.Name
+    
     let formatScore score =
         match score with
         | 0 -> "-"
         | number -> $"{number}"
-
-
+    
+    let showAppeal questionQuizzerState =
+        match questionQuizzerState with
+        | None -> "is-hidden"
+        | Some (_, NoFailure) -> "is-hidden"
+        | Some (_, AppealFailure) -> ""
+    
+    let quizzerView question quizzer =
+        itemizedPage
+            .Quizzer()
+            .AppealVisible(
+                quizzer
+                |> findQuestionQuizzerState question
+                |> showAppeal
+            )
+            .Score(
+                quizzer
+                |> findQuestionQuizzerState question
+                |> quizzerScore 
+                |> fst
+                |> formatScore
+            )
+            .Elt()
+    
     itemizedPage()
         .TeamOneName(model.TeamOne.Name)
         .TeamOneColspan((model.TeamOne.Quizzers |> List.length) + 1)
@@ -723,14 +754,7 @@ let private itemizedScoreView model dispatch =
                         .TeamOneQuizzers(
                             concat {
                                 for quizzer in model.TeamOne.Quizzers do
-                                    itemizedPage
-                                        .Quizzer()
-                                        .Score(
-                                            quizzerScore (question |> Map.tryFind quizzer.Name)
-                                            |> fst
-                                            |> formatScore
-                                        )
-                                        .Elt()
+                                    quizzerView question quizzer
                             }
                         )
                         .TeamTwoScore(
@@ -743,14 +767,7 @@ let private itemizedScoreView model dispatch =
                         .TeamTwoQuizzers(
                             concat {
                                 for quizzer in model.TeamTwo.Quizzers do
-                                    itemizedPage
-                                        .Quizzer()
-                                        .Score(
-                                            quizzerScore (question |> Map.tryFind quizzer.Name)
-                                            |> fst
-                                            |> formatScore
-                                        )
-                                        .Elt()
+                                    quizzerView question quizzer
                             }
                         )
                         .Elt()
@@ -828,6 +845,9 @@ let private teamView
                             | AnsweredCorrectly -> "success"
                             | AnsweredIncorrectly -> "danger"
                         )
+                        .AppealVisible(match quizzer.AppealState with
+                                       | NoFailure -> "is-hidden"
+                                       | AppealFailure -> "")
                         .Elt()
             }
         )
