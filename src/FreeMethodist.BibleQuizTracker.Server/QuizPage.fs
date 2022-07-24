@@ -35,6 +35,10 @@ type AnswerState =
     | AnsweredCorrectly
     | AnsweredIncorrectly
 
+type AppealState =
+    | AppealFailure
+    | NoFailure
+
 type QuizzerModel =
     { Name: string
       Score: int
@@ -65,7 +69,7 @@ type Model =
       JumpState: JumpState
       AddQuizzer: AddQuizzerModel
       CurrentQuizzer: Quizzer option
-      QuestionScores: Map<Quizzer, AnswerState> list }
+      QuestionScores: Map<Quizzer, AnswerState * AppealState> list }
 
 type PublishEventError =
     | FormError of string
@@ -137,21 +141,37 @@ let private refreshModel (quiz: Quiz) =
             team.Quizzers
             |> List.map (refreshQuizzer currentQuestion) }
 
-    let refreshQuestionScore (question: QuizAnswer) =
+    let refreshQuestionScore (question: QuestionState) =
         let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
 
         let toMap questionScores =
             questionScores
             |> List.fold (fun map (q, answerState) -> map |> Map.add q answerState) Map.empty
 
-        match question with
-        | Incomplete quizzers -> quizzers |> List.map incorrectAnswer |> toMap
-        | Complete (Answered question) ->
-            [ (question.Answerer, AnsweredCorrectly) ]
-            @ (question.IncorrectAnswerers
-               |> List.map incorrectAnswer)
-            |> toMap
-        | Complete (Unanswered question) -> question |> List.map incorrectAnswer |> toMap
+        let insertAppealState answersWithNoAppealsYet =
+            match question.FailedAppeal with
+            | None -> answersWithNoAppealsYet
+            | Some q ->
+                answersWithNoAppealsYet
+                |> Map.change q (fun questionOption ->
+                    questionOption
+                    |> Option.defaultValue (DidNotAnswer, AppealFailure)
+                    |> fun (answer, _) -> Some(answer, AppealFailure))
+
+        let answers =
+            match question.AnswerState with
+            | Incomplete quizzers -> quizzers |> List.map incorrectAnswer |> toMap
+            | Complete (Answered question) ->
+                [ (question.Answerer, AnsweredCorrectly) ]
+                @ (question.IncorrectAnswerers
+                   |> List.map incorrectAnswer)
+                |> toMap
+            | Complete (Unanswered question) -> question |> List.map incorrectAnswer |> toMap
+
+        answers
+        |> Map.map (fun key answer -> answer, NoFailure)
+        |> insertAppealState
+
 
     let sortedList questionMap =
         questionMap
@@ -182,7 +202,6 @@ let private refreshModel (quiz: Quiz) =
             QuestionScores =
                 runningQuiz.Questions
                 |> sortedList
-                |> List.map (fun q -> q.AnswerState)
                 |> List.map refreshQuestionScore }
     | Quiz.Completed _
     | Official _
@@ -566,27 +585,29 @@ let update
         model, cmd, None
     | FailAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
     | ClearAppeal (Started _) ->
-       let workflow =
+        let workflow =
             fun _ ->
                 { Quiz = model.Code
                   Data = ()
                   User = model.CurrentUser }
                 |> ClearAppeal.Pipeline.clearAppeal getQuizAsync saveQuizAsync
 
-       let mapEvent event =
+        let mapEvent event =
             match event with
             | ClearAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
 
-       let mapResult result =
+        let mapResult result =
             match result with
             | Ok quiz -> quiz |> Finished |> ClearAppeal
             | Result.Error (ClearAppeal.Error.QuizState _) -> "Wrong Quiz state" |> workflowFormError
-            | Result.Error (ClearAppeal.Error.NoFailedAppeal _) -> "There is no failed appeal to clear" |> workflowFormError
+            | Result.Error (ClearAppeal.Error.NoFailedAppeal _) ->
+                "There is no failed appeal to clear"
+                |> workflowFormError
 
-       let cmd =
+        let cmd =
             workflowCmdList workflow mapEvent mapResult
 
-       model, cmd, None
+        model, cmd, None
     | ClearAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
 
 type private quizPage = Template<"wwwroot/Quiz.html">
@@ -594,39 +615,73 @@ type private quizPage = Template<"wwwroot/Quiz.html">
 type ItemizedScoreModel =
     { TeamOne: TeamModel
       TeamTwo: TeamModel
-      Questions: Map<Quizzer, AnswerState> list }
+      Questions: Map<Quizzer, AnswerState * AppealState> list }
 
 type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
 
 let private itemizedScoreView model dispatch =
+    let answerScore answerState =
+        let score =
+            TeamScore.initial
+            |> (TeamScore.correctAnswer)
+            |> TeamScore.value
 
-    let quizzerAnswer answerState value =
         match answerState with
-        | None -> 0
-        | Some AnsweredCorrectly -> value
-        | Some AnsweredIncorrectly -> 0
-        | Some DidNotAnswer -> 0
+        | AnsweredCorrectly -> score
+        | AnsweredIncorrectly -> 0
+        | DidNotAnswer -> 0
 
-    let quizzerScore answerState = quizzerAnswer answerState 20
+    let appealScore appealState =
+        let score =
+            TeamScore.initial
+            |> TeamScore.failAppeal
+            |> TeamScore.value
 
-    let quizzerRunningScore questions questionNumber quizzer =
+        match appealState with
+        | NoFailure -> 0
+        | AppealFailure -> score
+
+    let quizzerScore questionState =
+        questionState
+        |> Option.map (fun (answer, appeal) -> (answerScore answer), (appealScore appeal))
+        |> Option.defaultValue (0, 0)
+
+    let scoreList questions questionNumber quizzer =
         (questions
          |> List.take (questionNumber)
          |> List.map (fun qs -> qs |> Map.tryFind (quizzer))
-         |> List.map quizzerScore
-         |> List.sum)
+         |> List.map quizzerScore)
 
-    let teamAnswered team question =
+    let quizzerRunningScore questions questionNumber quizzer =
+        scoreList questions questionNumber quizzer
+        |> List.map fst //appeals only score at the team level
+        |> List.sum
+
+    let eventOccurred (answer, appeal) =
+        match answer, appeal with
+        | AnsweredCorrectly, _ -> true
+        | _, AppealFailure -> true
+        | AnsweredIncorrectly, NoFailure -> false
+        | DidNotAnswer, NoFailure -> false
+
+    let teamEventOccurred team question =
         team.Quizzers
         |> List.map (fun qz -> question |> Map.tryFind (qz.Name))
-        |> List.exists (fun q -> q |> (Option.defaultValue AnsweredIncorrectly) = AnsweredCorrectly)
+        |> List.exists (fun q ->
+            q
+            |> (Option.defaultValue (AnsweredIncorrectly, NoFailure))
+            |> eventOccurred)
 
-    let runningScore questions questionNumber team =
+    let teamRunningScore questions questionNumber team =
         team.Quizzers
         |> List.fold
             (fun state qz ->
+                let int32s = 
+                    scoreList questions questionNumber qz.Name
+                    |> List.map (fun (f, s) -> f + s)
                 state
-                + quizzerRunningScore questions questionNumber qz.Name)
+                + (int32s //appeals are scored at team level
+                   |> List.sum))
             0
 
     let formatScore score =
@@ -659,8 +714,8 @@ let private itemizedScoreView model dispatch =
                         .Question()
                         .Number(number + 1 |> string)
                         .TeamOneScore(
-                            if teamAnswered model.TeamOne question then
-                                runningScore model.Questions (number + 1) model.TeamOne
+                            if teamEventOccurred model.TeamOne question then
+                                teamRunningScore model.Questions (number + 1) model.TeamOne
                                 |> formatScore
                             else
                                 "-"
@@ -672,14 +727,15 @@ let private itemizedScoreView model dispatch =
                                         .Quizzer()
                                         .Score(
                                             quizzerScore (question |> Map.tryFind quizzer.Name)
+                                            |> fst
                                             |> formatScore
                                         )
                                         .Elt()
                             }
                         )
                         .TeamTwoScore(
-                            if teamAnswered model.TeamTwo question then
-                                runningScore model.Questions (number + 1) model.TeamTwo
+                            if teamEventOccurred model.TeamTwo question then
+                                teamRunningScore model.Questions (number + 1) model.TeamTwo
                                 |> formatScore
                             else
                                 "-"
@@ -691,6 +747,7 @@ let private itemizedScoreView model dispatch =
                                         .Quizzer()
                                         .Score(
                                             quizzerScore (question |> Map.tryFind quizzer.Name)
+                                            |> fst
                                             |> formatScore
                                         )
                                         .Elt()
