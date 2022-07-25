@@ -1,6 +1,8 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Persistence
 
+open System
 open System.Text.Json
+open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
@@ -60,18 +62,6 @@ let initExample quizCode =
                  |> Complete)
             |> Map.map (fun key value -> { QuestionState.initial with AnswerState = value }) }
 
-let mutable private exampleQuiz: Quiz =
-    initExample "Example"
-
-let getQuizFromMemory: GetTeamQuizAsync =
-    fun _ -> Async.retn exampleQuiz
-
-
-let saveQuizToMemory: SaveTeamQuizAsync =
-    fun quiz ->
-        exampleQuiz <- quiz
-        Async.retn ()
-
 let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetTeamQuizAsync =
     fun quizCode ->
         async {
@@ -94,17 +84,22 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
                     | Some quiz -> quiz
         }
 
-
-
-let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
-    fun quiz ->
-        async {
-            let code =
-                match quiz with
+let getCodeFromQuiz quiz =
+    match quiz with
                 | Running runningTeamQuiz -> runningTeamQuiz.Code
                 | Completed completedTeamQuiz -> completedTeamQuiz.code
                 | Official officialTeamQuiz -> officialTeamQuiz.Code
                 | Unvalidated unvalidatedTeamQuiz -> unvalidatedTeamQuiz.Code
+
+let getBlobName quizCode =
+    $"quiz-{quizCode}"
+
+let containerName = "quizzers"
+
+let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
+    fun quiz ->
+        async {
+            let code = quiz |> getCodeFromQuiz
 
             let json =
                 JsonSerializer.Serialize(quiz, options)
@@ -114,4 +109,28 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
                     .SetAsync($"QUIZ-{code}", json)
                     .AsTask()
                 |> Async.AwaitTask
+        }
+
+let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetTeamQuizAsync =
+    fun quizCode ->
+        async {
+            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
+            
+            let blobClient  = blobContainerClient.GetBlobClient($"quiz-{quizCode}")
+            let! response = blobClient.DownloadContentAsync()|> Async.AwaitTask
+            let quizJson = response.Value.Content.ToString()
+            let quiz = JsonSerializer.Deserialize<Quiz>(quizJson, options)
+            return quiz
+        }
+        
+let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
+    fun quiz ->
+        async {
+            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
+            let! containerResponse = blobContainerClient.CreateIfNotExistsAsync() |> Async.AwaitTask
+            let quizCode =  quiz |> getCodeFromQuiz
+            let json = JsonSerializer.Serialize(quiz, options)
+            let blobClient = quizCode |> getBlobName |>  blobContainerClient.GetBlobClient
+            do! json |> BinaryData.FromString |> blobClient.UploadAsync |> Async.AwaitTask |> Async.Ignore
+            ()
         }

@@ -173,8 +173,6 @@ type MyApp() =
         let update =
             update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync
         
-        let  containers = this.BlobServiceClient.GetBlobContainers() 
-        
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore

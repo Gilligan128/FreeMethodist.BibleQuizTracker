@@ -53,19 +53,6 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '${{ secrets.AZURE_CREDENTIALS }}'
-      - name: Set Web App settings
-        uses: Azure/appservice-settings@v1
-        with:
-            app-name: 'freemethodist-bible-quizzing'
-            publish-profile: 
-            app-settings-json: |
-              [
-                  {
-                      "name": "BLOBSTORAGE_CONNECTION_STRING",
-                      "value": "${{secrets.BLOBSTORAGE_CONNECTION_STRING}}",
-                      "slotSetting": false
-                  }
-              ]
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
@@ -74,3 +61,16 @@ jobs:
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_76E9CBE43CD94030B3BE723E7B7102D4 }}
           package: .
+      - name: Set Web App settings
+        uses: Azure/appservice-settings@v1
+        with:
+            app-name: 'freemethodist-bible-quizzing'
+            app-settings-json: |
+              [
+                  {
+                      "name": "BLOBSTORAGE_CONNECTION_STRING",
+                      "value": "${{secrets.BLOBSTORAGE_CONNECTION_STRING}}",
+                      "slotSetting": false
+                  }
+              ]
+
