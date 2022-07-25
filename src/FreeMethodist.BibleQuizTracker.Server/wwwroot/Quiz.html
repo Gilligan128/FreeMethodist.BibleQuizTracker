@@ -104,9 +104,9 @@
         </div>
         <template id="Team">
             <div class="box">
-                <div class="columns is-mobile has-background-info">
-                    <div class="column ">
-                        <span class="has-text-white">Team ${Name}</span>
+                <div class="columns is-mobile has-background-${TeamColor}-dark">
+                    <div class="column has-text-white">
+                        <span class="">Team ${Name}</span>
                     </div>
                     <div class="column">
                         <div class="has-text-weight-bold has-text-white">
@@ -123,7 +123,7 @@
                     <div class="column">
                         <div class="tags">
                             <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
-                            <span class="tag is-warning ${AppealVisible}">A</span>
+                            <span class="tag is-warning ${AppealVisible}  is-rounded ">A</span>
                         </div>
                     </div>
                     <div class="column is-one-third has-text-primary-dark">

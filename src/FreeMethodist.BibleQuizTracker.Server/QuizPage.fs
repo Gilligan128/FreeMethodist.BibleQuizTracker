@@ -803,6 +803,9 @@ let private teamView
     quizPage
         .Team()
         .Name(teamModel.Name)
+        .TeamColor(match position with
+                   | TeamOne -> "success"
+                   | TeamTwo -> "danger")
         .ScoreReadOnly(string teamModel.Score)
         .Quizzers(
             concat {
