@@ -31,7 +31,7 @@ This is both the functional and technical roadmap.
 
 ## Functional Roadmap
 Overall theme here is "do what it takes to get accurate, visible, and persistent scores, then do the rest"
-- [ ] Quizmaster can track and record all pertinent scoring info for a quiz. - IN PROGRESS
+- [x] Quizmaster can track and record all pertinent scoring info for a quiz. 
   - includes adding Quizzers to a quiz.
   - does not include Quizzer being able to "jump"
 - [ ] Tournament Directors, and Regional directors can collect scores after a quiz is done
