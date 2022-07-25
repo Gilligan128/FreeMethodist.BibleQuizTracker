@@ -28,7 +28,12 @@ let changeCurrentQuestionAsync
     fun command ->
         asyncResult {
             let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
-            let! runningQuiz = quiz |> validateQuiz |> AsyncResult.ofResult
+
+            let! runningQuiz =
+                quiz
+                |> validateQuiz
+                |> AsyncResult.ofResult
+                |> AsyncResult.mapError ChangeCurrentQuestion.QuizState
 
             let newQuizState =
                 updateQuiz runningQuiz command.Data.Question
@@ -37,7 +42,7 @@ let changeCurrentQuestionAsync
                 newQuizState
                 |> Running
                 |> saveQuiz
-                |> AsyncResult.ofAsync
+                |> AsyncResult.mapError ChangeCurrentQuestion.Error.DbError
 
             return createEvent newQuizState
         }

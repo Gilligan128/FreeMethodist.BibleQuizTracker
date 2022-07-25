@@ -8,5 +8,7 @@ module ChangeCurrentQuestion =
 
     type QuestionData = { Question: QuestionNumber }
     type Command = WithinQuizCommand<QuestionData>
-    type WorkflowDeprecated = Command -> Result<CurrentQuestionChanged, QuizStateError>
-    type Workflow = Command -> AsyncResult<CurrentQuestionChanged, QuizStateError>
+    
+    type Error = | QuizState of QuizStateError
+                 | DbError of DbError
+    type Workflow = Command -> AsyncResult<CurrentQuestionChanged, Error>

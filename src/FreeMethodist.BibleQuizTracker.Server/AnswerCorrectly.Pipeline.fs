@@ -215,7 +215,7 @@ let answerCorrectly getQuiz saveQuiz : Workflow =
                 updatedQuiz.QuizState
                 |> Quiz.Running
                 |> saveQuiz
-                |> AsyncResult.ofAsync
+                |> AsyncResult.mapError AnswerCorrectly.Error.DbError
 
             return createEvents currentQuizzer updatedQuiz
         }

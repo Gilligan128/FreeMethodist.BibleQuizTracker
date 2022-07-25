@@ -373,3 +373,7 @@ module RunningTeamQuiz =
             |> Option.defaultValue QuestionState.initial
             |> fun q -> { q with AnswerState = changedQuestion }
             |> Some)
+
+type DbError =
+    | SerializationError of exn
+    | RemoteError of string

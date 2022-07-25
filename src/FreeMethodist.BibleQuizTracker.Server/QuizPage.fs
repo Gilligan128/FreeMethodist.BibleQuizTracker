@@ -13,6 +13,7 @@ open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
+open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
 open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
@@ -128,19 +129,23 @@ let private refreshModel (quiz: Quiz) =
         | Complete (Answered _) -> DidNotAnswer
         | Complete (Unanswered question) when question |> quizzerWasIncorrect -> AnsweredIncorrectly
         | Complete (Unanswered _) -> DidNotAnswer
-    
+
     let getAppealState appeal quizzer =
         match appeal with
         | None -> NoFailure
-        | Some appealer when appealer = quizzer-> AppealFailure
+        | Some appealer when appealer = quizzer -> AppealFailure
         | Some _ -> NoFailure
-    
+
     let refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerState) =
         { Name = quizzer.Name
           Score = TeamScore.value quizzer.Score
           ConnectionStatus = Unknown
-          AnswerState = quizzer |> getAnswerState currentQuestion.AnswerState
-          AppealState = quizzer.Name |> getAppealState currentQuestion.FailedAppeal }
+          AnswerState =
+            quizzer
+            |> getAnswerState currentQuestion.AnswerState
+          AppealState =
+            quizzer.Name
+            |> getAppealState currentQuestion.FailedAppeal }
 
     let refreshTeam currentQuestion (team: QuizTeamState) =
         { Name = team.Name
@@ -192,7 +197,7 @@ let private refreshModel (quiz: Quiz) =
     | Running runningQuiz ->
         let currentQuestion =
             runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
-            |> Option.defaultValue QuestionState.initial 
+            |> Option.defaultValue QuestionState.initial
 
         { emptyModel with
             Code = runningQuiz.Code
@@ -216,12 +221,12 @@ let init quizCode previousQuizCode =
     { emptyModel with Code = quizCode }, Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
 
 type OverrideScoreErrors =
-    | DomainError of QuizStateError
+    | DomainError of OverrideTeamScore.Error
     | FormError of string
 
 type ChangeQuestionError =
     | FormError of string
-    | QuizError of QuizStateError
+    | QuizError of ChangeCurrentQuestion.Error
 
 let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =
     asyncResult {
@@ -237,11 +242,16 @@ let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (tea
 
         return!
             overrideTeamScoreAsync getQuiz saveQuiz command
-            |> AsyncResult.mapError (DomainError)
+            |> AsyncResult.mapError OverrideScoreErrors.DomainError
     }
 
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
+
+let mapDbErrorToString error =
+    match error with
+    | SerializationError exn -> exn.Message
+    | DbError.RemoteError message -> message
 
 let update
     connectToQuizEvents
@@ -424,6 +434,7 @@ let update
                     match error with
                     | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
                     | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
+                    | AddQuizzer.DbError dbError -> dbError |> mapDbErrorToString
                     |> PublishEventError.FormError
                     |> Message.WorkflowError
 
@@ -469,6 +480,7 @@ let update
             | Result.Error (RemoveQuizzer.QuizzerNotParticipating quizzer) ->
                 PublishEventError.FormError $"Quizzer {quizzer} is already not participating"
                 |> WorkflowError
+            | Result.Error (RemoveQuizzer.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
 
         let workflow =
             fun () -> RemoveQuizzer_Pipeline.removeQuizzer getQuizAsync saveQuizAsync withinQuizCommand
@@ -483,6 +495,7 @@ let update
             | Ok quiz -> Message.SelectQuizzer(Finished quiz)
             | Result.Error (SelectQuizzer.Error.QuizState quizStateError) -> createQuizStateWorkflowError quizStateError
             | Result.Error (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> Message.DoNothing
+            | Result.Error (SelectQuizzer.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
             | Result.Error (SelectQuizzer.Error.QuizzerNotParticipating quizzer) ->
                 PublishEventError.FormError $"Quizzer {quizzer} is not participating"
                 |> WorkflowError
@@ -528,6 +541,7 @@ let update
                                                                                                                                question))) ->
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
                 |> workflowFormError
+             | Result.Error (AnswerCorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -559,6 +573,7 @@ let update
                                                                                                                                questionNumber))) ->
                 $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
                 |> workflowFormError
+            | Result.Error (AnswerIncorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -583,6 +598,7 @@ let update
             | Result.Error (FailAppeal.Error.QuizState _) -> "Wrong Quiz state" |> workflowFormError
             | Result.Error (FailAppeal.Error.AppealAlreadyFailed _) -> "Appeal already failed" |> workflowFormError
             | Result.Error (FailAppeal.Error.NoCurrentQuizzer _) -> "No current quizzer" |> workflowFormError
+            | Result.Error (FailAppeal.Error.DbError error) -> error |> mapDbErrorToString |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -608,6 +624,7 @@ let update
             | Result.Error (ClearAppeal.Error.NoFailedAppeal _) ->
                 "There is no failed appeal to clear"
                 |> workflowFormError
+            | Result.Error (ClearAppeal.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -690,20 +707,19 @@ let private itemizedScoreView model dispatch =
                    |> List.sum))
             0
 
-    let findQuestionQuizzerState question (quizzer:QuizzerModel) =
-        question |> Map.tryFind quizzer.Name
-    
+    let findQuestionQuizzerState question (quizzer: QuizzerModel) = question |> Map.tryFind quizzer.Name
+
     let formatScore score =
         match score with
         | 0 -> "-"
         | number -> $"{number}"
-    
+
     let showAppeal questionQuizzerState =
         match questionQuizzerState with
         | None -> "is-hidden"
         | Some (_, NoFailure) -> "is-hidden"
         | Some (_, AppealFailure) -> ""
-    
+
     let quizzerView question quizzer =
         itemizedPage
             .Quizzer()
@@ -715,12 +731,12 @@ let private itemizedScoreView model dispatch =
             .Score(
                 quizzer
                 |> findQuestionQuizzerState question
-                |> quizzerScore 
+                |> quizzerScore
                 |> fst
                 |> formatScore
             )
             .Elt()
-    
+
     itemizedPage()
         .TeamOneName(model.TeamOne.Name)
         .TeamOneColspan((model.TeamOne.Quizzers |> List.length) + 1)
@@ -803,9 +819,11 @@ let private teamView
     quizPage
         .Team()
         .Name(teamModel.Name)
-        .TeamColor(match position with
-                   | TeamOne -> "success"
-                   | TeamTwo -> "danger")
+        .TeamColor(
+            match position with
+            | TeamOne -> "success"
+            | TeamTwo -> "danger"
+        )
         .ScoreReadOnly(string teamModel.Score)
         .Quizzers(
             concat {
@@ -848,9 +866,11 @@ let private teamView
                             | AnsweredCorrectly -> "success"
                             | AnsweredIncorrectly -> "danger"
                         )
-                        .AppealVisible(match quizzer.AppealState with
-                                       | NoFailure -> "is-hidden"
-                                       | AppealFailure -> "")
+                        .AppealVisible(
+                            match quizzer.AppealState with
+                            | NoFailure -> "is-hidden"
+                            | AppealFailure -> ""
+                        )
                         .Elt()
             }
         )

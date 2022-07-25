@@ -12,5 +12,6 @@ module AddQuizzer =
     type Error =
         | QuizState of QuizStateError
         | QuizzerAlreadyAdded of Quizzer
+        | DbError of DbError
 
     type Workflow = Command -> AsyncResult<QuizzerParticipating, Error>

@@ -105,7 +105,7 @@ let removeQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : RemoveQuizzer.Workflow
             let quiz, currentChangedEvent =
                 removeQuizzerFromQuiz command.Data validQuiz []
 
-            do! quiz |> Running |> saveQuiz |> AsyncResult.ofAsync
+            do! quiz |> Running |> saveQuiz |> AsyncResult.mapError RemoveQuizzer.DbError 
 
             return createEvents command.Quiz command.Data currentChangedEvent
         }

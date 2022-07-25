@@ -15,6 +15,7 @@ module AnswerCorrectly =
         | DuplicateQuizzer of Quizzer
         | NoCurrentQuizzer
         | QuizzerAlreadyAnsweredCorrectly of QuizAnswer.QuizzerAlreadyAnsweredCorrectly
+        | DbError of DbError
 
     type Event =
         | IndividualScoreChanged of IndividualScoreChanged

@@ -50,19 +50,19 @@ type Quiz =
     | Completed of CompletedTeamQuiz
     | Official of OfficialTeamQuiz
 
-//Common Dependencies
+//Persistence
 type GetTeamQuiz = QuizCode -> Quiz
 type GetTeamQuizAsync = QuizCode -> Async<Quiz>
 type SaveTeamQuiz = Quiz -> unit
-type SaveTeamQuizAsync = Quiz -> Async<unit>
-
-type PublishQuizEventTask = string -> QuizCode -> obj -> Async<unit>
+type SaveTeamQuizAsync = Quiz -> AsyncResult<unit, DbError>
 
 
 type GetJumps = QuizCode -> Jump seq
 type SaveJump = Jump -> unit
 
 //Event Handling
+type PublishQuizEventTask = string -> QuizCode -> obj -> Async<unit>
+
 type ConnectToQuizEvents = QuizCode -> QuizCode option -> Async<unit>
 type ListenToRunQuizEvents<'Msg> = Dispatch<'Msg> -> unit
 

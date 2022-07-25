@@ -10,6 +10,7 @@ module FailAppeal =
         | QuizState of QuizStateError
         | NoCurrentQuizzer of NoCurrentQuizzer
         | AppealAlreadyFailed of Quizzer
+        | DbError of DbError
 
     type Event = TeamScoreChanged of TeamScoreChanged
 

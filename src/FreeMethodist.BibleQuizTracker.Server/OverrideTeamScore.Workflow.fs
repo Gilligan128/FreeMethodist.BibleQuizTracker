@@ -13,4 +13,7 @@ type OverrideTeamScoreData =
 module OverrideTeamScore =
     type Command = WithinQuizCommand<OverrideTeamScoreData>
 
-    type Workflow = Command -> AsyncResult<TeamScoreChanged, QuizStateError>
+    type Error = | QuizState of QuizStateError
+                 | DbError of DbError
+    
+    type Workflow = Command -> AsyncResult<TeamScoreChanged, Error>

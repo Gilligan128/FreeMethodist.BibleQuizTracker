@@ -67,7 +67,7 @@ let addQuizzerAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : AddQuizzer.Workflow 
                 addQuizzerToQuiz validQuiz command.Data
                 |> Running
                 |> saveQuiz
-                |> AsyncResult.ofAsync
+                |> AsyncResult.mapError AddQuizzer.Error.DbError
 
             return createEvent command.Quiz command.Data
         }

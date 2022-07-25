@@ -14,6 +14,7 @@ module RemoveQuizzer =
     type Error =
         | QuizStateError of QuizStateError
         | QuizzerNotParticipating of Quizzer
+        | DbError of DbError
     type Event =
         | CurrentQuizzerChanged of CurrentQuizzerChanged
         | QuizzerNoLongerParticipating of QuizzerNoLongerParticipating

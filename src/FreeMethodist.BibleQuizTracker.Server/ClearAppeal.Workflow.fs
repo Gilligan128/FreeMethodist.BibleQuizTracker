@@ -9,6 +9,7 @@ module ClearAppeal =
     type Error =
         | QuizState of QuizStateError
         | NoFailedAppeal
+        | DbError of DbError
     
     type Event = TeamScoreChanged of TeamScoreChanged
     

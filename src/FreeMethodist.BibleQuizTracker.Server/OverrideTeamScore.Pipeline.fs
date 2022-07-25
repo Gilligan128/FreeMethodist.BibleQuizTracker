@@ -28,10 +28,19 @@ let overrideTeamScoreAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : OverrideTeamS
     fun command ->
         asyncResult {
             let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
-            let! quiz = validateQuiz quiz |> AsyncResult.ofResult
+
+            let! quiz =
+                validateQuiz quiz
+                |> AsyncResult.ofResult
+                |> AsyncResult.mapError OverrideTeamScore.QuizState
+
             let score = command.Data
             let quiz = updateQuizScore quiz score
             let event = createEvent quiz score
-            do! saveQuiz (Running quiz) |> AsyncResult.ofAsync
+
+            do!
+                saveQuiz (Running quiz)
+                |> AsyncResult.mapError OverrideTeamScore.DbError
+
             return event
         }

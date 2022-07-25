@@ -80,7 +80,7 @@ let clearAppeal getQuiz saveQuiz : Workflow =
                 updateQuiz validQuiz
                 |> AsyncResult.ofResult
 
-            do! updatedQuiz |> Running |> saveQuiz |> AsyncResult.ofAsync
+            do! updatedQuiz |> Running |> saveQuiz |> AsyncResult.mapError ClearAppeal.Error.DbError 
 
             return createEvents (updatedQuiz, revertedTeam)
         }

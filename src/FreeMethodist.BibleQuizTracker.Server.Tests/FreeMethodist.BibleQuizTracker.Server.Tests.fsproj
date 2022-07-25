@@ -21,7 +21,6 @@
         <Compile Include="ChangeCurrentQuestion.UpdateQuizStepTests.fs" />
         <Compile Include="FailAppeal.UpdateQuizStepTests.fs" />
         <Compile Include="ClearAppeal.UpdateQuizStepTests.fs" />
-        <Compile Include="TempTests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

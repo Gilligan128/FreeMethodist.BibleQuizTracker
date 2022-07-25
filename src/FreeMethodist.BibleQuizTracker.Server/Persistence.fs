@@ -86,19 +86,18 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
 
 let getCodeFromQuiz quiz =
     match quiz with
-                | Running runningTeamQuiz -> runningTeamQuiz.Code
-                | Completed completedTeamQuiz -> completedTeamQuiz.code
-                | Official officialTeamQuiz -> officialTeamQuiz.Code
-                | Unvalidated unvalidatedTeamQuiz -> unvalidatedTeamQuiz.Code
+    | Running runningTeamQuiz -> runningTeamQuiz.Code
+    | Completed completedTeamQuiz -> completedTeamQuiz.code
+    | Official officialTeamQuiz -> officialTeamQuiz.Code
+    | Unvalidated unvalidatedTeamQuiz -> unvalidatedTeamQuiz.Code
 
-let getBlobName quizCode =
-    $"quiz-{quizCode}"
+let getBlobName quizCode = $"quiz-{quizCode}"
 
 let containerName = "quizzers"
 
 let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
     fun quiz ->
-        async {
+        asyncResult {
             let code = quiz |> getCodeFromQuiz
 
             let json =
@@ -109,28 +108,59 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
                     .SetAsync($"QUIZ-{code}", json)
                     .AsTask()
                 |> Async.AwaitTask
+                |> AsyncResult.ofAsync
         }
 
 let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetTeamQuizAsync =
     fun quizCode ->
         async {
-            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
-            
-            let blobClient  = blobContainerClient.GetBlobClient($"quiz-{quizCode}")
-            let! response = blobClient.DownloadContentAsync()|> Async.AwaitTask
-            let quizJson = response.Value.Content.ToString()
-            let quiz = JsonSerializer.Deserialize<Quiz>(quizJson, options)
+            let blobContainerClient =
+                blobServiceClient.GetBlobContainerClient(containerName)
+
+            let blobClient =
+                blobContainerClient.GetBlobClient($"quiz-{quizCode}")
+
+            let! response =
+                blobClient.DownloadContentAsync()
+                |> Async.AwaitTask
+
+            let quizJson =
+                response.Value.Content.ToString()
+
+            let quiz =
+                JsonSerializer.Deserialize<Quiz>(quizJson, options)
+
             return quiz
         }
-        
+
 let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
     fun quiz ->
-        async {
-            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
-            let! containerResponse = blobContainerClient.CreateIfNotExistsAsync() |> Async.AwaitTask
-            let quizCode =  quiz |> getCodeFromQuiz
-            let json = JsonSerializer.Serialize(quiz, options)
-            let blobClient = quizCode |> getBlobName |>  blobContainerClient.GetBlobClient
-            do! json |> BinaryData.FromString |> blobClient.UploadAsync |> Async.AwaitTask |> Async.Ignore
-            ()
+        asyncResult {
+            let blobContainerClient =
+                blobServiceClient.GetBlobContainerClient(containerName)
+
+            do!
+                blobContainerClient.CreateIfNotExistsAsync()
+                |> Async.AwaitTask
+                |> AsyncResult.ofAsync
+                |> AsyncResult.ignore
+
+            let quizCode = quiz |> getCodeFromQuiz
+
+            let json =
+                JsonSerializer.Serialize(quiz, options)
+
+            let blobClient =
+                quizCode
+                |> getBlobName
+                |> blobContainerClient.GetBlobClient
+
+            do!
+                json
+                |> BinaryData.FromString
+                |> blobClient.UploadAsync
+                |> Async.AwaitTask
+                |> AsyncResult.ofAsync
+                |> AsyncResult.ignore
+
         }

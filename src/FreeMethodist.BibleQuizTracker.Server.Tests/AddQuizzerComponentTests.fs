@@ -17,7 +17,7 @@ let getQuiz _ =
 let getQuizAsync code = getQuiz code |> Async.retn
 
 let saveQuiz _ = ()
-let saveQuizAsync _ = Async.retn ()
+let saveQuizAsync _ = AsyncResult.retn ()
 
 let sut =
     update (fun _ _-> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync saveQuizAsync
