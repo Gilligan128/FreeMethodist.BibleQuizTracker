@@ -2,6 +2,7 @@ module FreeMethodist.BibleQuizTracker.Server.Main
 
 open System
 open System.Threading
+open Azure.Storage.Blobs
 open Elmish
 open Bolero
 open Bolero.Html
@@ -146,6 +147,9 @@ type MyApp() =
 
     [<Inject>]
     member val HubConnection = Unchecked.defaultof<HubConnection> with get, set
+    
+    [<Inject>]
+    member val BlobServiceClient = Unchecked.defaultof<BlobServiceClient> with get, set
 
     override this.Program =
         let hubConnection = this.HubConnection
@@ -168,7 +172,9 @@ type MyApp() =
 
         let update =
             update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync
-
+        
+        let  containers = this.BlobServiceClient.GetBlobContainers() 
+        
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore

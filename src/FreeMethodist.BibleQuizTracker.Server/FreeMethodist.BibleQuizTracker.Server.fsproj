@@ -1,9 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+﻿
 <Project Sdk="Microsoft.NET.Sdk.Web">
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
         <_EnableMacOSCodeSign>false</_EnableMacOSCodeSign>
-    </PropertyGroup>
+      <UserSecretsId>731240a9-83c4-4642-9bdf-1f393e224770</UserSecretsId>
+  </PropertyGroup>
     <ItemGroup>
         <Compile Include="Result.fs" />
         <Compile Include="Option.fs" />
@@ -41,6 +42,7 @@
         <Content Include="Architecture\quiz-states.plantuml" />
     </ItemGroup>
     <ItemGroup>
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
         <PackageReference Include="Bolero.Server" Version="0.*" />
         <PackageReference Include="Bolero.HotReload.Server" Version="0.*" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="6.0.*" />
