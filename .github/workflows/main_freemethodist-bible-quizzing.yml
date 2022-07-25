@@ -50,8 +50,8 @@ jobs:
         with:
           name: .net-app
       - name: Set Web App settings
-          uses: Azure/appservice-settings@v1
-          with:
+        uses: Azure/appservice-settings@v1
+        with:
             app-name: 'freemethodist-bible-quizzing'
             app-settings-json: |
               [
