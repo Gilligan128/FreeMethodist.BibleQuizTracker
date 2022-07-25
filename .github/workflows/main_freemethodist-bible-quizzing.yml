@@ -49,7 +49,18 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: .net-app
-
+      - name: Set Web App settings
+          uses: Azure/appservice-settings@v1
+          with:
+            app-name: 'freemethodist-bible-quizzing'
+            app-settings-json: |
+              [
+                  {
+                      "name": "BLOBSTORAGE_CONNECTION_STRING",
+                      "value": "${{secrets.BLOBSTORAGE_CONNECTION_STRING}}",
+                      "slotSetting": false
+                  }
+              ]
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
