@@ -31,13 +31,14 @@ This is both the functional and technical roadmap.
 
 ## Functional Roadmap
 Overall theme here is "do what it takes to get accurate, visible, and persistent scores, then do the rest"
-- [x] Quizmaster can track and record all pertinent scoring info for a quiz. 
+- [x] Quizmaster can track and record all pertinent scoring info for a Team quiz. 
   - includes adding Quizzers to a quiz.
   - does not include Quizzer being able to "jump"
 - [ ] Tournament Directors, and Regional directors can collect scores after a quiz is done
 - [ ] Spectators can see live scores for a quiz.
 - [ ] Quizzers can participate and "jump" in quizzes.
-- [ ] Quizmasters can see the history of a quiz, and possibly make adjustments.
+- [ ] We extend all existing functionality for Individual quizzes.
+- [x] Quizmasters can see the history of a quiz.
 - [ ] Quizzers can track "fun" quizzes, scoring how they see fit and not being limited in jumpers.
 
 ## Technical Roadmap
