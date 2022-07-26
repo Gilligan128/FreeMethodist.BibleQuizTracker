@@ -903,7 +903,7 @@ let private teamView
         )
         .Elt()
 
-let page (model: Model) (dispatch: Dispatch<Message>) =
+let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
     let isTeam teamOneValue teamTwoValue =
         match model.AddQuizzer with
         | Inert -> false
@@ -912,6 +912,7 @@ let page (model: Model) (dispatch: Dispatch<Message>) =
 
     quizPage()
         .QuizCode(model.Code)
+        .QuizUrl(linkToQuiz <| model.Code)
         .CurrentUser(
             match model.CurrentUser with
             | Quizmaster -> "Quizmaster"

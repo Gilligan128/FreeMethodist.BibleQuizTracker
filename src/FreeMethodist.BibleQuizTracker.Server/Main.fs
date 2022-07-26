@@ -8,6 +8,7 @@ open Bolero
 open Bolero.Html
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
+open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
@@ -15,22 +16,13 @@ open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Control
 
-/// Routing endpoints definition.
-type Page =
-    | [<EndPoint "/">] Home
-    | [<EndPoint "/quiz">] Quiz of quizCode: string
+
 
 /// The Elmish application's model.
 type Model =
     { page: Page
       Error: string option
       Quiz: QuizPage.Model option }
-
-and Book =
-    { title: string
-      author: string
-      publishDate: DateTime
-      isbn: string }
 
 let initModel =
     { page = Home
@@ -110,7 +102,10 @@ let router =
 
 type Main = Template<"wwwroot/main.html">
 
-let homePage model dispatch = Main.Home().Elt()
+let homePage model dispatch = Main.Home()
+                                  .CreateQuizStart(fun _ -> ())
+                                  .JoinQuiz(fun _-> ())
+                                  .Elt()
 
 let menuItem (model: Model) (page: Page) (text: string) =
     Main
@@ -124,6 +119,10 @@ let menuItem (model: Model) (page: Page) (text: string) =
         .Url(router.Link page)
         .Text(text)
         .Elt()
+
+let linkToQuizPage (router: Router<Page,Model,Message> ) =
+    fun quizCode ->
+        router.Link <| Page.Quiz quizCode
 
 let view model dispatch =
     Main()
@@ -140,7 +139,7 @@ let view model dispatch =
                 | Quiz code ->
                     match model.Quiz with
                     | None -> Node.Empty()
-                    | Some quizModel -> QuizPage.page quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
+                    | Some quizModel -> page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
         )
         .Error(
             cond model.Error
