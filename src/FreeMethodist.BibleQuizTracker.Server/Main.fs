@@ -24,7 +24,7 @@ type Page =
 type Model =
     { page: Page
       Error: string option
-      quiz: QuizPage.Model option }
+      Quiz: QuizPage.Model option }
 
 and Book =
     { title: string
@@ -35,7 +35,7 @@ and Book =
 let initModel =
     { page = Home
       Error = None
-      quiz = None }
+      Quiz = None }
 
 /// The Elmish application's update messages.
 type Message =
@@ -43,6 +43,11 @@ type Message =
     | ClearError
     | QuizMessage of QuizPage.Message
 
+let clientStub =
+                Unchecked.defaultof<QuizHub.Client>
+
+let runQuizEventOccuredName =
+    nameof clientStub.RunQuizEventOccurred
 
 let update
     connectToQuizEvents
@@ -50,10 +55,24 @@ let update
     publishQuizEvent
     getQuizAsync
     saveQuizAsync
+    (hubConnection: HubConnection)
     (message: Message)
     model
     : Model * Cmd<Message> =
-    match message, model.quiz with
+        
+    let disconnectFromQuizCmd (quiz: QuizPage.Model) =
+            hubConnection.Remove( (runQuizEventOccuredName)) 
+            hubConnection.InvokeAsync(
+                (nameof
+                    Unchecked.defaultof<QuizHub.Hub>
+                        .DisconnectFromQuiz),
+                quiz.Code,
+                CancellationToken.None)
+            |> Async.AwaitTask
+            |> Async.map (fun _ -> Message.ClearError)
+            |> Cmd.OfAsync.result
+            
+    match message, model.Quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
         let oldCodeOpt =
             (quizOption |> Option.map (fun q -> q.Code))
@@ -63,9 +82,12 @@ let update
 
         { model with
             page = Quiz quizCode
-            quiz = Some quizModel },
+            Quiz = Some quizModel },
         Cmd.map Message.QuizMessage cmd
-    | SetPage page, _ -> { model with page = page; quiz = None }, Cmd.none
+    | SetPage page, Some quiz ->
+        
+        { model with page = page; Quiz = None }, (disconnectFromQuizCmd quiz)
+    | SetPage page, None ->  { model with page = page; Quiz = None }, Cmd.none
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
@@ -78,7 +100,7 @@ let update
                 match message with
                 | Error er -> { model with Error = Some er }
 
-        { newModel with quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
+        { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
     | QuizMessage _, None ->
         { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
 
@@ -116,7 +138,7 @@ let view model dispatch =
             <| function
                 | Home -> homePage model dispatch
                 | Quiz code ->
-                    match model.quiz with
+                    match model.Quiz with
                     | None -> Node.Empty()
                     | Some quizModel -> QuizPage.page quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
         )
@@ -147,7 +169,7 @@ type MyApp() =
 
     [<Inject>]
     member val HubConnection = Unchecked.defaultof<HubConnection> with get, set
-    
+
     [<Inject>]
     member val BlobServiceClient = Unchecked.defaultof<BlobServiceClient> with get, set
 
@@ -164,15 +186,13 @@ type MyApp() =
                 |> Async.AwaitTask
 
         let onQuizEvent =
-            let clientStub =
-                Unchecked.defaultof<QuizHub.Client>
-
+          
             fun (handler: RunQuizEvent -> unit) ->
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
 
         let update =
-            update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync
-        
+            update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync hubConnection
+
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore

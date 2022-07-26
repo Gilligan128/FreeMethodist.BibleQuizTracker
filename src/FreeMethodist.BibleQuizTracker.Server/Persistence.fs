@@ -2,6 +2,7 @@
 
 open System
 open System.Text.Json
+open Azure
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
@@ -71,7 +72,7 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
                      .AsTask()
                  |> Async.AwaitTask)
                 |> Async.map (fun json -> json.Value)
-                |> AsyncResult.ofAsync 
+                |> AsyncResult.ofAsync
 
             return
                 (if quizJsonString = null then
@@ -112,6 +113,15 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
                 |> AsyncResult.ofAsync
         }
 
+
+let validateBlobOperation (uploadResult : Response<'a>) = 
+    if uploadResult.GetRawResponse().IsError then
+        (uploadResult.GetRawResponse().ReasonPhrase
+         |> RemoteError
+         |> Error)
+    else
+        Ok uploadResult.Value
+        
 let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetTeamQuizAsync =
     fun quizCode ->
         asyncResult {
@@ -124,10 +134,10 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
             let! response =
                 blobClient.DownloadContentAsync()
                 |> Async.AwaitTask
-                |> AsyncResult.ofAsync
+                |> Async.map validateBlobOperation
 
             let quizJson =
-                response.Value.Content.ToString()
+                response.Content.ToString()
 
             let quiz =
                 JsonSerializer.Deserialize<Quiz>(quizJson, options)
@@ -149,20 +159,27 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
 
             let quizCode = quiz |> getCodeFromQuiz
 
-            let json =
-                JsonSerializer.Serialize(quiz, options)
+            let! json =
+                try
+                    (JsonSerializer.Serialize(quiz, options)
+                     |> AsyncResult.ofSuccess)
+                with
+                | exn ->
+                    exn
+                    |> DbError.SerializationError
+                    |> AsyncResult.ofError
 
             let blobClient =
                 quizCode
                 |> getBlobName
                 |> blobContainerClient.GetBlobClient
-
+    
             do!
                 json
                 |> BinaryData.FromString
                 |> blobClient.UploadAsync
                 |> Async.AwaitTask
-                |> AsyncResult.ofAsync
+                |> Async.map validateBlobOperation
                 |> AsyncResult.ignore
 
         }

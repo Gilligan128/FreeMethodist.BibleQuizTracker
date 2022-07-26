@@ -43,7 +43,10 @@ type Hub() =
         |> Option.bind (fun innerTask ->
             leaveGroup
             |> Option.map (Async.bind (fun _ -> innerTask)))
-
+    
+    member this.DisconnectFromQuiz(previousCode: QuizCode) =
+         this.Groups.RemoveFromGroupAsync(this.Context.ConnectionId, previousCode, CancellationToken.None)
+    
     member this.SendRunQuizEventOccurred (quiz: QuizCode) (msg: RunQuizEvent) =
         this
             .Clients
