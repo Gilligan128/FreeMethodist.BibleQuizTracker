@@ -110,7 +110,7 @@ let createEvents: CreateEvents =
 let answerIncorrectly getQuiz saveQuiz : Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError DbError
 
             let! runningQuiz =
                 validateQuiz quiz

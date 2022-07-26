@@ -14,7 +14,7 @@ let getQuiz _ =
           TeamOne = ""
           TeamTwo = "" }
 
-let getQuizAsync code = getQuiz code |> Async.retn
+let getQuizAsync code = getQuiz code |> AsyncResult.retn
 
 let saveQuiz _ = ()
 let saveQuizAsync _ = AsyncResult.retn ()

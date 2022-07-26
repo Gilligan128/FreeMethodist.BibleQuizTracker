@@ -51,9 +51,7 @@ type Quiz =
     | Official of OfficialTeamQuiz
 
 //Persistence
-type GetTeamQuiz = QuizCode -> Quiz
-type GetTeamQuizAsync = QuizCode -> Async<Quiz>
-type SaveTeamQuiz = Quiz -> unit
+type GetTeamQuizAsync = QuizCode -> AsyncResult<Quiz, DbError>
 type SaveTeamQuizAsync = Quiz -> AsyncResult<unit, DbError>
 
 

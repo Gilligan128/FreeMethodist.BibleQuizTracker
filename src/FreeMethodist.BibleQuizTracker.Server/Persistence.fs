@@ -64,13 +64,14 @@ let initExample quizCode =
 
 let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetTeamQuizAsync =
     fun quizCode ->
-        async {
+        asyncResult {
             let! quizJsonString =
                 (localStorage
                     .GetAsync<string>($"QUIZ-{quizCode}")
                      .AsTask()
                  |> Async.AwaitTask)
                 |> Async.map (fun json -> json.Value)
+                |> AsyncResult.ofAsync 
 
             return
                 (if quizJsonString = null then
@@ -113,7 +114,7 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
 
 let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetTeamQuizAsync =
     fun quizCode ->
-        async {
+        asyncResult {
             let blobContainerClient =
                 blobServiceClient.GetBlobContainerClient(containerName)
 
@@ -123,6 +124,7 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
             let! response =
                 blobClient.DownloadContentAsync()
                 |> Async.AwaitTask
+                |> AsyncResult.ofAsync
 
             let quizJson =
                 response.Value.Content.ToString()

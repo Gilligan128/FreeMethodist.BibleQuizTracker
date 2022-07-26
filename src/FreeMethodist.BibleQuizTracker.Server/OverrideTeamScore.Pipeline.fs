@@ -27,7 +27,7 @@ let createEvent: CreateEvent =
 let overrideTeamScoreAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : OverrideTeamScore.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError OverrideTeamScore.DbError
 
             let! quiz =
                 validateQuiz quiz

@@ -57,7 +57,7 @@ let createEvent: CreateEvent =
 let addQuizzerAsync getQuiz (saveQuiz: SaveTeamQuizAsync) : AddQuizzer.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError AddQuizzer.DbError
 
             let! validQuiz =
                 validateQuizzerAdd (validateQuiz) quiz command.Data

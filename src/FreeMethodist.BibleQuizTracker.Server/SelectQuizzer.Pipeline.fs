@@ -42,19 +42,28 @@ let changeCurrentQuizzer: ChangeCurrentQuizzer =
     fun quizzer quiz -> { quiz with CurrentQuizzer = Some quizzer }
 
 let createEvent: CreateEvent =
-    fun quiz quizzer -> { Quiz = quiz.Code; CurrentQuizzer = Some quizzer }
+    fun quiz quizzer ->
+        { Quiz = quiz.Code
+          CurrentQuizzer = Some quizzer }
 
 let selectQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : SelectQuizzer.Workflow =
     fun command ->
-        let validateSelection quiz = validateSelection quiz command.Data |> AsyncResult.ofResult
+        let validateSelection quiz =
+            validateSelection quiz command.Data
+            |> AsyncResult.ofResult
 
         asyncResult {
-            let! validQuiz = getQuiz command.Quiz |> AsyncResult.ofAsync |> AsyncResult.bind validateSelection
+            let! validQuiz =
+                getQuiz command.Quiz
+                |> AsyncResult.mapError SelectQuizzer.DbError
+                |> AsyncResult.bind validateSelection
 
-            do! validQuiz
+            do!
+                validQuiz
                 |> changeCurrentQuizzer command.Data.Quizzer
                 |> Running
-                |> saveQuiz |> AsyncResult.mapError SelectQuizzer.DbError
+                |> saveQuiz
+                |> AsyncResult.mapError SelectQuizzer.DbError
 
             return createEvent validQuiz command.Data.Quizzer
-        } 
+        }

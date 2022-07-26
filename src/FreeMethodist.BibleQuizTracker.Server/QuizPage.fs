@@ -253,21 +253,29 @@ let mapDbErrorToString error =
     | SerializationError exn -> exn.Message
     | DbError.RemoteError message -> message
 
+type WorkflowError<'a> =
+    | Workflow of 'a
+    | DbError of DbError
+
 let update
     connectToQuizEvents
     onQuizEvent
     (publishQuizEvent: PublishQuizEventTask)
-    getQuizAsync
+    (getQuizAsync: GetTeamQuizAsync)
     saveQuizAsync
     msg
     model
     =
+
 
     let publishRunQuizEvent quiz event =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
 
     let mapExceptionToPublishEventError =
         (fun exn -> exn |> RemoteError |> WorkflowError)
+
+    let workflowFormError =
+        PublishEventError.FormError >> WorkflowError
 
     let workflowCmdList workflow mapToQuizEvent mapResult =
         let publishEvents events =
@@ -278,23 +286,32 @@ let update
 
         let workflowX = fun _ -> workflow ()
 
+        let mapResultWrapped mapResult workflowResult =
+            match workflowResult with
+            | Ok result -> result |> Result.Ok |> mapResult
+            | Result.Error (WorkflowError.Workflow error) -> error |> Result.Error |> mapResult
+            | Result.Error (WorkflowError.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
+
         let workflowWithSideEffects x =
             workflowX x
             |> AsyncResult.bind (publishEvents >> AsyncResult.ofAsync)
+            |> AsyncResult.mapError WorkflowError.Workflow
             |> AsyncResult.bind (fun _ ->
-                (model.Code
-                 |> (getQuizAsync >> AsyncResult.ofAsync)))
+                model.Code
+                |> getQuizAsync
+                |> AsyncResult.mapError WorkflowError.DbError)
 
-        Cmd.OfAsync.either workflowWithSideEffects () mapResult mapExceptionToPublishEventError
+        let workflowWithMappedResult x =
+            workflowWithSideEffects x
+            |> Async.map (fun result -> result |> mapResultWrapped mapResult)
+
+        Cmd.OfAsync.either workflowWithMappedResult () id mapExceptionToPublishEventError
 
     let workflowCmdSingle workflow mapToQuizEvent mapResult =
         let newWorkflow =
-            fun () -> workflow () |> AsyncResult.map List.singleton
+            fun _ -> workflow () |> AsyncResult.map List.singleton
 
         workflowCmdList newWorkflow mapToQuizEvent mapResult
-
-    let workflowFormError =
-        PublishEventError.FormError >> WorkflowError
 
     let createQuizStateWorkflowError _ =
         "Quiz is not running" |> workflowFormError
@@ -303,21 +320,26 @@ let update
     | DoNothing -> model, Cmd.none, None
     | InitializeQuizAndConnections (Started previousQuizCode) ->
         let loadAndConnectToQuizCmd =
-            async {
-                do! connectToQuizEvents model.Code previousQuizCode
+            asyncResult {
+                do! connectToQuizEvents model.Code previousQuizCode |> AsyncResult.ofAsync
                 let! quiz = getQuizAsync model.Code
                 return Message.InitializeQuizAndConnections(Finished quiz)
             }
+            |> Async.map (fun result ->
+                match result with
+                | Ok message -> message
+                | Result.Error error -> error |> mapDbErrorToString |> workflowFormError)
             |> Cmd.OfAsync.result
 
         let listenToEventsCmd =
             (fun dispatch ->
                 let refreshQuizOnEvent _ =
                     getQuizAsync model.Code
-                    |> Async.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
+                    |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
+                    |> Async.Ignore
                     |> Async.StartImmediate //RunSynchronously did not work here
 
-                onQuizEvent refreshQuizOnEvent |> ignore)
+                (onQuizEvent refreshQuizOnEvent) |> ignore)
             |> Cmd.ofSub
 
         { emptyModel with Code = model.Code },
@@ -350,7 +372,11 @@ let update
     | OnQuizEvent (Started _) ->
         let getQuizToRefresh =
             getQuizAsync model.Code
-            |> Async.map (Finished >> OnQuizEvent)
+            |> Async.map (fun result ->
+                match result with
+                | Ok quiz -> quiz |> (Finished >> OnQuizEvent)
+                | Result.Error error -> error |> mapDbErrorToString |> workflowFormError)
+
 
         model, Cmd.OfAsync.result getQuizToRefresh, None
     | OnQuizEvent (Finished quiz) -> refreshModel quiz, Cmd.none, None
@@ -541,7 +567,7 @@ let update
                                                                                                                                question))) ->
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
                 |> workflowFormError
-             | Result.Error (AnswerCorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
+            | Result.Error (AnswerCorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -573,7 +599,8 @@ let update
                                                                                                                                questionNumber))) ->
                 $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
                 |> workflowFormError
-            | Result.Error (AnswerIncorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
+            | Result.Error (AnswerIncorrectly.Error.DbError dbError) ->
+                dbError |> mapDbErrorToString |> workflowFormError
 
         let cmd =
             workflowCmdList workflow mapEvent mapResult

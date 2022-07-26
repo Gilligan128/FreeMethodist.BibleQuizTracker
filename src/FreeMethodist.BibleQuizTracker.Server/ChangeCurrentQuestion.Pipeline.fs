@@ -27,7 +27,7 @@ let changeCurrentQuestionAsync
     : ChangeCurrentQuestion.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError ChangeCurrentQuestion.DbError
 
             let! runningQuiz =
                 quiz

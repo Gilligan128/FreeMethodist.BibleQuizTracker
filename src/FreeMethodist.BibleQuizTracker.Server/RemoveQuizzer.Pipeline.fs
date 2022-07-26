@@ -99,7 +99,7 @@ let createEvents: CreateEvents =
 let removeQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : RemoveQuizzer.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError RemoveQuizzer.DbError
             let! validQuiz = validateRemoval validateQuiz quiz command.Data |> AsyncResult.ofResult
 
             let quiz, currentChangedEvent =

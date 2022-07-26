@@ -69,7 +69,7 @@ let createEvents: CreateEvents =
 let clearAppeal getQuiz saveQuiz : Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.ofAsync
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError DbError
 
             let! validQuiz =
                 validateQuiz quiz
