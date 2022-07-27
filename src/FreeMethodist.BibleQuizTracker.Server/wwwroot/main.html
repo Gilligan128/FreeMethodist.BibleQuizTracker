@@ -20,13 +20,31 @@
             <template id="Home">
                 <div class="content">
                     <h1 class="title">Welcome to the Free Methodist Bible Quiz Tracker!</h1>
-                    <h2>Quizzes</h2>
-                    <p><a href="#" onclick="${CreateQuizStart}">Click Here to start a Quiz</a></p>
-                    <p>If you already have a code, joine Here Join a quiz: </p>
-                    <div class="field">
-                        <input type="text"></input>
+                    <div class="columns">
+                        <div class="column is-one-quarter">
+                            <section class="section" id="quizzes">
+                            <h2>Quizzes</h2>
+                            <button class="button is-link" onclick="${CreateQuizStart}">Start Quiz</button>
+                            <h3>or, if you already have a code, join or spectate quiz: </h3>
+                            <div class="field">
+                                <label class="label">Code</label>
+                                <input type="text" class="input" placeholder="Quiz Code" bind="${QuizCode}"/>
+                            </div>
+                            <div class="field is-grouped">
+                                <div class="control">
+                                    <button class="button is-link" onclick="${JoinQuiz}">Join</button>
+                                </div>
+                                <div class="control">
+                                    <a href="${SpectateUrl}" class="button is-info">Spectate</a></div>
+                            </div>
+                            </section>
+                            <section class="section" id="guide">
+                            <h2>
+                                Guide
+                            </h2>
+                            </section>
+                        </div>
                     </div>
-                    <button class="button" onclick="${JoinQuiz}">Join</button>
                 </div>
             </template>
             <template id="ErrorNotification">

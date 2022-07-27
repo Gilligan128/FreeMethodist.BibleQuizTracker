@@ -9,9 +9,11 @@ open Bolero.Html
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
+open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Control
@@ -22,21 +24,24 @@ open Microsoft.FSharp.Control
 type Model =
     { page: Page
       Error: string option
-      Quiz: QuizPage.Model option }
+      Quiz: QuizPage.Model option
+      QuizCode: QuizCode option }
 
 let initModel =
     { page = Home
       Error = None
-      Quiz = None }
+      Quiz = None
+      QuizCode = None }
 
 /// The Elmish application's update messages.
 type Message =
     | SetPage of Page
     | ClearError
     | QuizMessage of QuizPage.Message
+    | SetQuizCode of string
 
 let clientStub =
-                Unchecked.defaultof<QuizHub.Client>
+    Unchecked.defaultof<QuizHub.Client>
 
 let runQuizEventOccuredName =
     nameof clientStub.RunQuizEventOccurred
@@ -51,19 +56,21 @@ let update
     (message: Message)
     model
     : Model * Cmd<Message> =
-        
+
     let disconnectFromQuizCmd (quiz: QuizPage.Model) =
-            hubConnection.Remove( (runQuizEventOccuredName)) 
-            hubConnection.InvokeAsync(
-                (nameof
-                    Unchecked.defaultof<QuizHub.Hub>
-                        .DisconnectFromQuiz),
-                quiz.Code,
-                CancellationToken.None)
-            |> Async.AwaitTask
-            |> Async.map (fun _ -> Message.ClearError)
-            |> Cmd.OfAsync.result
-            
+        hubConnection.Remove((runQuizEventOccuredName))
+
+        hubConnection.InvokeAsync(
+            (nameof
+                Unchecked.defaultof<QuizHub.Hub>
+                    .DisconnectFromQuiz),
+            quiz.Code,
+            CancellationToken.None
+        )
+        |> Async.AwaitTask
+        |> Async.map (fun _ -> Message.ClearError)
+        |> Cmd.OfAsync.result
+
     match message, model.Quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
         let oldCodeOpt =
@@ -77,9 +84,9 @@ let update
             Quiz = Some quizModel },
         Cmd.map Message.QuizMessage cmd
     | SetPage page, Some quiz ->
-        
+
         { model with page = page; Quiz = None }, (disconnectFromQuizCmd quiz)
-    | SetPage page, None ->  { model with page = page; Quiz = None }, Cmd.none
+    | SetPage page, None -> { model with page = page; Quiz = None }, Cmd.none
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
@@ -95,6 +102,8 @@ let update
         { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
     | QuizMessage _, None ->
         { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
+    | SetQuizCode code, _ ->
+        { model with QuizCode = Some code }, Cmd.none
 
 /// Connects the routing system to the Elmish application.
 let router =
@@ -102,10 +111,18 @@ let router =
 
 type Main = Template<"wwwroot/main.html">
 
-let homePage model dispatch = Main.Home()
-                                  .CreateQuizStart(fun _ -> ())
-                                  .JoinQuiz(fun _-> ())
-                                  .Elt()
+let homePage model dispatch =
+    Main
+        .Home()
+        .CreateQuizStart(fun _ -> ())
+        .JoinQuiz(fun _ -> ())
+        .SpectateUrl(
+            model.QuizCode
+            |> Option.map (fun code -> router.Link(Page.Quiz code))
+            |> Option.defaultValue "#"
+        )
+        .QuizCode(model.QuizCode |> Option.defaultValue "", fun code -> code |> Message.SetQuizCode |> dispatch)
+        .Elt()
 
 let menuItem (model: Model) (page: Page) (text: string) =
     Main
@@ -120,9 +137,8 @@ let menuItem (model: Model) (page: Page) (text: string) =
         .Text(text)
         .Elt()
 
-let linkToQuizPage (router: Router<Page,Model,Message> ) =
-    fun quizCode ->
-        router.Link <| Page.Quiz quizCode
+let linkToQuizPage (router: Router<Page, Model, Message>) =
+    fun quizCode -> router.Link <| Page.Quiz quizCode
 
 let view model dispatch =
     Main()
@@ -139,7 +155,8 @@ let view model dispatch =
                 | Quiz code ->
                     match model.Quiz with
                     | None -> Node.Empty()
-                    | Some quizModel -> page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
+                    | Some quizModel ->
+                        page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
         )
         .Error(
             cond model.Error
@@ -185,7 +202,7 @@ type MyApp() =
                 |> Async.AwaitTask
 
         let onQuizEvent =
-          
+
             fun (handler: RunQuizEvent -> unit) ->
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
 
