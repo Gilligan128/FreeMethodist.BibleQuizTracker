@@ -9,7 +9,7 @@ open Bolero.Html
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
-open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm.CreateQuizForm
+open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
@@ -25,13 +25,15 @@ type Model =
     { page: Page
       Error: string option
       Quiz: QuizPage.Model option
-      QuizCode: QuizCode option }
+      QuizCode: QuizCode option
+      CreateQuizForm: CreateQuizForm.CreateQuizForm.Model }
 
 let initModel =
     { page = Home
       Error = None
       Quiz = None
-      QuizCode = None }
+      QuizCode = None
+      CreateQuizForm = CreateQuizForm.CreateQuizForm.Model.Inert }
 
 /// The Elmish application's update messages.
 type Message =
@@ -39,6 +41,8 @@ type Message =
     | ClearError
     | QuizMessage of QuizPage.Message
     | SetQuizCode of string
+    | JoinQuiz
+    | CreateQuiz of CreateQuizForm.Message
 
 let clientStub =
     Unchecked.defaultof<QuizHub.Client>
@@ -104,6 +108,11 @@ let update
         { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
     | SetQuizCode code, _ ->
         { model with QuizCode = Some code }, Cmd.none
+    | JoinQuiz, _ ->
+        { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
+    | CreateQuiz message, _ ->
+        let createQuizModel, cmd = CreateQuizForm.update message model.CreateQuizForm
+        { model with CreateQuizForm = createQuizModel },  cmd |> Cmd.map CreateQuiz
 
 /// Connects the routing system to the Elmish application.
 let router =
@@ -114,14 +123,15 @@ type Main = Template<"wwwroot/main.html">
 let homePage model dispatch =
     Main
         .Home()
-        .CreateQuizStart(fun _ -> ())
-        .JoinQuiz(fun _ -> ())
+        .CreateQuizStart(fun _ -> dispatch << Message.CreateQuiz <| CreateQuizForm.Start)
+        .JoinQuiz(fun _ -> dispatch <| Message.JoinQuiz)
         .SpectateUrl(
             model.QuizCode
             |> Option.map (fun code -> router.Link(Page.Quiz code))
-            |> Option.defaultValue "#"
+            |> Option.defaultValue ""
         )
         .QuizCode(model.QuizCode |> Option.defaultValue "", fun code -> code |> Message.SetQuizCode |> dispatch)
+        .CreateQuizModal(CreateQuizForm.view model.CreateQuizForm (dispatch << Message.CreateQuiz))
         .Elt()
 
 let menuItem (model: Model) (page: Page) (text: string) =
