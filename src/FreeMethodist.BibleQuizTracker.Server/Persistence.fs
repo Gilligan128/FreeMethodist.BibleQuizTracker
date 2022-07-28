@@ -2,8 +2,10 @@
 
 open System
 open System.Text.Json
+open System.Threading
 open Azure
 open Azure.Storage.Blobs
+open Azure.Storage.Blobs.Models
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
@@ -211,11 +213,11 @@ let createNewBlob (blobServiceClient: BlobServiceClient) (options: JsonSerialize
                 quizCode
                 |> getBlobName
                 |> blobContainerClient.GetBlobClient
-
+            let uploadOptions = BlobUploadOptions(Conditions = BlobRequestConditions(IfNoneMatch = ETag("*")), Tags = (["Code", quizCode] |> Map.ofList))
             do!
                 json
                 |> BinaryData.FromString
-                |> blobClient.UploadAsync
+                |> fun data -> blobClient.UploadAsync(data, uploadOptions, CancellationToken.None)
                 |> Async.AwaitTask
                 |> Async.map validateBlobOperation
                 |> AsyncResult.ignore
