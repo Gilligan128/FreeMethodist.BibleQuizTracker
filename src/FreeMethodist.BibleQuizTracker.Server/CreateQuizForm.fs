@@ -31,13 +31,14 @@ module CreateQuizForm =
     type Model = ModalForm<CreateQuizFormData>
 
     type Message =
-        | Submit of AsyncOperationStatus<unit, Result<unit, unit>>
+        | Submit of AsyncOperationStatus<unit, Result<unit, string>>
         | SetCode of string
         | SetCompetitionStyle of CompetitionStyle
         | SetTeamOneName of string
         | SetTeamTwoName of string
         | Start
         | Cancel
+        
 
     let init = Inert, Cmd.none
 
@@ -82,12 +83,14 @@ module CreateQuizForm =
         | Submit (Started _), Active activeModel ->
             let cmd =
                 Async.Sleep 100
-                |> Async.map (fun _ -> Ok())
+                |> Async.map (fun _ -> Result.Error "Creating a quiz is not yet implemented")
                 |> Async.map Finished
                 |> Async.map Message.Submit
                 |> Cmd.OfAsync.result
 
             Submitting activeModel, cmd
+      
+        | Submit (Finished (Result.Error message)), Submitting formData -> Active { formData with Error = Some message }, Cmd.none
         | Submit (Finished _), Active formData
         | Submit (Finished _), Submitting formData -> Inert, Cmd.none
         | Start, Active _ -> model, Cmd.none
@@ -233,7 +236,12 @@ let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
                 }          
                 competitionStyleView formData dispatch
             }
-            
+            div {
+                    attr.``class``  (match formData.Error with
+                                     | Some _ -> "notification is-warning"
+                                     | None -> "notification is-warning is-hidden")
+                    text (formData.Error |> Option.defaultValue "")    
+            }
             footer {
                 attr.``class`` "modal-card-foot"
 
@@ -263,6 +271,8 @@ let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
                     on.click (fun _ -> Cancel |> dispatch)
                     "Cancel"
                 }
+                 
+               
             }
         }
     }
