@@ -82,8 +82,7 @@ type QuestionState =
 type QuizTeamState =
     { Name: TeamName
       Score: TeamScore
-      Quizzers: QuizzerState list
-      Captain: Quizzer option }
+      Quizzers: QuizzerState list }
 
 type RunningTeamQuiz =
     { Code: QuizCode
@@ -93,6 +92,15 @@ type RunningTeamQuiz =
       CurrentQuestion: QuestionNumber
       CurrentQuizzer: Quizzer option }
 
+type TeamCompetition =
+    { TeamOneName: NonEmptyString
+      TeamTwoName: NonEmptyString }
+
+type CompetitionStyle =
+    | Individual
+    | Team of TeamCompetition
+
+
 //Jumps are outside of Quizzes so that we can handle having to save a bunch around the same time.
 type Jump =
     { Quiz: QuizCode
@@ -100,12 +108,11 @@ type Jump =
       ServerTimestamp: DateTimeOffset }
 
 //Create Quiz Workflow
-type UnvalidatedTeamQuiz =
+type UnvalidatedQuiz =
     { Code: QuizCode
-      TeamOne: TeamName
-      TeamTwo: TeamName }
+      CompetitionStyle: CompetitionStyle }
 
-type CreateTeamQuizCommand = { Data: UnvalidatedTeamQuiz }
+type CreateTeamQuizCommand = { Data: UnvalidatedQuiz }
 
 //Enter Quiz Workflow
 type ParticipationType =
@@ -193,7 +200,7 @@ module QuizAnswer =
     type QuizzerAlreadyAnsweredCorrectly = QuizzerAlreadyAnsweredCorrectly of Quizzer * QuestionNumber
     type QuizzerAlreadyAnsweredIncorrectly = QuizzerAlreadyAnsweredIncorrectly of Quizzer * QuestionNumber
 
-    let create = Incomplete []
+    let initial = Incomplete []
 
     let private CompletedAnswered =
         Answered >> Complete
@@ -277,7 +284,7 @@ module QuizAnswer =
 module QuestionState =
     let initial =
         { FailedAppeal = None
-          AnswerState = QuizAnswer.create }
+          AnswerState = QuizAnswer.initial }
 
     let create answer = { initial with AnswerState = answer }
 
@@ -329,12 +336,10 @@ module RunningTeamQuiz =
           TeamOne =
             { Name = "LEFT"
               Score = TeamScore.initial
-              Captain = None
               Quizzers = [] }
           TeamTwo =
             { Name = "RIGHT"
               Score = TeamScore.initial
-              Captain = None
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None

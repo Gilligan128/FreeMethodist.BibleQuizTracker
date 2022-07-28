@@ -48,21 +48,46 @@ type Startup() =
 
         fsharpJsonOptions.Converters.Add(JsonFSharpConverter())
 
-        let getTeam (c: IServiceProvider) =
-            let localStorage =
-                c.GetRequiredService<ProtectedLocalStorage>()
-
-            Persistence.getQuizFromLocalStorage localStorage fsharpJsonOptions
-
-        let saveTeam (provider: IServiceProvider) =
+        let getQuiz (provider: IServiceProvider) =
             let localStorage =
                 provider.GetRequiredService<ProtectedLocalStorage>()
 
-            Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
+            let blobServiceClient =
+                provider.GetRequiredService<BlobServiceClient>()
+
+            let getFromLocal =
+                Persistence.getQuizFromLocalStorage localStorage fsharpJsonOptions
+
+            let getFromBlob =
+                Persistence.getQuizFromBlob blobServiceClient fsharpJsonOptions
+
+            Persistence.getQuizFromLocalOrBlob getFromLocal getFromBlob
+
+        let saveQuiz (provider: IServiceProvider) =
+            let localStorage =
+                provider.GetRequiredService<ProtectedLocalStorage>()
+
+            let blobServiceClient =
+                provider.GetRequiredService<BlobServiceClient>()
+
+            let saveToLocal =
+                Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
+
+            let saveToBlob =
+                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions
+
+            Persistence.saveQuizToLocalOrBlob saveToLocal saveToBlob
 
         services
-            .AddScoped<GetTeamQuiz>(Func<IServiceProvider, GetTeamQuiz>(getTeam))
-            .AddScoped<SaveTeamQuiz>(Func<IServiceProvider, SaveTeamQuiz>(saveTeam))
+            .AddScoped<GetQuiz>(Func<IServiceProvider, GetQuiz>(getQuiz))
+            .AddScoped<SaveQuiz>(Func<IServiceProvider, SaveQuiz>(saveQuiz))
+            .AddScoped<SaveNewQuiz>(
+                Func<IServiceProvider, SaveNewQuiz> (fun provider ->
+                    let blobServiceClient =
+                        provider.GetRequiredService<BlobServiceClient>()
+
+                    Persistence.saveNewQuizToBlob blobServiceClient fsharpJsonOptions)
+            )
             .AddScoped<HubConnection>(
                 Func<IServiceProvider, HubConnection> (fun provider ->
                     let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore

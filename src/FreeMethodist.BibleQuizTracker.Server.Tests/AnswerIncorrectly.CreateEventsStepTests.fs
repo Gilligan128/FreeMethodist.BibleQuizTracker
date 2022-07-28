@@ -19,7 +19,7 @@ let ``Given current quizzer answered current question correctly When current qui
         let initialQuiz = RunningTeamQuiz.identity
 
         let! quizQuestion, _ =
-            (Some QuizAnswer.create
+            (Some QuizAnswer.initial
              |> QuizAnswer.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
 
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
@@ -53,7 +53,7 @@ let ``Given current quizzer answered current question correctly When current qui
         let initialQuiz = RunningTeamQuiz.identity
 
         let! quizAnswer, _ =
-            (Some QuizAnswer.create
+            (Some QuizAnswer.initial
              |> QuizAnswer.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
 
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =

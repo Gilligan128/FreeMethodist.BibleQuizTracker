@@ -11,8 +11,7 @@ let publishQuiz _ _ _ = Async.retn ()
 let getQuiz _ =
     Quiz.Unvalidated
         { Code = ""
-          TeamOne = ""
-          TeamTwo = "" }
+          CompetitionStyle = Team { TeamOneName = ""; TeamTwoName = "" } }
 
 let getQuizAsync code = getQuiz code |> AsyncResult.retn
 

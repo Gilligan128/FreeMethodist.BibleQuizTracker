@@ -248,11 +248,6 @@ let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (tea
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let mapDbErrorToString error =
-    match error with
-    | SerializationError exn -> exn.Message
-    | DbError.RemoteError message -> message
-
 type WorkflowError<'a> =
     | Workflow of 'a
     | DbError of DbError
@@ -261,7 +256,7 @@ let update
     connectToQuizEvents
     onQuizEvent
     (publishQuizEvent: PublishQuizEventTask)
-    (getQuizAsync: GetTeamQuiz)
+    (getQuizAsync: GetQuiz)
     saveQuizAsync
     msg
     model

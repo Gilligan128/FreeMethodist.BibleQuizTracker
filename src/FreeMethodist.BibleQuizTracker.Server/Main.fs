@@ -56,6 +56,8 @@ let update
     publishQuizEvent
     getQuizAsync
     saveQuizAsync
+    saveNewQuiz
+    spectateQuiz
     (hubConnection: HubConnection)
     (message: Message)
     model
@@ -111,8 +113,8 @@ let update
     | JoinQuiz, _ ->
         { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
     | CreateQuiz message, _ ->
-        let createQuizModel, cmd = CreateQuizForm.update HumanReadableIds.HumanReadableIds.generateCode message model.CreateQuizForm
-        { model with CreateQuizForm = createQuizModel },  cmd |> Cmd.map CreateQuiz
+        let createQuizModel, cmd = CreateQuizForm.update HumanReadableIds.HumanReadableIds.generateCode saveNewQuiz spectateQuiz message model.CreateQuizForm
+        { model with CreateQuizForm = createQuizModel },  cmd |> Cmd.map Message.CreateQuiz
 
 /// Connects the routing system to the Elmish application.
 let router =
@@ -185,19 +187,16 @@ type MyApp() =
     inherit ProgramComponent<Model, Message>()
 
     [<Inject>]
-    member val Navigator = Unchecked.defaultof<NavigationManager> with get, set
+    member val GetQuizAsync = Unchecked.defaultof<GetQuiz> with get, set
 
     [<Inject>]
-    member val GetQuizAsync = Unchecked.defaultof<GetTeamQuiz> with get, set
-
-    [<Inject>]
-    member val SaveQuizAsync = Unchecked.defaultof<SaveTeamQuiz> with get, set
+    member val SaveQuizAsync = Unchecked.defaultof<SaveQuiz> with get, set
 
     [<Inject>]
     member val HubConnection = Unchecked.defaultof<HubConnection> with get, set
-
+    
     [<Inject>]
-    member val BlobServiceClient = Unchecked.defaultof<BlobServiceClient> with get, set
+    member val SaveNewQuiz = Unchecked.defaultof<SaveNewQuiz> with get,set
 
     override this.Program =
         let hubConnection = this.HubConnection
@@ -215,10 +214,13 @@ type MyApp() =
 
             fun (handler: RunQuizEvent -> unit) ->
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
-
+        
+        let spectateQUiz quizCode =
+            Page.Quiz quizCode |> router.getRoute |> this.NavigationManager.NavigateTo 
+        
         let update =
-            update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync hubConnection
-
+            update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync this.SaveNewQuiz spectateQUiz hubConnection
+        
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore
@@ -227,5 +229,6 @@ type MyApp() =
             view
         |> Program.withRouter router
 #if DEBUG
+        |> Program.withConsoleTrace
         |> Program.withHotReload
 #endif

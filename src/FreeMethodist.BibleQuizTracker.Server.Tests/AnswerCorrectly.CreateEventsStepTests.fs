@@ -22,7 +22,7 @@ let ``Given Question was answered correctly When current quizzer answers correct
         let initialQuiz = RunningTeamQuiz.identity
 
         let! quizQuestion, _ =
-            (Some QuizAnswer.create
+            (Some QuizAnswer.initial
              |> QuizAnswer.answerCorrectly "previous" initialQuiz.CurrentQuestion)
 
         let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =

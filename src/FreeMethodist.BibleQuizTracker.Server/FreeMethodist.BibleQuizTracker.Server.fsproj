@@ -20,6 +20,7 @@
         <Compile Include="AnswerIncorrectly.Workflow.fs" />
         <Compile Include="FailAppeal.Workflow.fs" />
         <Compile Include="ClearAppeal.Workflow.fs" />
+        <Compile Include="CreateQuiz.Workflow.fs" />
         <Compile Include="Common.Pipeline.fs" />
         <Compile Include="Persistence.fs" />
         <Compile Include="OverrideTeamScore.Pipeline.fs" />
@@ -31,6 +32,7 @@
         <Compile Include="AnswerIncorrectly.Pipeline.fs" />
         <Compile Include="FailAppeal.Pipeline.fs" />
         <Compile Include="ClearAppeal.Pipeline.fs" />
+        <Compile Include="CreateQuiz.Pipeline.fs" />
         <Compile Include="QuizHub.fs" />
         <Compile Include="EnterQuizPipeline.fs" />
         <Compile Include="JumpPipeline.fs" />

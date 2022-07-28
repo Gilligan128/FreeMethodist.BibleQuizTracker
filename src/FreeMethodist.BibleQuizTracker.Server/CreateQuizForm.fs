@@ -7,6 +7,8 @@ open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Workflow
+open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Pipeline
 
 
 module CreateQuizForm =
@@ -14,14 +16,6 @@ module CreateQuizForm =
         | Inert
         | Active of 'T
         | Submitting of 'T
-
-    type TeamCompetition =
-        { TeamOneName: NonEmptyString
-          TeamTwoName: NonEmptyString }
-
-    type CompetitionStyle =
-        | Individual
-        | Team of TeamCompetition
 
     type CreateQuizFormData =
         { Code: QuizCode
@@ -31,7 +25,7 @@ module CreateQuizForm =
     type Model = ModalForm<CreateQuizFormData>
 
     type Message =
-        | Submit of AsyncOperationStatus<unit, Result<unit, string>>
+        | Submit of AsyncOperationStatus<unit, Result<CreateQuiz.Event list, string>>
         | SetCode of string
         | SetCompetitionStyle of CompetitionStyle
         | SetTeamOneName of string
@@ -58,7 +52,7 @@ module CreateQuizForm =
             Active { formData with CompetitionStyle = newTeamModel }
             |> Some
 
-    let update generateCode message model =
+    let update generateCode saveNewQuiz spectateQuiz message model =
         match message, model with
         | Start, Inert ->
             Active
@@ -81,11 +75,21 @@ module CreateQuizForm =
 
             model, Cmd.none
         | Submit (Started _), Active activeModel ->
+            let mapToFinished result = result |> Finished |> Submit
+
+            let mapErrorToString (error: CreateQuiz.Error) =
+                match error with
+                | CreateQuiz.Error.DbError er -> er |> mapDbErrorToString
+                | CreateQuiz.Error.RemoteError er -> er
+                | CreateQuiz.Error.CodeAlreadyExists er -> $"Quiz code {er} already exists"
+                | CreateQuiz.Error.IndividualCompetitionStyle -> "Individual competition style is not yet implemented"
+
             let cmd =
-                Async.Sleep 100
-                |> Async.map (fun _ -> Result.Error "Creating a quiz is not yet implemented")
-                |> Async.map Finished
-                |> Async.map Message.Submit
+                { Code = activeModel.Code
+                  CompetitionStyle = activeModel.CompetitionStyle }
+                |> createQuiz saveNewQuiz
+                |> AsyncResult.mapError mapErrorToString
+                |> Async.map mapToFinished
                 |> Cmd.OfAsync.result
 
             Submitting activeModel, cmd
@@ -93,7 +97,9 @@ module CreateQuizForm =
         | Submit (Finished (Result.Error message)), Submitting formData ->
             Active { formData with Error = Some message }, Cmd.none
         | Submit (Finished _), Active formData
-        | Submit (Finished _), Submitting formData -> Inert, Cmd.none
+        | Submit (Finished _), Submitting formData ->
+            spectateQuiz formData.Code
+            Inert, Cmd.none
         | Start, Active _ -> model, Cmd.none
         | _, Submitting _ -> model, Cmd.none
         | Cancel, _ -> Inert, Cmd.none
@@ -102,193 +108,197 @@ module CreateQuizForm =
         | SetCompetitionStyle competitionStyle, Active quizFormData ->
             Active { quizFormData with CompetitionStyle = competitionStyle }, Cmd.none
 
+    let competitionStyleView formData dispatch : Node =
+        cond formData.CompetitionStyle
+        <| function
+            | Individual -> empty ()
+            | Team teamData ->
+                concat {
+                    div {
+                        attr.``class`` "field"
 
-open CreateQuizForm
+                        label {
+                            attr.``class`` "label"
+                            "Team One: "
+                        }
 
-let competitionStyleView formData dispatch : Node =
-    cond formData.CompetitionStyle
-    <| function
-        | Individual -> empty ()
-        | Team teamData ->
-            concat {
-                div {
-                    attr.``class`` "field"
+                        div {
+                            attr.``class`` "control"
 
-                    label {
-                        attr.``class`` "label"
-                        "Team One: "
+                            input {
+                                attr.``class`` "input"
+                                attr.``type`` "text"
+
+                                bind.input.string teamData.TeamOneName (fun name ->
+                                    dispatch <| Message.SetTeamOneName name)
+                            }
+                        }
                     }
 
                     div {
-                        attr.``class`` "control"
+                        attr.``class`` "field"
 
-                        input {
-                            attr.``class`` "input"
-                            attr.``type`` "text"
-                            bind.input.string teamData.TeamOneName (fun name -> dispatch <| SetTeamOneName name)
+                        label {
+                            attr.``class`` "label"
+                            "Team Two: "
+                        }
+
+                        div {
+                            attr.``class`` "control"
+
+                            input {
+                                attr.``class`` "input"
+                                attr.``type`` "text"
+
+                                bind.input.string teamData.TeamTwoName (fun name ->
+                                    dispatch <| Message.SetTeamTwoName name)
+                            }
                         }
                     }
                 }
 
-                div {
-                    attr.``class`` "field"
-
-                    label {
-                        attr.``class`` "label"
-                        "Team Two: "
-                    }
-
-                    div {
-                        attr.``class`` "control"
-
-                        input {
-                            attr.``class`` "input"
-                            attr.``type`` "text"
-                            bind.input.string teamData.TeamTwoName (fun name -> dispatch <| SetTeamTwoName name)
-                        }
-                    }
-                }
-            }
-
-let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
-    div {
-        attr.``class`` "modal is-active"
-        div { attr.``class`` "modal-background" }
-
+    let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
         div {
-            attr.``class`` "modal-card"
-
-            header {
-                attr.``class`` "modal-card-head"
-
-                p {
-                    attr.``class`` "modal-card-title"
-                    "Create Quiz"
-                }
-
-                button {
-                    attr.``class`` "delete"
-                    attr.aria "label" "close"
-
-                    attr.disabled (
-                        if isSubmitting then
-                            "disabled"
-                        else
-                            null
-                    )
-
-                    on.click (fun _ -> dispatch <| Cancel)
-                }
-            }
-
-            section {
-                attr.``class`` "modal-card-body"
-
-                div {
-                    attr.``class`` "field"
-
-                    label {
-                        attr.``class`` "label"
-                        "Code:"
-                    }
-
-                    p {
-                        attr.``class`` "title is-4"
-                        formData.Code
-                    }
-                }
-
-                div {
-                    attr.``class`` "field"
-
-                    label {
-                        attr.``class`` "label"
-
-                        "Competition Style:"
-                    }
-
-                    div {
-                        attr.``class`` "control"
-
-                        label {
-                            attr.``class`` "radio"
-
-                            input {
-                                attr.``type`` "radio"
-                                attr.name "competitionstyle"
-
-                                bind.change.string ("Team") (fun _ ->
-                                    dispatch
-                                    <| SetCompetitionStyle(Team { TeamOneName = ""; TeamTwoName = "" }))
-                            }
-
-                            "Team"
-                        }
-
-                        label {
-                            attr.``class`` "radio"
-
-                            input {
-                                attr.``type`` "radio"
-                                attr.name "competitionstyle"
-                                bind.change.string ("Individuals") (fun _ -> dispatch <| SetCompetitionStyle(Individual))
-                            }
-
-                            "Individuals"
-                        }
-                    }
-                }
-
-                competitionStyleView formData dispatch
-            }
+            attr.``class`` "modal is-active"
+            div { attr.``class`` "modal-background" }
 
             div {
-                attr.``class`` (
-                    match formData.Error with
-                    | Some _ -> "notification is-warning"
-                    | None -> "notification is-warning is-hidden"
-                )
+                attr.``class`` "modal-card"
 
-                text (formData.Error |> Option.defaultValue "")
-            }
+                header {
+                    attr.``class`` "modal-card-head"
 
-            footer {
-                attr.``class`` "modal-card-foot"
+                    p {
+                        attr.``class`` "modal-card-title"
+                        "Create Quiz"
+                    }
 
-                button {
+                    button {
+                        attr.``class`` "delete"
+                        attr.aria "label" "close"
+
+                        attr.disabled (
+                            if isSubmitting then
+                                "disabled"
+                            else
+                                null
+                        )
+
+                        on.click (fun _ -> dispatch <| Cancel)
+                    }
+                }
+
+                section {
+                    attr.``class`` "modal-card-body"
+
+                    div {
+                        attr.``class`` "field"
+
+                        label {
+                            attr.``class`` "label"
+                            "Code:"
+                        }
+
+                        p {
+                            attr.``class`` "title is-4"
+                            formData.Code
+                        }
+                    }
+
+                    div {
+                        attr.``class`` "field"
+
+                        label {
+                            attr.``class`` "label"
+
+                            "Competition Style:"
+                        }
+
+                        div {
+                            attr.``class`` "control"
+
+                            label {
+                                attr.``class`` "radio"
+
+                                input {
+                                    attr.``type`` "radio"
+                                    attr.name "competitionstyle"
+
+                                    bind.change.string ("Team") (fun _ ->
+                                        dispatch
+                                        <| Message.SetCompetitionStyle(Team { TeamOneName = ""; TeamTwoName = "" }))
+                                }
+
+                                "Team"
+                            }
+
+                            label {
+                                attr.``class`` "radio"
+
+                                input {
+                                    attr.``type`` "radio"
+                                    attr.name "competitionstyle"
+
+                                    bind.change.string ("Individuals") (fun _ ->
+                                        dispatch
+                                        <| Message.SetCompetitionStyle(Individual))
+                                }
+
+                                "Individuals"
+                            }
+                        }
+                    }
+
+                    competitionStyleView formData dispatch
+                }
+
+                div {
                     attr.``class`` (
-                        (if isSubmitting then
-                             "is-loading"
-                         else
-                             "")
-                        |> fun loadingClass -> $"button is-success {loadingClass}"
+                        match formData.Error with
+                        | Some _ -> "notification is-warning"
+                        | None -> "notification is-warning is-hidden"
                     )
 
-                    on.click (fun _ -> Started() |> Submit |> dispatch)
-                    "Submit"
+                    text (formData.Error |> Option.defaultValue "")
                 }
 
-                button {
-                    attr.``class`` "button"
+                footer {
+                    attr.``class`` "modal-card-foot"
 
-                    attr.disabled (
-                        if isSubmitting then
-                            "disabled"
-                        else
-                            null
-                    )
+                    button {
+                        attr.``class`` (
+                            (if isSubmitting then
+                                 "is-loading"
+                             else
+                                 "")
+                            |> fun loadingClass -> $"button is-success {loadingClass}"
+                        )
 
-                    on.click (fun _ -> Cancel |> dispatch)
-                    "Cancel"
+                        on.click (fun _ -> Started() |> Submit |> dispatch)
+                        "Submit"
+                    }
+
+                    button {
+                        attr.``class`` "button"
+
+                        attr.disabled (
+                            if isSubmitting then
+                                "disabled"
+                            else
+                                null
+                        )
+
+                        on.click (fun _ -> Cancel |> dispatch)
+                        "Cancel"
+                    }
+
+
                 }
-
-
             }
         }
-    }
 
-let view model dispatch : Node =
-    match model with
-    | Model.Inert -> empty ()
-    | Model.Active formData -> activeView (formData, false) dispatch
-    | Model.Submitting formData -> activeView (formData, true) dispatch
+    let view model dispatch : Node =
+        match model with
+        | Model.Inert -> empty ()
+        | Model.Active formData -> activeView (formData, false) dispatch
+        | Model.Submitting formData -> activeView (formData, true) dispatch

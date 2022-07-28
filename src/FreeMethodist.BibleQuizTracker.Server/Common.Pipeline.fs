@@ -4,10 +4,8 @@ open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open Elmish
-//We will eventually modularize this into separate files, probbaly by Workflow.
 
 //Domain Model
-
 
 type QuizRoomState =
     | Open
@@ -45,15 +43,40 @@ type OfficialTeamQuiz =
       CompletedQuestions: CompletedQuestion list }
 
 type Quiz =
-    | Unvalidated of UnvalidatedTeamQuiz
+    | Unvalidated of UnvalidatedQuiz
     | Running of RunningTeamQuiz
     | Completed of CompletedTeamQuiz
     | Official of OfficialTeamQuiz
 
+[<RequireQualifiedAccess>]
+module Quiz =
+    let start unvalidatedQuiz =
+        match unvalidatedQuiz.CompetitionStyle with
+        | Individual -> Result.Error ()
+        | Team teams ->
+            Running
+                { Code = unvalidatedQuiz.Code
+                  TeamOne =
+                    { Name = teams.TeamOneName
+                      Score = TeamScore.initial
+                      Quizzers = []
+                   }
+                  TeamTwo =
+                    { Name = teams.TeamTwoName
+                      Score = TeamScore.initial
+                      Quizzers = [] }
+                  CurrentQuizzer = None
+                  CurrentQuestion = PositiveNumber.one
+                  Questions =
+                    Map.empty
+                    |> Map.add PositiveNumber.one QuestionState.initial}
+            |> Ok
+
 //Persistence
-type GetTeamQuiz = QuizCode -> AsyncResult<Quiz, DbError>
-type SaveTeamQuiz = Quiz -> AsyncResult<unit, DbError>
-type CreateQuiz = Quiz -> AsyncResult<unit, DbError>
+type GetQuiz = QuizCode -> AsyncResult<Quiz, DbError>
+type SaveQuiz = Quiz -> AsyncResult<unit, DbError>
+type SaveNewQuiz = SaveNewQuiz of SaveQuiz
+type CheckQuizCodeExists = QuizCode -> AsyncResult<Option<string>, string>
 
 type GetJumps = QuizCode -> Jump seq
 type SaveJump = Jump -> unit
@@ -98,9 +121,9 @@ let validateCurrentQuizzerWithTeam: ValidateCurrentQuizzerWithTeam =
 
         match teamOneOpt, teamTwoOpt with
         | None, None -> Error NoCurrentQuizzer
-        | Some quizzer, None -> Ok (quizzer, TeamOne)
-        | None, Some quizzer -> Ok (quizzer, TeamTwo)
-        | Some quizzer1, Some _ -> Ok (quizzer1, TeamOne) //should be an error, really
+        | Some quizzer, None -> Ok(quizzer, TeamOne)
+        | None, Some quizzer -> Ok(quizzer, TeamTwo)
+        | Some quizzer1, Some _ -> Ok(quizzer1, TeamOne) //should be an error, really
 
 
 

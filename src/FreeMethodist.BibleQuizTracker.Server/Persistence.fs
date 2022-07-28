@@ -17,7 +17,6 @@ let initExample quizCode =
           TeamOne =
             { Name = "LEFT"
               Score = TeamScore.ofQuestions 1
-              Captain = None
               Quizzers =
                 [ { Name = "Jim"
                     Score = TeamScore.ofQuestions 1
@@ -28,7 +27,6 @@ let initExample quizCode =
           TeamTwo =
             { Name = "RIGHT"
               Score = TeamScore.ofQuestions 2
-              Captain = None
               Quizzers =
                 [ { Name = "Jina"
                     Score = TeamScore.ofQuestions 2
@@ -65,7 +63,7 @@ let initExample quizCode =
                  |> Complete)
             |> Map.map (fun key value -> { QuestionState.initial with AnswerState = value }) }
 
-let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetTeamQuiz =
+let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetQuiz =
     fun quizCode ->
         asyncResult {
             let! quizJsonString =
@@ -97,9 +95,9 @@ let getCodeFromQuiz quiz =
 
 let getBlobName quizCode = $"quiz-{quizCode}"
 
-let containerName = "quizzers"
+let containerName = "quizzes"
 
-let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuiz =
+let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveQuiz =
     fun quiz ->
         asyncResult {
             let code = quiz |> getCodeFromQuiz
@@ -124,7 +122,7 @@ let validateBlobOperation (uploadResult: Response<'a>) =
     else
         Ok uploadResult.Value
 
-let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetTeamQuiz =
+let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetQuiz =
     fun quizCode ->
         asyncResult {
             let blobContainerClient =
@@ -146,7 +144,7 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
             return quiz
         }
 
-let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveTeamQuiz =
+let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveQuiz =
     fun quiz ->
         asyncResult {
             let blobContainerClient =
@@ -185,9 +183,9 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
 
         }
 
-let createNewBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : CreateQuiz =
-    fun quiz ->
-        asyncResult {
+let saveNewQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveNewQuiz =
+   fun quiz ->
+         asyncResult {
             let blobContainerClient =
                 blobServiceClient.GetBlobContainerClient(containerName)
 
@@ -223,3 +221,22 @@ let createNewBlob (blobServiceClient: BlobServiceClient) (options: JsonSerialize
                 |> AsyncResult.ignore
 
         }
+   |> SaveNewQuiz
+let private isAnExampleQuiz (quizCode: QuizCode) =
+     quizCode.ToUpper() = "EXAMPLE"
+
+let getQuizFromLocalOrBlob getFromLocal getFromBlob : GetQuiz =
+    fun quizCode ->
+        if isAnExampleQuiz quizCode then
+            getFromLocal quizCode
+        else
+            getFromBlob quizCode
+            
+let saveQuizToLocalOrBlob saveToLocal saveToBlob : SaveQuiz =
+    fun quiz ->
+        quiz
+        |> getCodeFromQuiz
+        |> isAnExampleQuiz
+        |> function 
+            | true -> saveToLocal quiz
+            | false -> saveToBlob quiz
