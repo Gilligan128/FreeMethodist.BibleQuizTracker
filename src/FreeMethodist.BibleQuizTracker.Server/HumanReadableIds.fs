@@ -784,6 +784,7 @@ module HumanReadableIds =
         list[index]
 
     let generateCode =
+      fun () ->
         let random = Random()
         let appendedNumber = random.Next(1, 100)
 

@@ -38,7 +38,7 @@ module CreateQuizForm =
         | SetTeamTwoName of string
         | Start
         | Cancel
-        
+
 
     let init = Inert, Cmd.none
 
@@ -58,11 +58,11 @@ module CreateQuizForm =
             Active { formData with CompetitionStyle = newTeamModel }
             |> Some
 
-    let update message model =
+    let update generateCode message model =
         match message, model with
         | Start, Inert ->
             Active
-                { Code = ""
+                { Code = generateCode ()
                   CompetitionStyle = Team { TeamOneName = ""; TeamTwoName = "" }
                   Error = None },
             Cmd.none
@@ -89,8 +89,9 @@ module CreateQuizForm =
                 |> Cmd.OfAsync.result
 
             Submitting activeModel, cmd
-      
-        | Submit (Finished (Result.Error message)), Submitting formData -> Active { formData with Error = Some message }, Cmd.none
+
+        | Submit (Finished (Result.Error message)), Submitting formData ->
+            Active { formData with Error = Some message }, Cmd.none
         | Submit (Finished _), Active formData
         | Submit (Finished _), Submitting formData -> Inert, Cmd.none
         | Start, Active _ -> model, Cmd.none
@@ -105,43 +106,49 @@ module CreateQuizForm =
 open CreateQuizForm
 
 let competitionStyleView formData dispatch : Node =
-     cond formData.CompetitionStyle <| function 
-           | Individual -> empty ()
-           | Team teamData ->
-               concat {
-                   div {
-                       attr.``class`` "field"
-                       label {
-                           attr.``class`` "label"
-                           "Team One: "
-                       }
-                       div {
-                         attr.``class`` "control" 
-                         
-                         input {
+    cond formData.CompetitionStyle
+    <| function
+        | Individual -> empty ()
+        | Team teamData ->
+            concat {
+                div {
+                    attr.``class`` "field"
+
+                    label {
+                        attr.``class`` "label"
+                        "Team One: "
+                    }
+
+                    div {
+                        attr.``class`` "control"
+
+                        input {
                             attr.``class`` "input"
                             attr.``type`` "text"
                             bind.input.string teamData.TeamOneName (fun name -> dispatch <| SetTeamOneName name)
-                         }  
-                       }
-                   }
-                   div {
-                      attr.``class`` "field"
-                      label {
-                          attr.``class`` "label"
-                          "Team Two: "
-                      }
-                      div {
-                        attr.``class`` "control" 
-                        
+                        }
+                    }
+                }
+
+                div {
+                    attr.``class`` "field"
+
+                    label {
+                        attr.``class`` "label"
+                        "Team Two: "
+                    }
+
+                    div {
+                        attr.``class`` "control"
+
                         input {
-                           attr.``class`` "input"
-                           attr.``type`` "text"
-                           bind.input.string teamData.TeamTwoName (fun name -> dispatch <| SetTeamTwoName name)
-                        }  
-                      }
-                  }
-               }
+                            attr.``class`` "input"
+                            attr.``type`` "text"
+                            bind.input.string teamData.TeamTwoName (fun name -> dispatch <| SetTeamTwoName name)
+                        }
+                    }
+                }
+            }
 
 let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
     div {
@@ -185,15 +192,9 @@ let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
                         "Code:"
                     }
 
-                    div {
-                        attr.``class`` "control"
-
-                        input {
-                            attr.``class`` "input"
-                            attr.``type`` "text"
-                            attr.placeholder "Quiz Code"
-                            bind.input.string formData.Code (dispatch << SetCode)
-                        }
+                    p {
+                        attr.``class`` "title is-4"
+                        formData.Code
                     }
                 }
 
@@ -211,13 +212,16 @@ let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
 
                         label {
                             attr.``class`` "radio"
-                           
+
                             input {
                                 attr.``type`` "radio"
                                 attr.name "competitionstyle"
 
-                                bind.change.string ("Team") (fun _ -> dispatch <| SetCompetitionStyle(Team { TeamOneName = ""; TeamTwoName = "" }))
+                                bind.change.string ("Team") (fun _ ->
+                                    dispatch
+                                    <| SetCompetitionStyle(Team { TeamOneName = ""; TeamTwoName = "" }))
                             }
+
                             "Team"
                         }
 
@@ -233,15 +237,21 @@ let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
                             "Individuals"
                         }
                     }
-                }          
+                }
+
                 competitionStyleView formData dispatch
             }
+
             div {
-                    attr.``class``  (match formData.Error with
-                                     | Some _ -> "notification is-warning"
-                                     | None -> "notification is-warning is-hidden")
-                    text (formData.Error |> Option.defaultValue "")    
+                attr.``class`` (
+                    match formData.Error with
+                    | Some _ -> "notification is-warning"
+                    | None -> "notification is-warning is-hidden"
+                )
+
+                text (formData.Error |> Option.defaultValue "")
             }
+
             footer {
                 attr.``class`` "modal-card-foot"
 
@@ -271,8 +281,8 @@ let activeView ((formData: CreateQuizFormData), isSubmitting) dispatch : Node =
                     on.click (fun _ -> Cancel |> dispatch)
                     "Cancel"
                 }
-                 
-               
+
+
             }
         }
     }

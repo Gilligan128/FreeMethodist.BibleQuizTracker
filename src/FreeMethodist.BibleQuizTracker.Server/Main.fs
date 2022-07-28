@@ -111,7 +111,7 @@ let update
     | JoinQuiz, _ ->
         { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
     | CreateQuiz message, _ ->
-        let createQuizModel, cmd = CreateQuizForm.update message model.CreateQuizForm
+        let createQuizModel, cmd = CreateQuizForm.update HumanReadableIds.HumanReadableIds.generateCode message model.CreateQuizForm
         { model with CreateQuizForm = createQuizModel },  cmd |> Cmd.map CreateQuiz
 
 /// Connects the routing system to the Elmish application.
