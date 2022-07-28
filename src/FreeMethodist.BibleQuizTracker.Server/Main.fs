@@ -188,10 +188,10 @@ type MyApp() =
     member val Navigator = Unchecked.defaultof<NavigationManager> with get, set
 
     [<Inject>]
-    member val GetQuizAsync = Unchecked.defaultof<GetTeamQuizAsync> with get, set
+    member val GetQuizAsync = Unchecked.defaultof<GetTeamQuiz> with get, set
 
     [<Inject>]
-    member val SaveQuizAsync = Unchecked.defaultof<SaveTeamQuizAsync> with get, set
+    member val SaveQuizAsync = Unchecked.defaultof<SaveTeamQuiz> with get, set
 
     [<Inject>]
     member val HubConnection = Unchecked.defaultof<HubConnection> with get, set

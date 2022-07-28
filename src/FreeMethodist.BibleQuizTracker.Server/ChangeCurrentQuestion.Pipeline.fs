@@ -22,8 +22,8 @@ let createEvent (quiz: RunningTeamQuiz) =
       NewQuestion = quiz.CurrentQuestion }
 
 let changeCurrentQuestionAsync
-    (getQuiz: GetTeamQuizAsync)
-    (saveQuiz: SaveTeamQuizAsync)
+    (getQuiz: GetTeamQuiz)
+    (saveQuiz: SaveTeamQuiz)
     : ChangeCurrentQuestion.Workflow =
     fun command ->
         asyncResult {

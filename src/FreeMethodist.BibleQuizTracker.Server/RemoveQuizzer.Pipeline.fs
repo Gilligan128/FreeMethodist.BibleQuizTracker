@@ -96,7 +96,7 @@ let createEvents: CreateEvents =
           yield! currentChangedEvents ]
 
 
-let removeQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : RemoveQuizzer.Workflow =
+let removeQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : RemoveQuizzer.Workflow =
     fun command ->
         asyncResult {
             let! quiz = getQuiz command.Quiz |> AsyncResult.mapError RemoveQuizzer.DbError

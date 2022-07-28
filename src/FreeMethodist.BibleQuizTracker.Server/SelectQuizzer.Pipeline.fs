@@ -46,7 +46,7 @@ let createEvent: CreateEvent =
         { Quiz = quiz.Code
           CurrentQuizzer = Some quizzer }
 
-let selectQuizzer getQuiz (saveQuiz: SaveTeamQuizAsync) : SelectQuizzer.Workflow =
+let selectQuizzer getQuiz (saveQuiz: SaveTeamQuiz) : SelectQuizzer.Workflow =
     fun command ->
         let validateSelection quiz =
             validateSelection quiz command.Data

@@ -261,7 +261,7 @@ let update
     connectToQuizEvents
     onQuizEvent
     (publishQuizEvent: PublishQuizEventTask)
-    (getQuizAsync: GetTeamQuizAsync)
+    (getQuizAsync: GetTeamQuiz)
     saveQuizAsync
     msg
     model

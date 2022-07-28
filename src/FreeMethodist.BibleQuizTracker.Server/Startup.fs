@@ -61,8 +61,8 @@ type Startup() =
             Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
 
         services
-            .AddScoped<GetTeamQuizAsync>(Func<IServiceProvider, GetTeamQuizAsync>(getTeam))
-            .AddScoped<SaveTeamQuizAsync>(Func<IServiceProvider, SaveTeamQuizAsync>(saveTeam))
+            .AddScoped<GetTeamQuiz>(Func<IServiceProvider, GetTeamQuiz>(getTeam))
+            .AddScoped<SaveTeamQuiz>(Func<IServiceProvider, SaveTeamQuiz>(saveTeam))
             .AddScoped<HubConnection>(
                 Func<IServiceProvider, HubConnection> (fun provider ->
                     let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore

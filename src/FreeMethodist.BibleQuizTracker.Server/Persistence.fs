@@ -63,7 +63,7 @@ let initExample quizCode =
                  |> Complete)
             |> Map.map (fun key value -> { QuestionState.initial with AnswerState = value }) }
 
-let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetTeamQuizAsync =
+let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : GetTeamQuiz =
     fun quizCode ->
         asyncResult {
             let! quizJsonString =
@@ -97,7 +97,7 @@ let getBlobName quizCode = $"quiz-{quizCode}"
 
 let containerName = "quizzers"
 
-let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
+let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : SaveTeamQuiz =
     fun quiz ->
         asyncResult {
             let code = quiz |> getCodeFromQuiz
@@ -114,15 +114,15 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
         }
 
 
-let validateBlobOperation (uploadResult : Response<'a>) = 
+let validateBlobOperation (uploadResult: Response<'a>) =
     if uploadResult.GetRawResponse().IsError then
         (uploadResult.GetRawResponse().ReasonPhrase
          |> RemoteError
          |> Error)
     else
         Ok uploadResult.Value
-        
-let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetTeamQuizAsync =
+
+let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetTeamQuiz =
     fun quizCode ->
         asyncResult {
             let blobContainerClient =
@@ -136,8 +136,7 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
                 |> Async.AwaitTask
                 |> Async.map validateBlobOperation
 
-            let quizJson =
-                response.Content.ToString()
+            let quizJson = response.Content.ToString()
 
             let quiz =
                 JsonSerializer.Deserialize<Quiz>(quizJson, options)
@@ -145,7 +144,7 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
             return quiz
         }
 
-let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveTeamQuizAsync =
+let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveTeamQuiz =
     fun quiz ->
         asyncResult {
             let blobContainerClient =
@@ -173,7 +172,46 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
                 quizCode
                 |> getBlobName
                 |> blobContainerClient.GetBlobClient
-    
+
+            do!
+                json
+                |> BinaryData.FromString
+                |> fun data -> blobClient.UploadAsync(data, overwrite=true)
+                |> Async.AwaitTask
+                |> Async.map validateBlobOperation
+                |> AsyncResult.ignore
+
+        }
+
+let createNewBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : CreateQuiz =
+    fun quiz ->
+        asyncResult {
+            let blobContainerClient =
+                blobServiceClient.GetBlobContainerClient(containerName)
+
+            do!
+                blobContainerClient.CreateIfNotExistsAsync()
+                |> Async.AwaitTask
+                |> AsyncResult.ofAsync
+                |> AsyncResult.ignore
+
+            let quizCode = quiz |> getCodeFromQuiz
+
+            let! json =
+                try
+                    (JsonSerializer.Serialize(quiz, options)
+                     |> AsyncResult.ofSuccess)
+                with
+                | exn ->
+                    exn
+                    |> DbError.SerializationError
+                    |> AsyncResult.ofError
+
+            let blobClient =
+                quizCode
+                |> getBlobName
+                |> blobContainerClient.GetBlobClient
+
             do!
                 json
                 |> BinaryData.FromString
