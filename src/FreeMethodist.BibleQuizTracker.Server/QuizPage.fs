@@ -291,14 +291,14 @@ let private updateLoaded
     model
     =
     let updateResultWithExternalError error =
-            model, Cmd.none, ExternalMessage.Error error |> Some
+        model, Cmd.none, ExternalMessage.Error error |> Some
 
     let mapWorkflowErrors mapWorkflowSpecificError error =
-            match error with
-            | WorkflowError.DbError error -> error |> mapDbErrorToString
-            | WorkflowError.Workflow workflowError -> workflowError |> mapWorkflowSpecificError
-    
-    
+        match error with
+        | WorkflowError.DbError error -> error |> mapDbErrorToString
+        | WorkflowError.Workflow workflowError -> workflowError |> mapWorkflowSpecificError
+
+
     let publishRunQuizEvent quiz (event: RunQuizEvent) =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
 
@@ -345,11 +345,39 @@ let private updateLoaded
 
     let createQuizStateWorkflowError _ =
         "Quiz is not running" |> workflowFormError
-    
+
     let mapOptionalCommand cmdOpt =
         match cmdOpt with
         | None -> model, Cmd.none, None
         | Some cmd -> model, cmd, None
+    
+    let runWorkflowEventsAsync events =
+            asyncResult {
+                let! runQuizEvents = events
+
+                do!
+                    runQuizEvents
+                    |> publishEvents
+                    |> AsyncResult.ofAsync
+            }
+            |> AsyncResult.mapError WorkflowError.Workflow
+
+    let reloadQuizAsync asyncTask =
+            asyncResult {
+                do! asyncTask
+
+                let! quiz =
+                    model.Code
+                    |> getQuizAsync
+                    |> AsyncResult.mapError WorkflowError.DbError
+
+                return quiz
+            }
+    let mapToAsyncOperationCmd asyncOperation resultAsync =
+            resultAsync
+            |> Async.map(fun result -> asyncOperation (Finished result))
+            |> Cmd.OfAsync.result
+        
     
     let (addQuizzer,
          removeQuizzer,
@@ -360,7 +388,7 @@ let private updateLoaded
          selectQuizzer,
          changeCurrentQuestion) =
         getAvailableCapabilities capabilityProvider model.CurrentUser model.CurrentQuizzer
-
+        
     match msg with
     | DoNothing
     | InitializeQuizAndConnections (Started _)
@@ -392,7 +420,7 @@ let private updateLoaded
                 |> moveQuestionErrorMessage
                 |> PublishEventError.FormError
                 |> WorkflowError
-
+        
         let workflow =
             fun () ->
                 asyncResult {
@@ -539,33 +567,15 @@ let private updateLoaded
                       Quiz = model.Code
                       User = model.CurrentUser })
 
-        let cmdOpt =
-            workflowOpt
-            |> Option.map (fun result ->
-                asyncResult {
-                    let! events =
-                        result
-                        |> AsyncResult.mapError WorkflowError.Workflow
-
-                    let runQuizEvents =
-                        events |> List.map mapEvent
-                    do!
-                        runQuizEvents
-                        |> publishEvents
-                        |> AsyncResult.ofAsync
-
-                    let! quiz =
-                        model.Code
-                        |> getQuizAsync
-                        |> AsyncResult.mapError WorkflowError.DbError
-
-                    return quiz
-                })
-            |> Option.map (fun quizAsync ->
-                quizAsync
-                |> Async.map (fun result -> AnswerCorrectly(Finished result)))
-            |> Option.map Cmd.OfAsync.result
-        cmdOpt |> mapOptionalCommand
+        
+        workflowOpt
+        |> Option.map (fun result ->
+            result
+            |> AsyncResult.map (List.map mapEvent)
+            |> runWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd AnswerCorrectly)
+        |> mapOptionalCommand
     | AnswerCorrectly (Finished result) ->
         let mapWorkflowSpecificErrors workflowError =
             match workflowError with
