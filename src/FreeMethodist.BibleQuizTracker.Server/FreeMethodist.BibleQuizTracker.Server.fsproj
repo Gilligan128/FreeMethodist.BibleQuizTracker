@@ -11,7 +11,6 @@
         <Compile Include="Common.Workflow.fs" />
         <Compile Include="HumanReadableIds.fs" />
         <Compile Include="Events.Workflow.fs" />
-        <Compile Include="OverrideTeamScore.Workflow.fs" />
         <Compile Include="ChangeCurrentQuestion.Workflow.fs" />
         <Compile Include="AddQuizzer.Workflow.fs" />
         <Compile Include="RemoveQuizzer.Workflow.fs" />
@@ -24,7 +23,6 @@
         <Compile Include="Capabilities.fs" />
         <Compile Include="Common.Pipeline.fs" />
         <Compile Include="Persistence.fs" />
-        <Compile Include="OverrideTeamScore.Pipeline.fs" />
         <Compile Include="ChangeCurrentQuestion.Pipeline.fs" />
         <Compile Include="AddQuizzer.Pipeline.fs" />
         <Compile Include="RemoveQuizzer.Pipeline.fs" />

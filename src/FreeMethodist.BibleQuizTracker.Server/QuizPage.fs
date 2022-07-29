@@ -14,8 +14,6 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
-open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Workflow
-open FreeMethodist.BibleQuizTracker.Server.OverrideTeamScore.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
@@ -93,7 +91,6 @@ type AddQuizzerMessage =
 
 type Message =
     | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz, DbError>>
-    | OverrideScore of AsyncOperationStatus<int * TeamPosition, Quiz>
     | OnQuizEvent of AsyncOperationStatus<unit, Quiz>
     | ChangeCurrentQuestion of AsyncOperationStatus<int, Quiz>
     | WorkflowError of PublishEventError
@@ -226,30 +223,9 @@ let private refreshModel (quiz: Quiz) =
 let init quizCode previousQuizCode =
     NotYetLoaded quizCode, Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
 
-type OverrideScoreErrors =
-    | DomainError of OverrideTeamScore.Error
-    | FormError of string
-
 type ChangeQuestionError =
     | FormError of string
     | QuizError of ChangeCurrentQuestion.Error
-
-let private overrideScoreAsync getQuiz saveQuiz (model: LoadedModel) (score: int) (team: TeamPosition) =
-    asyncResult {
-        let! newScore =
-            TeamScore.create score
-            |> Result.mapError (OverrideScoreErrors.FormError)
-            |> AsyncResult.ofResult
-
-        let command =
-            { Quiz = model.Code
-              Data = { Team = team; NewScore = newScore }
-              User = Quizmaster }
-
-        return!
-            overrideTeamScoreAsync getQuiz saveQuiz command
-            |> AsyncResult.mapError OverrideScoreErrors.DomainError
-    }
 
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
@@ -268,7 +244,6 @@ let private updateLoaded
     msg
     model
     =
-
 
     let publishRunQuizEvent quiz event =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
@@ -319,28 +294,6 @@ let private updateLoaded
     | DoNothing
     | InitializeQuizAndConnections (Started _)
     | InitializeQuizAndConnections (Finished _) -> model, Cmd.none, None
-    | OverrideScore (Started (score, teamPosition)) ->
-        let mapResultToMessage result =
-            match result with
-            | Ok quiz -> Message.OverrideScore(Finished quiz)
-            | Result.Error error ->
-                match error with
-                | OverrideScoreErrors.DomainError error ->
-                    PublishEventError.FormError $"Quiz is in the wrong state: {error}"
-                    |> WorkflowError
-                | OverrideScoreErrors.FormError error -> PublishEventError.FormError error |> WorkflowError
-
-        let mapEvent event =
-            RunQuizEvent.TeamScoreChanged event, event.Quiz
-
-        let workflow =
-            fun () -> overrideScoreAsync getQuizAsync saveQuizAsync model score teamPosition
-
-        let cmd =
-            workflowCmdSingle workflow mapEvent mapResultToMessage
-
-        model, cmd, None
-    | OverrideScore (Finished quiz) -> refreshModel quiz, Cmd.none, None
     | OnQuizEvent (Started _) ->
         let getQuizToRefresh =
             getQuizAsync model.Code
