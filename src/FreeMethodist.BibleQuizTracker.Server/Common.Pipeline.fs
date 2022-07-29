@@ -138,3 +138,15 @@ let validateQuiz: ValidateQuizIsRunning =
 //Score calculation
 type CalculateQuizzerScore = Map<QuestionNumber, QuizAnswer> -> Quizzer -> TeamScore
 type CalculateTeamScore = Map<Quizzer, TeamScore> -> TeamScore
+
+//Changing current question
+let changeCurrentQuestionInQuiz question quiz  =
+    { quiz with
+        CurrentQuestion = question
+        Questions =
+            quiz.Questions
+            |> Map.change quiz.CurrentQuestion (fun q ->
+                q
+                |> Option.defaultValue (QuestionState.create ([] |> Unanswered |> Complete))
+                |> Some)
+            |> Map.change question (fun q -> q |> (Option.defaultValue QuestionState.initial) |> Some)  }

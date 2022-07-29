@@ -4,6 +4,7 @@ open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Tests.Quiz
 open Xunit
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
 [<Fact>]
 let ``Given this is the first time a question is current When Changing Question then record an Unanswered Question for previous Question``
@@ -16,7 +17,7 @@ let ``Given this is the first time a question is current When Changing Question 
         |> PositiveNumber.increment
 
     let result =
-        ChangeCurrentQuestion_Pipeline.updateQuiz initialQuiz nextQuestion
+        changeCurrentQuestionInQuiz nextQuestion initialQuiz
 
     let expectedQuestion =
         [] |> Unanswered |> Complete
@@ -47,7 +48,7 @@ let ``Given this is not the first time a question is current When Changing Quest
         |> PositiveNumber.increment
 
     let result =
-        ChangeCurrentQuestion_Pipeline.updateQuiz initialQuiz nextQuestion
+        changeCurrentQuestionInQuiz  nextQuestion initialQuiz
 
     Assert.Equal(
         quizAnswer,
@@ -64,7 +65,7 @@ let ``Given the next current question is brand new  When Changing Question then 
         |> PositiveNumber.increment
 
     let result =
-        ChangeCurrentQuestion_Pipeline.updateQuiz initialQuiz nextQuestion
+        changeCurrentQuestionInQuiz nextQuestion initialQuiz
 
     let expectedQuestion = QuestionState.initial
     Assert.Equal(expectedQuestion, result.Questions[result.CurrentQuestion])
@@ -87,6 +88,6 @@ let ``Given the next current question is not new When Changing Question then ret
         |> insertAnswer nextQuestion quizAnswer
 
     let result =
-        ChangeCurrentQuestion_Pipeline.updateQuiz initialQuiz nextQuestion
+        changeCurrentQuestionInQuiz  nextQuestion initialQuiz
 
     Assert.Equal(quizAnswer, result.Questions[result.CurrentQuestion].AnswerState)

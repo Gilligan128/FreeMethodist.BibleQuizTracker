@@ -76,10 +76,12 @@ let updateQuiz: UpdateQuiz =
                 |> recordAnsweredQuestion quizzer quiz.CurrentQuestion
                 |> Result.mapError (fun error -> error |> Error.QuizzerAlreadyAnsweredCorrectly)
 
-            return
+            let currentQuestionInQuiz = 
                 { quiz with
-                    CurrentQuestion = newCurrentQuestion
-                    Questions = RunningTeamQuiz.changeCurrentAnswer quiz updatedAnswer},
+                    Questions = RunningTeamQuiz.changeCurrentAnswer quiz updatedAnswer}
+                |> changeCurrentQuestionInQuiz newCurrentQuestion
+            return
+                currentQuestionInQuiz,
                 revertedQuizzer
         }
 
