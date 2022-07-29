@@ -115,7 +115,7 @@ type Message =
     | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
     | FailAppeal of AsyncOperationStatus<unit, WorkflowResult<FailAppeal.Error>>
-    | ClearAppeal of AsyncOperationStatus<unit, Quiz>
+    | ClearAppeal of AsyncOperationStatus<unit, WorkflowResult<ClearAppeal.Error>>
     | DoNothing
 
 
@@ -349,7 +349,7 @@ let private updateLoaded
     let createQuizStateWorkflowError _ =
         "Quiz is not running" |> workflowFormError
 
-    let mapOptionalCommand cmdOpt =
+    let matchOptionalCommand cmdOpt =
         match cmdOpt with
         | None -> model, Cmd.none, None
         | Some cmd -> model, cmd, None
@@ -444,7 +444,7 @@ let private updateLoaded
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd ChangeCurrentQuestion)
-        |> mapOptionalCommand
+        |> matchOptionalCommand
     | ChangeCurrentQuestion (Finished result) ->
         let mapChangeQuestionError error =
             match error with
@@ -495,7 +495,7 @@ let private updateLoaded
                 |> publishWorkflowEventsAsync
                 |> reloadQuizAsync
                 |> mapToAsyncOperationCmd (AddQuizzerMessage.Submit >> Message.AddQuizzer))
-            |> mapOptionalCommand
+            |> matchOptionalCommand
         | AddQuizzerModel.Inert ->
             model,
             Cmd.none,
@@ -537,7 +537,7 @@ let private updateLoaded
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd RemoveQuizzer)
-        |> mapOptionalCommand
+        |> matchOptionalCommand
     | RemoveQuizzer (Finished result) ->
         let mapRemoveError error =
             match error with
@@ -561,7 +561,7 @@ let private updateLoaded
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd SelectQuizzer)
-        |> mapOptionalCommand
+        |> matchOptionalCommand
 
     | SelectQuizzer (Finished result) ->
         let mapSelectError error =
@@ -605,7 +605,7 @@ let private updateLoaded
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd AnswerCorrectly)
-        |> mapOptionalCommand
+        |> matchOptionalCommand
     | AnswerCorrectly (Finished result) ->
         let mapWorkflowSpecificErrors workflowError =
             match workflowError with
@@ -643,7 +643,7 @@ let private updateLoaded
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd AnswerIncorrectly)
-        |> mapOptionalCommand
+        |> matchOptionalCommand
     | AnswerIncorrectly (Finished result) ->
         let mapIncorrectError error =
             match error with
@@ -670,7 +670,7 @@ let private updateLoaded
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd FailAppeal)
-        |> mapOptionalCommand
+        |> matchOptionalCommand
     | FailAppeal (Finished quiz) ->
         let mapFailError error =
             match error with
@@ -681,31 +681,29 @@ let private updateLoaded
 
         quiz |> refreshQuizOrError mapFailError
     | ClearAppeal (Started _) ->
-        let workflow =
-            fun _ ->
-                { Quiz = model.Code
-                  Data = ()
-                  User = model.CurrentUser }
-                |> ClearAppeal.Pipeline.clearAppeal getQuizAsync saveQuizAsync
-
         let mapEvent event =
             match event with
             | ClearAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
-        let mapResult result =
-            match result with
-            | Ok quiz -> quiz |> Finished |> ClearAppeal
-            | Result.Error (ClearAppeal.Error.QuizState _) -> "Wrong Quiz state" |> workflowFormError
-            | Result.Error (ClearAppeal.Error.NoFailedAppeal _) ->
-                "There is no failed appeal to clear"
-                |> workflowFormError
-            | Result.Error (ClearAppeal.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
+        clearAppeal
+        |> Option.map (fun workflow ->
+            workflow
+                { Quiz = model.Code
+                  Data = ()
+                  User = model.CurrentUser }
+            |> AsyncResult.map (List.map mapEvent)
+            |> publishWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd ClearAppeal)
+        |> matchOptionalCommand
+    | ClearAppeal (Finished quiz) ->
+        let mapAppealError error =
+            match error with
+            | (ClearAppeal.Error.QuizState _) -> "Wrong Quiz state"
+            | (ClearAppeal.Error.NoFailedAppeal _) -> "There is no failed appeal to clear"
+            | (ClearAppeal.Error.DbError dbError) -> dbError |> mapDbErrorToString
 
-        let cmd =
-            workflowCmdList workflow mapEvent mapResult
-
-        model, cmd, None
-    | ClearAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
+        quiz |> refreshQuizOrError mapAppealError
 
 let update
     connectToQuizEvents
