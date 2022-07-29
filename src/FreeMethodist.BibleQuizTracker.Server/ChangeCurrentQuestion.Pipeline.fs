@@ -16,7 +16,7 @@ let updateQuiz quiz question =
                 q
                 |> Option.defaultValue (QuestionState.create ([] |> Unanswered |> Complete))
                 |> Some)
-            |> Map.add question QuestionState.initial }
+            |> Map.change question (fun q -> q |> (Option.defaultValue QuestionState.initial) |> Some)  }
 
 let createEvent (quiz: RunningTeamQuiz) =
     { Quiz = quiz.Code
