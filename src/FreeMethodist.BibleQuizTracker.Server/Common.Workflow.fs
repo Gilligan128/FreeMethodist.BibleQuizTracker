@@ -42,7 +42,7 @@ type QuestionNumber = PositiveNumber
 
 [<RequireQualifiedAccess>]
 module PositiveNumber =
-    let create number field =
+    let create field number =
         if number > 0 then
             Ok(PositiveNumber number)
         else

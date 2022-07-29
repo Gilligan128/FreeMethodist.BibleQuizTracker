@@ -8,6 +8,10 @@ Uses the rules for Free Methodist Bible Quizzing.
 - .Net 6 SDK installed.
 - Azurite installed and running.
 
+### User Secrets
+You need to setup the following user secrets (or environment variables)
+- BLOBSTORAGE_CONNECTION_STRING.for connecting to azurite/azure storage.  
+
 # Tech Stack
 The tech stack is based around functional programming paradigms and the [Model-View-Update (MVU)](https://guide.elm-lang.org/architecture/) architecture.
 
