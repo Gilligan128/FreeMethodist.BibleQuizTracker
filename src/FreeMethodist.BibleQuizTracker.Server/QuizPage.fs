@@ -12,15 +12,18 @@ open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
+open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow.ClearAppeal
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
+open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow.FailAppeal
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
+open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Core
 open FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline
@@ -121,9 +124,15 @@ let public emptyModel =
       CurrentQuizzer = None
       QuestionScores = [] }
 
+let tee sideEffect =
+    fun x ->
+        do sideEffect x
+        x
+
 let private refreshModel (quiz: Quiz) =
     let getAnswerState quizAnswer (quizzerState: QuizzerState) =
-        let quizzerWasIncorrect = List.contains quizzerState.Name
+        let quizzerWasIncorrect =
+            List.contains quizzerState.Name
 
         match quizAnswer with
         | Incomplete incorrectAnswerers when incorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
@@ -228,40 +237,100 @@ type ChangeQuestionError =
     | FormError of string
     | QuizError of ChangeCurrentQuestion.Error
 
-let private hubStub = Unchecked.defaultof<QuizHub.Hub>
+let private hubStub =
+    Unchecked.defaultof<QuizHub.Hub>
 
 type WorkflowError<'a> =
     | Workflow of 'a
     | DbError of DbError
 
-let workflowFormError = PublishEventError.FormError >> WorkflowError
+type WorkflowEvents =
+    | AnswerCorrectlyEvent of AnswerCorrectly.Event
+    | AnswerIncorrectlyEvent of AnswerIncorrectly.Event
+    | FailAppealEvent of FailAppeal.Event
+    | ClearAppealEvent of ClearAppeal.Event
+    | SelectQuizzerEvent of CurrentQuizzerChanged
+    | ChangeCurrentQuestionEvent of CurrentQuestionChanged
+    | AddQuizzerEvent of QuizzerParticipating
+    | RemoveQuizzerEvent of RemoveQuizzer.Event
+   
+let mapWorkflowEventsToRunQuizEvents event=
+        match event with
+        |AnswerCorrectlyEvent (AnswerCorrectly.Event.CurrentQuestionChanged event) -> RunQuizEvent.CurrentQuestionChanged event
+        |AnswerCorrectlyEvent (AnswerCorrectly.Event.IndividualScoreChanged event) -> RunQuizEvent.IndividualScoreChanged event
+        |AnswerCorrectlyEvent (AnswerCorrectly.Event.TeamScoreChanged event) -> RunQuizEvent.TeamScoreChanged event
+        |AnswerIncorrectlyEvent (AnswerIncorrectly.Event.CurrentQuizzerChanged event) -> RunQuizEvent.CurrentQuizzerChanged event
+        |AnswerIncorrectlyEvent (AnswerIncorrectly.Event.IndividualScoreChanged event) -> RunQuizEvent.IndividualScoreChanged event
+        |AnswerIncorrectlyEvent (AnswerIncorrectly.Event.TeamScoreChanged event) -> RunQuizEvent.TeamScoreChanged event
+        |AddQuizzerEvent event -> RunQuizEvent.QuizzerParticipating event
+        |RemoveQuizzerEvent (RemoveQuizzer.Event.CurrentQuizzerChanged event) -> RunQuizEvent.CurrentQuizzerChanged event
+        |RemoveQuizzerEvent (RemoveQuizzer.Event.QuizzerNoLongerParticipating event) -> RunQuizEvent.QuizzerNoLongerParticipating event
+        |FailAppealEvent(TeamScoreChanged teamScoreChanged) -> RunQuizEvent.TeamScoreChanged teamScoreChanged
+        |ClearAppealEvent(ClearAppeal.TeamScoreChanged event) -> RunQuizEvent.TeamScoreChanged event
+
+        
+        
+        
+let workflowFormError =
+    PublishEventError.FormError >> WorkflowError
 
 let getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) user currentQuizzerOpt =
-    let addQuizzer = capabilityProvider.AddQuizzer user
-    let removeQuizzer = capabilityProvider.RemoveQuizzer user
-    let answerCorrectly = capabilityProvider.AnswerCorrectly user currentQuizzerOpt
-    let answerIncorrectly = capabilityProvider.AnswerIncorrectly user currentQuizzerOpt
-    let failAppeal = capabilityProvider.FailAppeal user currentQuizzerOpt
-    let clearAppeal = capabilityProvider.ClearAppeal user currentQuizzerOpt
-    let selectQuizzer = capabilityProvider.SelectQuizzer user
-    let changeCurrentQuestion = capabilityProvider.ChangeCurrentQuestion user
-    addQuizzer, removeQuizzer, answerCorrectly, answerIncorrectly, failAppeal, clearAppeal, selectQuizzer, changeCurrentQuestion
+    let addQuizzer =
+        capabilityProvider.AddQuizzer user
 
-let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync: GetQuiz) saveQuizAsync capabilityProvider msg model =
-    
+    let removeQuizzer =
+        capabilityProvider.RemoveQuizzer user
+
+    let answerCorrectly =
+        capabilityProvider.AnswerCorrectly user currentQuizzerOpt
+
+    let answerIncorrectly =
+        capabilityProvider.AnswerIncorrectly user currentQuizzerOpt
+
+    let failAppeal =
+        capabilityProvider.FailAppeal user currentQuizzerOpt
+
+    let clearAppeal =
+        capabilityProvider.ClearAppeal user currentQuizzerOpt
+
+    let selectQuizzer =
+        capabilityProvider.SelectQuizzer user
+
+    let changeCurrentQuestion =
+        capabilityProvider.ChangeCurrentQuestion user
+
+    addQuizzer,
+    removeQuizzer,
+    answerCorrectly,
+    answerIncorrectly,
+    failAppeal,
+    clearAppeal,
+    selectQuizzer,
+    changeCurrentQuestion
+
+let private updateLoaded
+    (publishQuizEvent: PublishQuizEventTask)
+    (getQuizAsync: GetQuiz)
+    saveQuizAsync
+    capabilityProvider
+    msg
+    model
+    =
+
     let publishRunQuizEvent quiz event =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
-
+    
+    let publishEvents mapToQuizEvent events =
+            events
+            |> List.map mapToQuizEvent
+            |> List.map (fun (event, _) -> publishRunQuizEvent model.Code event)
+            |> Async.Parallel
+    
     let mapExceptionToPublishEventError =
         (fun exn -> exn |> RemoteError |> WorkflowError)
 
     let workflowCmdList workflow mapToQuizEvent mapResult =
-        let publishEvents events =
-            events
-            |> List.map mapToQuizEvent
-            |> List.map (fun (event, code) -> publishRunQuizEvent code event)
-            |> Async.Parallel
-
+      
         let workflowX = fun _ -> workflow ()
 
         let mapResultWrapped mapResult workflowResult =
@@ -272,7 +341,7 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
 
         let workflowWithSideEffects x =
             workflowX x
-            |> AsyncResult.bind (publishEvents >> AsyncResult.ofAsync)
+            |> AsyncResult.bind (publishEvents mapToQuizEvent >> AsyncResult.ofAsync)
             |> AsyncResult.mapError WorkflowError.Workflow
             |> AsyncResult.bind (fun _ ->
                 model.Code
@@ -286,15 +355,24 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
         Cmd.OfAsync.either workflowWithMappedResult () id mapExceptionToPublishEventError
 
     let workflowCmdSingle workflow mapToQuizEvent mapResult =
-        let newWorkflow = fun _ -> workflow () |> AsyncResult.map List.singleton
+        let newWorkflow =
+            fun _ -> workflow () |> AsyncResult.map List.singleton
 
         workflowCmdList newWorkflow mapToQuizEvent mapResult
 
     let createQuizStateWorkflowError _ =
         "Quiz is not running" |> workflowFormError
-    
-    let addQuizzer, removeQuizzer, answerCorrectly, answerIncorrectly, failAppeal, clearAppeal, selectQuizzer, changeCurrentQuestion = getAvailableCapabilities capabilityProvider model.CurrentUser model.CurrentQuizzer
-    
+
+    let (addQuizzer,
+         removeQuizzer,
+         answerCorrectly,
+         answerIncorrectly,
+         failAppeal,
+         clearAppeal,
+         selectQuizzer,
+         changeCurrentQuestion) =
+        getAvailableCapabilities capabilityProvider model.CurrentUser model.CurrentQuizzer
+
     match msg with
     | DoNothing
     | InitializeQuizAndConnections (Started _)
@@ -345,7 +423,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
                         |> AsyncResult.mapError ChangeQuestionError.QuizError
                 }
 
-        let cmd = workflowCmdSingle workflow mapToQuizEvent mapWorkflowResult
+        let cmd =
+            workflowCmdSingle workflow mapToQuizEvent mapWorkflowResult
 
         model, cmd, None
     | ChangeCurrentQuestion (Finished quiz) -> refreshModel quiz, Cmd.none, None
@@ -398,7 +477,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
 
                     AddQuizzer_Pipeline.addQuizzerAsync getQuizAsync saveQuizAsync inputCommand
 
-            let cmd = workflowCmdSingle workflow mapQuizEvent mapResult
+            let cmd =
+                workflowCmdSingle workflow mapQuizEvent mapResult
 
             { model with AddQuizzer = Inert }, cmd, None
         | AddQuizzerModel.Inert ->
@@ -462,7 +542,7 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
             match event with
             | AnswerCorrectly.CurrentQuestionChanged e -> CurrentQuestionChanged e, e.Quiz
             | AnswerCorrectly.IndividualScoreChanged e -> IndividualScoreChanged e, e.Quiz
-            | AnswerCorrectly.TeamScoreChanged e -> TeamScoreChanged e, e.Quiz
+            | AnswerCorrectly.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
 
         let workflow =
             fun () ->
@@ -489,8 +569,20 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
                 |> workflowFormError
             | Result.Error (AnswerCorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
-
-        let cmd = workflowCmdList workflow mapEvent mapResult
+        
+        let workflowOpt =
+            answerCorrectly
+            |> Option.map (fun workflow -> workflow { Data = (); Quiz = model.Code; User = model.CurrentUser })
+     
+      (*  let cmdOpt =
+            workflowOpt
+            |> Option.map(fun result -> asyncResult {
+                let! events = result
+                do! events |> publishEvents events |> AsyncResult.ofAsync
+            } ) *)
+        
+        let cmd =
+            workflowCmdList workflow mapEvent mapResult
 
         model, cmd, None
     | AnswerCorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
@@ -522,7 +614,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
             | Result.Error (AnswerIncorrectly.Error.DbError dbError) ->
                 dbError |> mapDbErrorToString |> workflowFormError
 
-        let cmd = workflowCmdList workflow mapEvent mapResult
+        let cmd =
+            workflowCmdList workflow mapEvent mapResult
 
         model, cmd, None
     | AnswerIncorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
@@ -546,7 +639,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
             | Result.Error (FailAppeal.Error.NoCurrentQuizzer _) -> "No current quizzer" |> workflowFormError
             | Result.Error (FailAppeal.Error.DbError error) -> error |> mapDbErrorToString |> workflowFormError
 
-        let cmd = workflowCmdList workflow mapEvent mapResult
+        let cmd =
+            workflowCmdList workflow mapEvent mapResult
 
         model, cmd, None
     | FailAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
@@ -571,7 +665,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
                 |> workflowFormError
             | Result.Error (ClearAppeal.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
 
-        let cmd = workflowCmdList workflow mapEvent mapResult
+        let cmd =
+            workflowCmdList workflow mapEvent mapResult
 
         model, cmd, None
     | ClearAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
@@ -591,7 +686,8 @@ let update
         match result with
         | Ok quiz -> Loaded(refreshModel quiz), Cmd.none, None
         | Result.Error error ->
-            let externalMessage = error |> mapDbErrorToString
+            let externalMessage =
+                error |> mapDbErrorToString
 
             NotYetLoaded code, Cmd.none, ExternalMessage.Error externalMessage |> Some
     | NotYetLoaded code, Message.InitializeQuizAndConnections (Started previousQuizCode) ->
