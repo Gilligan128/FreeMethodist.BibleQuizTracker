@@ -87,18 +87,18 @@ type PublishEventError =
     | FormError of string
     | RemoteError of exn
 
-type AddQuizzerMessage =
-    | Start
-    | Cancel
-    | Submit of AsyncOperationStatus<unit, Quiz>
-    | SetName of string
-    | SetTeam of TeamPosition
-
 type WorkflowError<'a> =
     | Workflow of 'a
     | DbError of DbError
 
 type WorkflowResult<'a> = Result<Quiz, WorkflowError<'a>>
+
+type AddQuizzerMessage =
+    | Start
+    | Cancel
+    | Submit of AsyncOperationStatus<unit, WorkflowResult<AddQuizzer.Error>>
+    | SetName of string
+    | SetTeam of TeamPosition
 
 type ChangeQuestionError =
     | FormError of string
@@ -354,7 +354,7 @@ let private updateLoaded
         | None -> model, Cmd.none, None
         | Some cmd -> model, cmd, None
 
-    let runWorkflowEventsAsync events =
+    let publishWorkflowEventsAsync events =
         asyncResult {
             let! runQuizEvents = events
 
@@ -441,7 +441,7 @@ let private updateLoaded
             result
             |> AsyncResult.map mapToQuizEvent
             |> AsyncResult.map List.singleton
-            |> runWorkflowEventsAsync
+            |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd ChangeCurrentQuestion)
         |> mapOptionalCommand
@@ -480,38 +480,40 @@ let private updateLoaded
     | AddQuizzer (Submit (Started _)) ->
         match model.AddQuizzer with
         | AddQuizzerModel.Active (name, team) ->
-            let mapResult result =
-                match result with
-                | Ok quiz -> Message.AddQuizzer(Submit(Finished quiz))
-                | Result.Error error ->
-                    match error with
-                    | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
-                    | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
-                    | AddQuizzer.DbError dbError -> dbError |> mapDbErrorToString
-                    |> PublishEventError.FormError
-                    |> Message.WorkflowError
-
             let mapQuizEvent event = event |> QuizzerParticipating
 
-            let workflow =
-                fun () ->
-                    let inputCommand: AddQuizzer.Command =
-                        { Quiz = model.Code
-                          Data = { Name = name; Team = team }
-                          User = model.CurrentUser }
-
-                    AddQuizzer_Pipeline.addQuizzerAsync getQuizAsync saveQuizAsync inputCommand
-
-            let cmd =
-                workflowCmdSingle workflow mapQuizEvent mapResult
-
-            { model with AddQuizzer = Inert }, cmd, None
+            let inputCommand: AddQuizzer.Command =
+                { Quiz = model.Code
+                  Data = { Name = name; Team = team }
+                  User = model.CurrentUser }
+                
+            addQuizzer
+            |> Option.map (fun workflow ->
+                workflow inputCommand
+                |> AsyncResult.map mapQuizEvent
+                |> AsyncResult.map List.singleton
+                |> publishWorkflowEventsAsync
+                |> reloadQuizAsync
+                |> mapToAsyncOperationCmd (AddQuizzerMessage.Submit >> Message.AddQuizzer)
+                 )
+            |> mapOptionalCommand
         | AddQuizzerModel.Inert ->
             model,
             Cmd.none,
             ExternalMessage.Error "How are you even submitting from an inert AddQuizzer state?"
             |> Some
-    | AddQuizzer (Submit (Finished quiz)) -> refreshModel quiz, Cmd.none, None
+    | AddQuizzer (Submit (Finished result)) ->
+        let mapAddQuizzerError error =
+            match error with
+            | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
+            | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
+            | AddQuizzer.DbError dbError -> dbError |> mapDbErrorToString
+
+        result |> function
+                | Ok quiz -> quiz |> refreshModel |> fun model -> { model with AddQuizzer = Inert }, Cmd.none, None
+                | Result.Error error ->
+                    let error = error |> mapWorkflowErrors mapAddQuizzerError
+                    { model with AddQuizzer = Inert }, Cmd.none, error |> ExternalMessage.Error |> Some
     | RemoveQuizzer (Started (name, teamPosition)) ->
         let withinQuizCommand: RemoveQuizzer.Command =
             { Quiz = model.Code
@@ -582,7 +584,7 @@ let private updateLoaded
         |> Option.map (fun result ->
             result
             |> AsyncResult.map (List.map mapEvent)
-            |> runWorkflowEventsAsync
+            |> publishWorkflowEventsAsync
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd AnswerCorrectly)
         |> mapOptionalCommand
