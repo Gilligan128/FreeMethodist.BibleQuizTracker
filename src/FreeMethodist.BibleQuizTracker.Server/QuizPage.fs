@@ -60,7 +60,7 @@ type AddQuizzerModel =
     | Active of string * TeamPosition
     | Inert
 
-type Model =
+type LoadedModel =
     { JoiningQuizzer: string
       Code: QuizCode
       TeamOne: TeamModel
@@ -72,6 +72,12 @@ type Model =
       AddQuizzer: AddQuizzerModel
       CurrentQuizzer: Quizzer option
       QuestionScores: Map<Quizzer, AnswerState * AppealState> list }
+
+
+type Model =
+    | NotYetLoaded of QuizCode
+    | Loading of QuizCode
+    | Loaded of LoadedModel
 
 type PublishEventError =
     | FormError of string
@@ -86,7 +92,7 @@ type AddQuizzerMessage =
 
 
 type Message =
-    | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Quiz>
+    | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz, DbError>>
     | OverrideScore of AsyncOperationStatus<int * TeamPosition, Quiz>
     | OnQuizEvent of AsyncOperationStatus<unit, Quiz>
     | ChangeCurrentQuestion of AsyncOperationStatus<int, Quiz>
@@ -218,7 +224,7 @@ let private refreshModel (quiz: Quiz) =
     | Unvalidated _ -> emptyModel
 
 let init quizCode previousQuizCode =
-    { emptyModel with Code = quizCode }, Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
+    NotYetLoaded quizCode, Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
 
 type OverrideScoreErrors =
     | DomainError of OverrideTeamScore.Error
@@ -228,7 +234,7 @@ type ChangeQuestionError =
     | FormError of string
     | QuizError of ChangeCurrentQuestion.Error
 
-let private overrideScoreAsync getQuiz saveQuiz (model: Model) (score: int) (team: TeamPosition) =
+let private overrideScoreAsync getQuiz saveQuiz (model: LoadedModel) (score: int) (team: TeamPosition) =
     asyncResult {
         let! newScore =
             TeamScore.create score
@@ -252,7 +258,10 @@ type WorkflowError<'a> =
     | Workflow of 'a
     | DbError of DbError
 
-let update
+let workflowFormError =
+    PublishEventError.FormError >> WorkflowError
+
+let private updateLoaded
     connectToQuizEvents
     onQuizEvent
     (publishQuizEvent: PublishQuizEventTask)
@@ -268,9 +277,6 @@ let update
 
     let mapExceptionToPublishEventError =
         (fun exn -> exn |> RemoteError |> WorkflowError)
-
-    let workflowFormError =
-        PublishEventError.FormError >> WorkflowError
 
     let workflowCmdList workflow mapToQuizEvent mapResult =
         let publishEvents events =
@@ -312,36 +318,9 @@ let update
         "Quiz is not running" |> workflowFormError
 
     match msg with
-    | DoNothing -> model, Cmd.none, None
-    | InitializeQuizAndConnections (Started previousQuizCode) ->
-        let loadAndConnectToQuizCmd =
-            asyncResult {
-                do! connectToQuizEvents model.Code previousQuizCode |> AsyncResult.ofAsync
-                let! quiz = getQuizAsync model.Code
-                return Message.InitializeQuizAndConnections(Finished quiz)
-            }
-            |> Async.map (fun result ->
-                match result with
-                | Ok message -> message
-                | Result.Error error -> error |> mapDbErrorToString |> workflowFormError)
-            |> Cmd.OfAsync.result
-
-        let listenToEventsCmd =
-            (fun dispatch ->
-                let refreshQuizOnEvent _ =
-                    getQuizAsync model.Code
-                    |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
-                    |> Async.Ignore
-                    |> Async.StartImmediate //RunSynchronously did not work here
-
-                (onQuizEvent refreshQuizOnEvent) |> ignore)
-            |> Cmd.ofSub
-
-        { emptyModel with Code = model.Code },
-        Cmd.batch [ loadAndConnectToQuizCmd
-                    listenToEventsCmd ],
-        None
-    | InitializeQuizAndConnections (Finished quiz) -> refreshModel quiz, Cmd.none, None
+    | DoNothing
+    | InitializeQuizAndConnections (Started _)
+    | InitializeQuizAndConnections (Finished _) -> model, Cmd.none, None
     | OverrideScore (Started (score, teamPosition)) ->
         let mapResultToMessage result =
             match result with
@@ -416,13 +395,7 @@ let update
 
         model, cmd, None
     | ChangeCurrentQuestion (Finished quiz) -> refreshModel quiz, Cmd.none, None
-    | Message.WorkflowError error ->
-        let errorMessage =
-            match error with
-            | PublishEventError.FormError er -> er
-            | RemoteError exn -> exn.Message
-
-        model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
+    | Message.WorkflowError _ -> model, Cmd.none, None //handled above
     | Message.AddQuizzer Cancel -> { model with AddQuizzer = Inert }, Cmd.none, None
     | Message.AddQuizzer Start ->
         let addQuizzerState =
@@ -653,6 +626,75 @@ let update
 
         model, cmd, None
     | ClearAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
+
+let update
+    connectToQuizEvents
+    onQuizEvent
+    (publishQuizEvent: PublishQuizEventTask)
+    (getQuizAsync: GetQuiz)
+    saveQuizAsync
+    msg
+    model
+    =
+    match model, msg with
+    | Loading code, Message.InitializeQuizAndConnections (Finished result) ->
+        match result with
+        | Ok quiz -> Loaded(refreshModel quiz), Cmd.none, None
+        | Result.Error error ->
+            let externalMessage =
+                error |> mapDbErrorToString
+
+            NotYetLoaded code, Cmd.none, ExternalMessage.Error externalMessage |> Some
+    | NotYetLoaded code, Message.InitializeQuizAndConnections (Started previousQuizCode) ->
+        let loadAndConnectToQuizCmd =
+            asyncResult {
+                do!
+                    connectToQuizEvents code previousQuizCode
+                    |> AsyncResult.ofAsync
+
+                let! quiz = getQuizAsync code
+
+                return quiz
+            }
+            |> Async.timeoutNone 3000
+            |> Async.map (fun task ->
+                task
+                |> Option.defaultValue (Result.Error(DbError.RemoteError "Loading the quiz timed out")))
+            |> Async.map (fun result ->
+                result
+                |> (Message.InitializeQuizAndConnections << Finished))
+            |> Cmd.OfAsync.result
+
+        let listenToEventsCmd =
+            (fun dispatch ->
+                let refreshQuizOnEvent _ =
+                    getQuizAsync code
+                    |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
+                    |> Async.Ignore
+                    |> Async.StartImmediate //RunSynchronously did not work here
+
+                (onQuizEvent refreshQuizOnEvent) |> ignore)
+            |> Cmd.ofSub
+
+        Loading code,
+        Cmd.batch [ loadAndConnectToQuizCmd
+                    listenToEventsCmd ],
+        None
+    | _, Message.WorkflowError error ->
+        let errorMessage =
+            match error with
+            | PublishEventError.FormError er -> er
+            | RemoteError exn -> exn.Message
+
+        model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
+    | Loaded loadedModel, _ ->
+        let loaded, cmd, externalMsg =
+            updateLoaded connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync saveQuizAsync msg loadedModel
+
+        Loaded loaded, cmd, externalMsg
+    | Loading _, _
+    | NotYetLoaded _, _ -> model, Cmd.none, None
+
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
@@ -899,71 +941,75 @@ let private teamView
         .Elt()
 
 let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
-    let isTeam teamOneValue teamTwoValue =
+    let isTeam model teamOneValue teamTwoValue =
         match model.AddQuizzer with
         | Inert -> false
         | Active (_, TeamOne) -> teamOneValue
         | Active (_, TeamTwo) -> teamTwoValue
 
-    quizPage()
-        .QuizCode(model.Code)
-        .QuizUrl(linkToQuiz <| model.Code)
-        .CurrentUser(
-            match model.CurrentUser with
-            | Quizmaster -> "Quizmaster"
-            | Spectator -> "Spectator"
-            | Quizzer name -> name
-            | Scorekeeper -> "Scorekeeper"
-        )
-        .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder, model.CurrentQuizzer) dispatch)
-        .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer) dispatch)
-        .CurrentQuestion(string model.CurrentQuestion)
-        .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(model.CurrentQuestion + 1))))
-        .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(Math.Max(model.CurrentQuestion - 1, 1)))))
-        .CurrentQuizzer(
-            match model.CurrentQuizzer with
-            | Some q -> $"{q}'s Turn"
-            | None -> ""
-        )
-        .JumpLockToggleAction(
-            match model.JumpState with
-            | Locked -> "Unlock"
-            | Unlocked -> "Lock"
-        )
-        .TeamOneName(model.TeamOne.Name)
-        .TeamTwoName(model.TeamTwo.Name)
-        .AddQuizzerIsTeamOne(isTeam true false)
-        .AddQuizzerIsTeamTwo(isTeam false true)
-        .AddQuizzerName(
-            (match model.AddQuizzer with
-             | Active (name, _) -> name
-             | Inert -> ""),
-            (fun name ->
-                dispatch (
-                    AddQuizzerMessage.SetName name
-                    |> Message.AddQuizzer
-                ))
-        )
-        .AddQuizzerStart(fun _ -> dispatch (AddQuizzer Start))
-        .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
-        .AddQuizzerActive(
-            if model.AddQuizzer = Inert then
-                ""
-            else
-                "is-active"
-        )
-        .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
-        .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
-        .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
-        .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly(Started())))
-        .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
-        .FailAppeal(fun _ -> dispatch (FailAppeal(Started())))
-        .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
-        .ItemizedScore(
-            itemizedScoreView
-                { TeamOne = model.TeamOne
-                  TeamTwo = model.TeamTwo
-                  Questions = model.QuestionScores }
-                dispatch
-        )
-        .Elt()
+    match model with
+    | NotYetLoaded code -> p { $"Quiz {code} has not yet been loaded" }
+    | Loading code -> p { $"Quiz {code} is loading..." }
+    | Loaded model ->
+        quizPage()
+            .QuizCode(model.Code)
+            .QuizUrl(linkToQuiz <| model.Code)
+            .CurrentUser(
+                match model.CurrentUser with
+                | Quizmaster -> "Quizmaster"
+                | Spectator -> "Spectator"
+                | Quizzer name -> name
+                | Scorekeeper -> "Scorekeeper"
+            )
+            .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder, model.CurrentQuizzer) dispatch)
+            .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer) dispatch)
+            .CurrentQuestion(string model.CurrentQuestion)
+            .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(model.CurrentQuestion + 1))))
+            .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(Math.Max(model.CurrentQuestion - 1, 1)))))
+            .CurrentQuizzer(
+                match model.CurrentQuizzer with
+                | Some q -> $"{q}'s Turn"
+                | None -> ""
+            )
+            .JumpLockToggleAction(
+                match model.JumpState with
+                | Locked -> "Unlock"
+                | Unlocked -> "Lock"
+            )
+            .TeamOneName(model.TeamOne.Name)
+            .TeamTwoName(model.TeamTwo.Name)
+            .AddQuizzerIsTeamOne(isTeam model true false)
+            .AddQuizzerIsTeamTwo(isTeam model false true)
+            .AddQuizzerName(
+                (match model.AddQuizzer with
+                 | Active (name, _) -> name
+                 | Inert -> ""),
+                (fun name ->
+                    dispatch (
+                        AddQuizzerMessage.SetName name
+                        |> Message.AddQuizzer
+                    ))
+            )
+            .AddQuizzerStart(fun _ -> dispatch (AddQuizzer Start))
+            .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
+            .AddQuizzerActive(
+                if model.AddQuizzer = Inert then
+                    ""
+                else
+                    "is-active"
+            )
+            .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
+            .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
+            .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
+            .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly(Started())))
+            .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
+            .FailAppeal(fun _ -> dispatch (FailAppeal(Started())))
+            .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
+            .ItemizedScore(
+                itemizedScoreView
+                    { TeamOne = model.TeamOne
+                      TeamTwo = model.TeamTwo
+                      Questions = model.QuestionScores }
+                    dispatch
+            )
+            .Elt()

@@ -380,5 +380,5 @@ module RunningTeamQuiz =
             |> Some)
 
 type DbError =
-    | SerializationError of exn
+    | Exception of exn
     | RemoteError of string

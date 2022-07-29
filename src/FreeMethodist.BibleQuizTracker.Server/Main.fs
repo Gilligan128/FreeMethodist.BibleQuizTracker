@@ -50,6 +50,12 @@ let clientStub =
 let runQuizEventOccuredName =
     nameof clientStub.RunQuizEventOccurred
 
+let getCodeFromModel model =
+    match model with
+    | NotYetLoaded code -> code
+    | Loading code -> code
+    | Loaded loaded -> loaded.Code
+
 let update
     connectToQuizEvents
     onQuizEvent
@@ -70,7 +76,7 @@ let update
             (nameof
                 Unchecked.defaultof<QuizHub.Hub>
                     .DisconnectFromQuiz),
-            quiz.Code,
+            quiz |> getCodeFromModel,
             CancellationToken.None
         )
         |> Async.AwaitTask
@@ -80,7 +86,12 @@ let update
     match message, model.Quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
         let oldCodeOpt =
-            (quizOption |> Option.map (fun q -> q.Code))
+            (quizOption
+             |> Option.bind (fun q ->
+                 match q with
+                 | NotYetLoaded _ -> None
+                 | Loading _ -> None
+                 | Loaded loaded -> Some loaded.Code))
 
         let quizModel, cmd =
             init quizCode oldCodeOpt
@@ -108,13 +119,18 @@ let update
         { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
     | QuizMessage _, None ->
         { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
-    | SetQuizCode code, _ ->
-        { model with QuizCode = Some code }, Cmd.none
-    | JoinQuiz, _ ->
-        { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
+    | SetQuizCode code, _ -> { model with QuizCode = Some code }, Cmd.none
+    | JoinQuiz, _ -> { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
     | CreateQuiz message, _ ->
-        let createQuizModel, cmd = CreateQuizForm.update HumanReadableIds.HumanReadableIds.generateCode saveNewQuiz spectateQuiz message model.CreateQuizForm
-        { model with CreateQuizForm = createQuizModel },  cmd |> Cmd.map Message.CreateQuiz
+        let createQuizModel, cmd =
+            CreateQuizForm.update
+                HumanReadableIds.HumanReadableIds.generateCode
+                saveNewQuiz
+                spectateQuiz
+                message
+                model.CreateQuizForm
+
+        { model with CreateQuizForm = createQuizModel }, cmd |> Cmd.map Message.CreateQuiz
 
 /// Connects the routing system to the Elmish application.
 let router =
@@ -125,14 +141,16 @@ type Main = Template<"wwwroot/main.html">
 let homePage model dispatch =
     Main
         .Home()
-        .CreateQuizStart(fun _ -> dispatch << Message.CreateQuiz <| CreateQuizForm.Start)
+        .CreateQuizStart(fun _ ->
+            dispatch << Message.CreateQuiz
+            <| CreateQuizForm.Start)
         .JoinQuiz(fun _ -> dispatch <| Message.JoinQuiz)
         .SpectateUrl(
             model.QuizCode
             |> Option.map (fun code -> router.Link(Page.Quiz code))
             |> Option.defaultValue ""
         )
-        .QuizCode(model.QuizCode |> Option.defaultValue "", fun code -> code |> Message.SetQuizCode |> dispatch)
+        .QuizCode(model.QuizCode |> Option.defaultValue "", (fun code -> code |> Message.SetQuizCode |> dispatch))
         .CreateQuizModal(CreateQuizForm.view model.CreateQuizForm (dispatch << Message.CreateQuiz))
         .Elt()
 
@@ -194,9 +212,9 @@ type MyApp() =
 
     [<Inject>]
     member val HubConnection = Unchecked.defaultof<HubConnection> with get, set
-    
+
     [<Inject>]
-    member val SaveNewQuiz = Unchecked.defaultof<SaveNewQuiz> with get,set
+    member val SaveNewQuiz = Unchecked.defaultof<SaveNewQuiz> with get, set
 
     override this.Program =
         let hubConnection = this.HubConnection
@@ -214,13 +232,23 @@ type MyApp() =
 
             fun (handler: RunQuizEvent -> unit) ->
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
-        
+
         let spectateQUiz quizCode =
-            Page.Quiz quizCode |> router.getRoute |> this.NavigationManager.NavigateTo 
-        
+            Page.Quiz quizCode
+            |> router.getRoute
+            |> this.NavigationManager.NavigateTo
+
         let update =
-            update connectToQuizEvents onQuizEvent publishQuizEvent this.GetQuizAsync this.SaveQuizAsync this.SaveNewQuiz spectateQUiz hubConnection
-        
+            update
+                connectToQuizEvents
+                onQuizEvent
+                publishQuizEvent
+                this.GetQuizAsync
+                this.SaveQuizAsync
+                this.SaveNewQuiz
+                spectateQUiz
+                hubConnection
+
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore

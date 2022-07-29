@@ -19,16 +19,23 @@ let saveQuiz _ = ()
 let saveQuizAsync _ = AsyncResult.retn ()
 
 let sut =
-    update (fun _ _-> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync saveQuizAsync
+    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync saveQuizAsync
+
+let mapToLoaded model =
+    match model with
+    | NotYetLoaded _ -> failwith "not yet loaded"
+    | Loading _ -> failwith "loading"
+    | Loaded loadedModel -> loadedModel
 
 [<Fact>]
 let ``When Cancelled then AddQuizzer is Inert`` () =
 
     let initialModel =
-        { emptyModel with AddQuizzer = AddQuizzerModel.Active("", TeamOne) }
+        Loaded { emptyModel with AddQuizzer = AddQuizzerModel.Active("", TeamOne) }
 
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Cancel) initialModel
+    let resultingModel = mapToLoaded resultingModel
 
     Assert.Equal(Inert, resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
@@ -38,11 +45,12 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
 let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
 
     let initialModel =
-        { emptyModel with AddQuizzer = Inert }
+        Loaded { emptyModel with AddQuizzer = Inert }
 
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Start) initialModel
-
+    let resultingModel = mapToLoaded resultingModel
+    
     Assert.Equal(AddQuizzerModel.Active("", TeamOne), resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(None, externalMsg)
@@ -53,11 +61,12 @@ let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with ori
         AddQuizzerModel.Active("test", TeamTwo)
 
     let initialModel =
-        { emptyModel with AddQuizzer = activeState }
+        Loaded { emptyModel with AddQuizzer = activeState }
 
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Start) initialModel
-
+    let resultingModel = mapToLoaded resultingModel
+    
     Assert.Equal(activeState, resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(None, externalMsg)

@@ -89,7 +89,9 @@ module CreateQuizForm =
                   CompetitionStyle = activeModel.CompetitionStyle }
                 |> createQuiz saveNewQuiz
                 |> AsyncResult.mapError mapErrorToString
-                |> Async.map mapToFinished
+                |> Async.timeoutNone 3000
+                |> Async.map (Option.defaultValue (Result.Error "Creating the quiz timed out"))
+                |> Async.map mapToFinished       
                 |> Cmd.OfAsync.result
 
             Submitting activeModel, cmd

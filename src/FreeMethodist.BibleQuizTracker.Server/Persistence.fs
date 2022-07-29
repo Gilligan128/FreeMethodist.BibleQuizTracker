@@ -122,9 +122,27 @@ let validateBlobOperation (uploadResult: Response<'a>) =
     else
         Ok uploadResult.Value
 
+let matchInnerException (exn: exn) =
+    match exn.InnerException with
+    | null -> None
+    | _ -> Some(exn.InnerException)
+
+
+
 let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetQuiz =
+    let mapChoiceToResult choice =
+        match choice with
+        | Choice1Of2 one -> Ok one
+        | Choice2Of2 exn ->
+            exn
+            |> matchInnerException
+            |> Option.defaultValue exn
+            |> Exception
+            |> Result.Error
+
     fun quizCode ->
         asyncResult {
+
             let blobContainerClient =
                 blobServiceClient.GetBlobContainerClient(containerName)
 
@@ -134,7 +152,12 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
             let! response =
                 blobClient.DownloadContentAsync()
                 |> Async.AwaitTask
-                |> Async.map validateBlobOperation
+                |> Async.Catch
+                |> Async.map mapChoiceToResult
+
+            let! response =
+                validateBlobOperation response
+                |> AsyncResult.ofResult
 
             let quizJson = response.Content.ToString()
 
@@ -163,10 +186,7 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
                     (JsonSerializer.Serialize(quiz, options)
                      |> AsyncResult.ofSuccess)
                 with
-                | exn ->
-                    exn
-                    |> DbError.SerializationError
-                    |> AsyncResult.ofError
+                | exn -> exn |> DbError.Exception |> AsyncResult.ofError
 
             let blobClient =
                 quizCode
@@ -176,7 +196,7 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
             do!
                 json
                 |> BinaryData.FromString
-                |> fun data -> blobClient.UploadAsync(data, overwrite=true)
+                |> fun data -> blobClient.UploadAsync(data, overwrite = true)
                 |> Async.AwaitTask
                 |> Async.map validateBlobOperation
                 |> AsyncResult.ignore
@@ -184,8 +204,8 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
         }
 
 let saveNewQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveNewQuiz =
-   fun quiz ->
-         asyncResult {
+    fun quiz ->
+        asyncResult {
             let blobContainerClient =
                 blobServiceClient.GetBlobContainerClient(containerName)
 
@@ -202,16 +222,19 @@ let saveNewQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSeria
                     (JsonSerializer.Serialize(quiz, options)
                      |> AsyncResult.ofSuccess)
                 with
-                | exn ->
-                    exn
-                    |> DbError.SerializationError
-                    |> AsyncResult.ofError
+                | exn -> exn |> DbError.Exception |> AsyncResult.ofError
 
             let blobClient =
                 quizCode
                 |> getBlobName
                 |> blobContainerClient.GetBlobClient
-            let uploadOptions = BlobUploadOptions(Conditions = BlobRequestConditions(IfNoneMatch = ETag("*")), Tags = (["Code", quizCode] |> Map.ofList))
+
+            let uploadOptions =
+                BlobUploadOptions(
+                    Conditions = BlobRequestConditions(IfNoneMatch = ETag("*")),
+                    Tags = ([ "Code", quizCode ] |> Map.ofList)
+                )
+
             do!
                 json
                 |> BinaryData.FromString
@@ -221,9 +244,9 @@ let saveNewQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSeria
                 |> AsyncResult.ignore
 
         }
-   |> SaveNewQuiz
-let private isAnExampleQuiz (quizCode: QuizCode) =
-     quizCode.ToUpper() = "EXAMPLE"
+    |> SaveNewQuiz
+
+let private isAnExampleQuiz (quizCode: QuizCode) = quizCode.ToUpper() = "EXAMPLE"
 
 let getQuizFromLocalOrBlob getFromLocal getFromBlob : GetQuiz =
     fun quizCode ->
@@ -231,12 +254,12 @@ let getQuizFromLocalOrBlob getFromLocal getFromBlob : GetQuiz =
             getFromLocal quizCode
         else
             getFromBlob quizCode
-            
+
 let saveQuizToLocalOrBlob saveToLocal saveToBlob : SaveQuiz =
     fun quiz ->
         quiz
         |> getCodeFromQuiz
         |> isAnExampleQuiz
-        |> function 
+        |> function
             | true -> saveToLocal quiz
             | false -> saveToBlob quiz

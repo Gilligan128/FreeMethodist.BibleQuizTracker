@@ -1,11 +1,12 @@
 # FreeMethodist.BibleQuizTracker
-Bible Quiz tournament and score tracker. This application can let quizmasters and quizzers quiz from wherever they are!
+Bible Quiz tournament and score tracker. This application can let quizmasters,scorekeeprs and quizzers quiz from wherever they are!
 Uses the rules for Free Methodist Bible Quizzing.
 
 # Getting Started
 
 ## Prerequisites
-Install .Net 6 SDK.
+- .Net 6 SDK installed.
+- Azurite installed and running.
 
 # Tech Stack
 The tech stack is based around functional programming paradigms and the [Model-View-Update (MVU)](https://guide.elm-lang.org/architecture/) architecture.

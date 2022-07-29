@@ -1,6 +1,8 @@
 ﻿namespace global  // note use of GLOBAL namespace
 
 open System
+open System.Threading.Tasks
+open System.Threading
 
 //==============================================
 // Helpers for Result type and AsyncResult type
@@ -297,7 +299,19 @@ module Async =
     /// Apply a monadic function to an Async value
     let bind f xA = async.Bind(xA,f)
 
-
+    let timeoutNone (timeoutMs:int) (a:Async<'a>) : Async<'a option> = async {
+      let! ct = Async.CancellationToken
+      let res = TaskCompletionSource<_>()
+      use cts = CancellationTokenSource.CreateLinkedTokenSource ct
+      res.Task.ContinueWith(Action<Task>(fun _ -> cts.Cancel ())) |> ignore
+      use timer = new Timer((fun _ -> res.TrySetResult None |> ignore), null, timeoutMs, Timeout.Infinite)
+      Async.StartWithContinuations (
+        a,
+        (fun a -> res.TrySetResult (Some a) |> ignore),
+        (fun e -> res.TrySetException e |> ignore),
+        (fun _ -> res.TrySetResult None |> ignore),
+         cts.Token)
+      return! res.Task |> Async.AwaitTask }
 //==============================================
 // AsyncResult
 //==============================================

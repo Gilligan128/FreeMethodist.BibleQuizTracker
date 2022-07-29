@@ -15,5 +15,5 @@ type Page =
     
 let mapDbErrorToString error =
     match error with
-    | SerializationError exn -> exn.Message
+    | Exception exn -> exn.Message
     | DbError.RemoteError message -> message
