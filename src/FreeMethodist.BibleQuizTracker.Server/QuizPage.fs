@@ -114,7 +114,7 @@ type Message =
     | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
     | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
-    | FailAppeal of AsyncOperationStatus<unit, Quiz>
+    | FailAppeal of AsyncOperationStatus<unit, WorkflowResult<FailAppeal.Error>>
     | ClearAppeal of AsyncOperationStatus<unit, Quiz>
     | DoNothing
 
@@ -656,30 +656,30 @@ let private updateLoaded
 
         result |> refreshQuizOrError mapIncorrectError
     | FailAppeal (Started _) ->
-        let workflow =
-            fun _ ->
-                { Quiz = model.Code
-                  Data = ()
-                  User = model.CurrentUser }
-                |> FailAppeal.Pipeline.failAppeal getQuizAsync saveQuizAsync
-
         let mapEvent event =
             match event with
             | FailAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
-        let mapResult result =
-            match result with
-            | Ok quiz -> quiz |> Finished |> FailAppeal
-            | Result.Error (FailAppeal.Error.QuizState _) -> "Wrong Quiz state" |> workflowFormError
-            | Result.Error (FailAppeal.Error.AppealAlreadyFailed _) -> "Appeal already failed" |> workflowFormError
-            | Result.Error (FailAppeal.Error.NoCurrentQuizzer _) -> "No current quizzer" |> workflowFormError
-            | Result.Error (FailAppeal.Error.DbError error) -> error |> mapDbErrorToString |> workflowFormError
+        failAppeal
+        |> Option.map (fun workflow ->
+            workflow
+                { Quiz = model.Code
+                  User = model.CurrentUser
+                  Data = () }
+            |> AsyncResult.map (List.map mapEvent)
+            |> publishWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd FailAppeal)
+        |> mapOptionalCommand
+    | FailAppeal (Finished quiz) ->
+        let mapFailError error =
+            match error with
+            | (FailAppeal.Error.QuizState _) -> "Wrong Quiz state"
+            | (FailAppeal.Error.AppealAlreadyFailed _) -> "Appeal already failed"
+            | (FailAppeal.Error.NoCurrentQuizzer _) -> "No current quizzer"
+            | (FailAppeal.Error.DbError error) -> error |> mapDbErrorToString
 
-        let cmd =
-            workflowCmdList workflow mapEvent mapResult
-
-        model, cmd, None
-    | FailAppeal (Finished quiz) -> refreshModel quiz, Cmd.none, None
+        quiz |> refreshQuizOrError mapFailError
     | ClearAppeal (Started _) ->
         let workflow =
             fun _ ->
