@@ -113,7 +113,7 @@ type Message =
     | RemoveQuizzer of AsyncOperationStatus<Quizzer * TeamPosition, WorkflowResult<RemoveQuizzer.Error>>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
     | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
-    | AnswerIncorrectly of AsyncOperationStatus<unit, Quiz>
+    | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
     | FailAppeal of AsyncOperationStatus<unit, Quiz>
     | ClearAppeal of AsyncOperationStatus<unit, Quiz>
     | DoNothing
@@ -551,17 +551,18 @@ let private updateLoaded
             { Quiz = model.Code
               User = model.CurrentUser
               Data = { Quizzer = name } }
-        selectQuizzer |> Option.map(fun workflow ->
+
+        selectQuizzer
+        |> Option.map (fun workflow ->
             command
             |> workflow
             |> AsyncResult.map CurrentQuizzerChanged
             |> AsyncResult.map List.singleton
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
-            |> mapToAsyncOperationCmd SelectQuizzer
-            ) 
+            |> mapToAsyncOperationCmd SelectQuizzer)
         |> mapOptionalCommand
-        
+
     | SelectQuizzer (Finished result) ->
         let mapSelectError error =
             match error with
@@ -626,38 +627,34 @@ let private updateLoaded
 
 
     | AnswerIncorrectly (Started _) ->
-        let workflow =
-            fun () ->
-                AnswerIncorrectly.Pipeline.answerIncorrectly
-                    getQuizAsync
-                    saveQuizAsync
-                    { Quiz = model.Code
-                      User = model.CurrentUser
-                      Data = () }
-
         let mapEvent event =
             match event with
             | AnswerIncorrectly.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
             | AnswerIncorrectly.Event.IndividualScoreChanged e -> RunQuizEvent.IndividualScoreChanged e
             | AnswerIncorrectly.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
-        let mapResult result =
-            match result with
-            | Ok quiz -> AnswerIncorrectly(Finished quiz)
-            | Result.Error (AnswerIncorrectly.QuizState quizState) -> createQuizStateWorkflowError quizState
-            | Result.Error (AnswerIncorrectly.NoCurrentQuizzer _) -> "No current Quizzer" |> workflowFormError
-            | Result.Error (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizAnswer.QuizzerAlreadyAnsweredIncorrectly (quizzer,
-                                                                                                                               questionNumber))) ->
+        answerIncorrectly
+        |> Option.map (fun workflow ->
+            workflow
+                { Quiz = model.Code
+                  User = model.CurrentUser
+                  Data = () }
+            |> AsyncResult.map (List.map mapEvent)
+            |> publishWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd AnswerIncorrectly)
+        |> mapOptionalCommand
+    | AnswerIncorrectly (Finished result) ->
+        let mapIncorrectError error =
+            match error with
+            | (AnswerIncorrectly.QuizState _) -> "Quiz iz not running"
+            | (AnswerIncorrectly.NoCurrentQuizzer _) -> "No current Quizzer"
+            | (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizAnswer.QuizzerAlreadyAnsweredIncorrectly (quizzer,
+                                                                                                                  questionNumber))) ->
                 $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
-                |> workflowFormError
-            | Result.Error (AnswerIncorrectly.Error.DbError dbError) ->
-                dbError |> mapDbErrorToString |> workflowFormError
+            | (AnswerIncorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString
 
-        let cmd =
-            workflowCmdList workflow mapEvent mapResult
-
-        model, cmd, None
-    | AnswerIncorrectly (Finished quiz) -> refreshModel quiz, Cmd.none, None
+        result |> refreshQuizOrError mapIncorrectError
     | FailAppeal (Started _) ->
         let workflow =
             fun _ ->
