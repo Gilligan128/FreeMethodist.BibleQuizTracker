@@ -8,7 +8,8 @@ open Microsoft.Extensions.Configuration
 open Xunit
 
 [<Fact>]
-let ``GetQuiz 404s`` () =
+let ``Integration infrastructure reference`` () =
+    //just some things we will need for integration testing later.
     let fsharpJsonOptions =
             JsonSerializerOptions()
 
@@ -17,8 +18,5 @@ let ``GetQuiz 404s`` () =
     let configuration =
         ConfigurationBuilder().AddUserSecrets<Startup>().Build()
     let blobConnectionString = configuration["BLOBSTORAGE_CONNECTION_STRING"]
-    let blobServiceClient = BlobServiceClient(blobConnectionString)
     
-    let blob = Persistence.getQuizFromBlob blobServiceClient fsharpJsonOptions "adf;asdfopiauj"
-    let result = blob |> Async.RunSynchronously
-    Assert.True(result |> Result.isError)
+    Assert.True(true)
