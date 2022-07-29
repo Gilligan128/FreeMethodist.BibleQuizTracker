@@ -110,7 +110,7 @@ type Message =
     | ChangeCurrentQuestion of AsyncOperationStatus<int, WorkflowResult<ChangeQuestionError>>
     | WorkflowError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
-    | RemoveQuizzer of AsyncOperationStatus<Quizzer * TeamPosition, Quiz>
+    | RemoveQuizzer of AsyncOperationStatus<Quizzer * TeamPosition, WorkflowResult<RemoveQuizzer.Error>>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, Quiz>
     | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, Quiz>
@@ -486,7 +486,7 @@ let private updateLoaded
                 { Quiz = model.Code
                   Data = { Name = name; Team = team }
                   User = model.CurrentUser }
-                
+
             addQuizzer
             |> Option.map (fun workflow ->
                 workflow inputCommand
@@ -494,8 +494,7 @@ let private updateLoaded
                 |> AsyncResult.map List.singleton
                 |> publishWorkflowEventsAsync
                 |> reloadQuizAsync
-                |> mapToAsyncOperationCmd (AddQuizzerMessage.Submit >> Message.AddQuizzer)
-                 )
+                |> mapToAsyncOperationCmd (AddQuizzerMessage.Submit >> Message.AddQuizzer))
             |> mapOptionalCommand
         | AddQuizzerModel.Inert ->
             model,
@@ -509,11 +508,17 @@ let private updateLoaded
             | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
             | AddQuizzer.DbError dbError -> dbError |> mapDbErrorToString
 
-        result |> function
-                | Ok quiz -> quiz |> refreshModel |> fun model -> { model with AddQuizzer = Inert }, Cmd.none, None
-                | Result.Error error ->
-                    let error = error |> mapWorkflowErrors mapAddQuizzerError
-                    { model with AddQuizzer = Inert }, Cmd.none, error |> ExternalMessage.Error |> Some
+        result
+        |> function
+            | Ok quiz ->
+                quiz
+                |> refreshModel
+                |> fun model -> { model with AddQuizzer = Inert }, Cmd.none, None
+            | Result.Error error ->
+                let error =
+                    error |> mapWorkflowErrors mapAddQuizzerError
+
+                { model with AddQuizzer = Inert }, Cmd.none, error |> ExternalMessage.Error |> Some
     | RemoveQuizzer (Started (name, teamPosition)) ->
         let withinQuizCommand: RemoveQuizzer.Command =
             { Quiz = model.Code
@@ -525,22 +530,22 @@ let private updateLoaded
             | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
             | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
 
-        let mapResultToMessage result =
-            match result with
-            | Ok quiz -> Message.RemoveQuizzer(Finished quiz)
-            | Result.Error (RemoveQuizzer.QuizStateError quizStateError) ->
-                PublishEventError.FormError $"Wrong Quiz State: {quizStateError}"
-                |> WorkflowError
-            | Result.Error (RemoveQuizzer.QuizzerNotParticipating quizzer) ->
-                PublishEventError.FormError $"Quizzer {quizzer} is already not participating"
-                |> WorkflowError
-            | Result.Error (RemoveQuizzer.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
+        removeQuizzer
+        |> Option.map (fun workflow ->
+            workflow withinQuizCommand
+            |> AsyncResult.map (List.map transformToRunQuizEvent)
+            |> publishWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd RemoveQuizzer)
+        |> mapOptionalCommand
+    | RemoveQuizzer (Finished result) ->
+        let mapRemoveError error =
+            match error with
+            | RemoveQuizzer.QuizStateError quizStateError -> $"Wrong Quiz State: {quizStateError}"
+            | RemoveQuizzer.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is already not participating"
+            | RemoveQuizzer.DbError dbError -> dbError |> mapDbErrorToString
 
-        let workflow =
-            fun () -> RemoveQuizzer_Pipeline.removeQuizzer getQuizAsync saveQuizAsync withinQuizCommand
-
-        model, (workflowCmdList workflow transformToRunQuizEvent mapResultToMessage), None
-    | RemoveQuizzer (Finished quiz) -> refreshModel quiz, Cmd.none, None
+        result |> refreshQuizOrError mapRemoveError
     | SelectQuizzer (Started name) ->
         let mapEvent event = CurrentQuizzerChanged event
 
