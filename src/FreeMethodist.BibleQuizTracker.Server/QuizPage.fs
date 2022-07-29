@@ -79,8 +79,8 @@ type LoadedModel =
 
 
 type Model =
-    | NotYetLoaded of QuizCode
-    | Loading of QuizCode
+    | NotYetLoaded of QuizCode*User
+    | Loading of QuizCode*User
     | Loaded of LoadedModel
 
 type PublishEventError =
@@ -139,7 +139,7 @@ let tee sideEffect =
         do sideEffect x
         x
 
-let private refreshModel (quiz: Quiz) =
+let private refreshModel (quiz: Quiz, user: User) =
     let getAnswerState quizAnswer (quizzerState: QuizzerState) =
         let quizzerWasIncorrect =
             List.contains quizzerState.Name
@@ -216,32 +216,34 @@ let private refreshModel (quiz: Quiz) =
         |> Seq.map (fun k -> questionMap[k])
         |> Seq.toList
 
-    match quiz with
-    | Running runningQuiz ->
-        let currentQuestion =
-            runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
-            |> Option.defaultValue QuestionState.initial
+    let stateMatchedModel =
+        match quiz with
+        | Running runningQuiz ->
+            let currentQuestion =
+                runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
+                |> Option.defaultValue QuestionState.initial
 
-        { emptyModel with
-            Code = runningQuiz.Code
-            TeamOne = runningQuiz.TeamOne |> refreshTeam currentQuestion
-            TeamTwo = runningQuiz.TeamTwo |> refreshTeam currentQuestion
-            CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
-            CurrentQuizzer = runningQuiz.CurrentQuizzer
-            CurrentUser = Quizmaster
-            JoiningQuizzer = ""
-            JumpOrder = [ "Jim"; "Juni"; "John" ]
-            JumpState = Unlocked
-            QuestionScores =
-                runningQuiz.Questions
-                |> sortedList
-                |> List.map refreshQuestionScore }
-    | Quiz.Completed _
-    | Official _
-    | Unvalidated _ -> emptyModel
+            { emptyModel with
+                Code = runningQuiz.Code
+                TeamOne = runningQuiz.TeamOne |> refreshTeam currentQuestion
+                TeamTwo = runningQuiz.TeamTwo |> refreshTeam currentQuestion
+                CurrentQuestion = PositiveNumber.value runningQuiz.CurrentQuestion
+                CurrentQuizzer = runningQuiz.CurrentQuizzer
+                CurrentUser = Quizmaster
+                JoiningQuizzer = ""
+                JumpOrder = [ "Jim"; "Juni"; "John" ]
+                JumpState = Unlocked
+                QuestionScores =
+                    runningQuiz.Questions
+                    |> sortedList
+                    |> List.map refreshQuestionScore }
+        | Quiz.Completed _
+        | Official _
+        | Unvalidated _ -> emptyModel
+    {stateMatchedModel with CurrentUser = user}
 
-let init quizCode previousQuizCode =
-    NotYetLoaded quizCode, Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
+let init user quizCode previousQuizCode =
+    NotYetLoaded (quizCode, user), Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
 
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
@@ -292,6 +294,9 @@ let private updateLoaded
     msg
     model
     =
+    let refreshModel quiz =
+        refreshModel (quiz,model.CurrentUser)
+   
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.Error error |> Some
 
@@ -675,15 +680,15 @@ let update
     model
     =
     match model, msg with
-    | Loading code, Message.InitializeQuizAndConnections (Finished result) ->
+    | Loading (code, user), Message.InitializeQuizAndConnections (Finished result) ->
         match result with
-        | Ok quiz -> Loaded(refreshModel quiz), Cmd.none, None
+        | Ok quiz -> Loaded(refreshModel (quiz, user)), Cmd.none, None
         | Result.Error error ->
             let externalMessage =
                 error |> mapDbErrorToString
 
-            NotYetLoaded code, Cmd.none, ExternalMessage.Error externalMessage |> Some
-    | NotYetLoaded code, Message.InitializeQuizAndConnections (Started previousQuizCode) ->
+            NotYetLoaded (code, user), Cmd.none, ExternalMessage.Error externalMessage |> Some
+    | NotYetLoaded (code, user), Message.InitializeQuizAndConnections (Started previousQuizCode) ->
         let loadAndConnectToQuizCmd =
             asyncResult {
                 do!
@@ -714,7 +719,7 @@ let update
                 (onQuizEvent refreshQuizOnEvent) |> ignore)
             |> Cmd.ofSub
 
-        Loading code,
+        Loading (code,user),
         Cmd.batch [ loadAndConnectToQuizCmd
                     listenToEventsCmd ],
         None
@@ -986,8 +991,8 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
         | Active (_, TeamTwo) -> teamTwoValue
 
     match model with
-    | NotYetLoaded code -> p { $"Quiz {code} has not yet been loaded" }
-    | Loading code -> p { $"Quiz {code} is loading..." }
+    | NotYetLoaded (code, _) -> p { $"Quiz {code} has not yet been loaded" }
+    | Loading (code, _) -> p { $"Quiz {code} is loading..." }
     | Loaded model ->
         quizPage()
             .QuizCode(model.Code)

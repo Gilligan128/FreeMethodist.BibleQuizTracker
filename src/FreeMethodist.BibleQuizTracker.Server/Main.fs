@@ -61,8 +61,8 @@ let runQuizEventOccuredName =
 
 let getCodeFromModel model =
     match model with
-    | NotYetLoaded code -> code
-    | Loading code -> code
+    | NotYetLoaded (code, _) -> code
+    | Loading (code, _) -> code
     | Loaded loaded -> loaded.Code
 
 let disconnectFromQuizCmd (hubConnection: HubConnection) (quiz: QuizPage.Model) =
@@ -90,10 +90,8 @@ let update
     (message: Message)
     model
     : Model * Cmd<Message> =
-
-
-    match message, model.Quiz with
-    | SetPage (Page.Quiz quizCode), quizOption ->
+    
+    let initializeQuiz page user quizCode quizOption=
         let oldCodeOpt =
             (quizOption
              |> Option.bind (fun q ->
@@ -103,14 +101,19 @@ let update
                  | Loaded loaded -> Some loaded.Code))
 
         let quizModel, cmd =
-            init quizCode oldCodeOpt
-
+            init user quizCode oldCodeOpt
+    
         { model with
-            page = Quiz quizCode
+            page = page
             Quiz = Some quizModel },
         Cmd.map Message.QuizMessage cmd
-    | SetPage page, Some quiz ->
 
+    match message, model.Quiz with
+    | SetPage (Page.QuizRun quizCode), quizOption ->
+       initializeQuiz (QuizRun quizCode) Scorekeeper quizCode quizOption
+    | SetPage (QuizSpectate quizCode), quizOption ->
+       initializeQuiz (QuizSpectate quizCode) Spectator quizCode quizOption
+    | SetPage page, Some quiz ->
         { model with page = page; Quiz = None }, (disconnectFromQuizCmd hubConnection quiz)
     | SetPage page, None -> { model with page = page; Quiz = None }, Cmd.none
     | ClearError, _ -> { model with Error = None }, Cmd.none
@@ -153,10 +156,13 @@ let homePage model dispatch =
         .CreateQuizStart(fun _ ->
             dispatch << Message.CreateQuiz
             <| CreateQuizForm.Start)
-        .JoinQuiz(fun _ -> dispatch <| Message.JoinQuiz)
+        .ScorekeepUrl(fun _ ->
+            model.QuizCode
+            |> Option.map (fun code -> router.Link(Page.QuizRun code))
+            |> Option.defaultValue "")
         .SpectateUrl(
             model.QuizCode
-            |> Option.map (fun code -> router.Link(Page.Quiz code))
+            |> Option.map (fun code -> router.Link(Page.QuizSpectate code))
             |> Option.defaultValue ""
         )
         .QuizCode(model.QuizCode |> Option.defaultValue "", (fun code -> code |> Message.SetQuizCode |> dispatch))
@@ -177,21 +183,22 @@ let menuItem (model: Model) (page: Page) (text: string) =
         .Elt()
 
 let linkToQuizPage (router: Router<Page, Model, Message>) =
-    fun quizCode -> router.Link <| Page.Quiz quizCode
+    fun quizCode -> router.Link <| Page.QuizSpectate quizCode
 
 let view model dispatch =
     Main()
         .Menu(
             concat {
                 menuItem model Home "Home"
-                menuItem model (Quiz "Example") "Quiz Example"
+                menuItem model (QuizRun "Example") "Quiz Example"
             }
         )
         .Body(
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | Quiz code ->
+                | QuizSpectate code 
+                | QuizRun code ->
                     match model.Quiz with
                     | None -> Node.Empty()
                     | Some quizModel ->
@@ -335,7 +342,7 @@ type MyApp() =
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
 
         let spectateQUiz quizCode =
-            Page.Quiz quizCode
+            Page.QuizRun quizCode
             |> router.getRoute
             |> this.NavigationManager.NavigateTo
         

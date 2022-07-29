@@ -10,7 +10,8 @@ type AsyncOperationStatus<'started, 'finished> =
 /// Routing endpoints definition.
 type Page =
     | [<EndPoint "/">] Home
-    | [<EndPoint "/quiz">] Quiz of quizCode: string
+    | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
+    | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
     
     
 let mapDbErrorToString error =
