@@ -21,6 +21,7 @@
         <Compile Include="FailAppeal.Workflow.fs" />
         <Compile Include="ClearAppeal.Workflow.fs" />
         <Compile Include="CreateQuiz.Workflow.fs" />
+        <Compile Include="Capabilities.fs" />
         <Compile Include="Common.Pipeline.fs" />
         <Compile Include="Persistence.fs" />
         <Compile Include="OverrideTeamScore.Pipeline.fs" />

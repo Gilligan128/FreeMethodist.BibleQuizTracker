@@ -262,8 +262,6 @@ let workflowFormError =
     PublishEventError.FormError >> WorkflowError
 
 let private updateLoaded
-    connectToQuizEvents
-    onQuizEvent
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
     saveQuizAsync
@@ -689,7 +687,7 @@ let update
         model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
     | Loaded loadedModel, _ ->
         let loaded, cmd, externalMsg =
-            updateLoaded connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync saveQuizAsync msg loadedModel
+            updateLoaded publishQuizEvent getQuizAsync saveQuizAsync msg loadedModel
 
         Loaded loaded, cmd, externalMsg
     | Loading _, _
