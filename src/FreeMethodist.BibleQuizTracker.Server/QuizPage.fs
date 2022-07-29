@@ -111,7 +111,7 @@ type Message =
     | WorkflowError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of AsyncOperationStatus<Quizzer * TeamPosition, WorkflowResult<RemoveQuizzer.Error>>
-    | SelectQuizzer of AsyncOperationStatus<Quizzer, Quiz>
+    | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
     | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, Quiz>
     | FailAppeal of AsyncOperationStatus<unit, Quiz>
@@ -547,28 +547,40 @@ let private updateLoaded
 
         result |> refreshQuizOrError mapRemoveError
     | SelectQuizzer (Started name) ->
-        let mapEvent event = CurrentQuizzerChanged event
-
-        let mapResultToMessage result =
-            match result with
-            | Ok quiz -> Message.SelectQuizzer(Finished quiz)
-            | Result.Error (SelectQuizzer.Error.QuizState quizStateError) -> createQuizStateWorkflowError quizStateError
-            | Result.Error (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> Message.DoNothing
-            | Result.Error (SelectQuizzer.Error.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
-            | Result.Error (SelectQuizzer.Error.QuizzerNotParticipating quizzer) ->
-                PublishEventError.FormError $"Quizzer {quizzer} is not participating"
-                |> WorkflowError
-
         let command: SelectQuizzer.Command =
             { Quiz = model.Code
               User = model.CurrentUser
               Data = { Quizzer = name } }
+        selectQuizzer |> Option.map(fun workflow ->
+            command
+            |> workflow
+            |> AsyncResult.map CurrentQuizzerChanged
+            |> AsyncResult.map List.singleton
+            |> publishWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd SelectQuizzer
+            ) 
+        |> mapOptionalCommand
+        
+    | SelectQuizzer (Finished result) ->
+        let mapSelectError error =
+            match error with
+            | (SelectQuizzer.Error.QuizState quizStateError) -> "Quiz is not running"
+            | (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> ""
+            | (SelectQuizzer.Error.DbError dbError) -> dbError |> mapDbErrorToString
+            | (SelectQuizzer.Error.QuizzerNotParticipating quizzer) -> $"Quizzer {quizzer} is not participating"
 
-        let workflow =
-            fun () -> SelectQuizzer_Pipeline.selectQuizzer getQuizAsync saveQuizAsync command
-
-        model, (workflowCmdSingle workflow mapEvent mapResultToMessage), None
-    | SelectQuizzer (Finished quiz) -> refreshModel quiz, Cmd.none, None
+        result
+        |> function
+            | Ok result -> result |> refreshModel, Cmd.none, None
+            | Result.Error (WorkflowError.Workflow (SelectQuizzer.Error.QuizzerAlreadyCurrent)) -> model, Cmd.none, None
+            | Result.Error error ->
+                model,
+                Cmd.none,
+                error
+                |> mapWorkflowErrors mapSelectError
+                |> ExternalMessage.Error
+                |> Some
     | AnswerCorrectly (Started _) ->
         let mapEvent event =
             match event with
