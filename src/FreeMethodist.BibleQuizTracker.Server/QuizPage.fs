@@ -243,33 +243,6 @@ let private hubStub =
 type WorkflowError<'a> =
     | Workflow of 'a
     | DbError of DbError
-
-type WorkflowEvents =
-    | AnswerCorrectlyEvent of AnswerCorrectly.Event
-    | AnswerIncorrectlyEvent of AnswerIncorrectly.Event
-    | FailAppealEvent of FailAppeal.Event
-    | ClearAppealEvent of ClearAppeal.Event
-    | SelectQuizzerEvent of CurrentQuizzerChanged
-    | ChangeCurrentQuestionEvent of CurrentQuestionChanged
-    | AddQuizzerEvent of QuizzerParticipating
-    | RemoveQuizzerEvent of RemoveQuizzer.Event
-   
-let mapWorkflowEventsToRunQuizEvents event=
-        match event with
-        |AnswerCorrectlyEvent (AnswerCorrectly.Event.CurrentQuestionChanged event) -> RunQuizEvent.CurrentQuestionChanged event
-        |AnswerCorrectlyEvent (AnswerCorrectly.Event.IndividualScoreChanged event) -> RunQuizEvent.IndividualScoreChanged event
-        |AnswerCorrectlyEvent (AnswerCorrectly.Event.TeamScoreChanged event) -> RunQuizEvent.TeamScoreChanged event
-        |AnswerIncorrectlyEvent (AnswerIncorrectly.Event.CurrentQuizzerChanged event) -> RunQuizEvent.CurrentQuizzerChanged event
-        |AnswerIncorrectlyEvent (AnswerIncorrectly.Event.IndividualScoreChanged event) -> RunQuizEvent.IndividualScoreChanged event
-        |AnswerIncorrectlyEvent (AnswerIncorrectly.Event.TeamScoreChanged event) -> RunQuizEvent.TeamScoreChanged event
-        |AddQuizzerEvent event -> RunQuizEvent.QuizzerParticipating event
-        |RemoveQuizzerEvent (RemoveQuizzer.Event.CurrentQuizzerChanged event) -> RunQuizEvent.CurrentQuizzerChanged event
-        |RemoveQuizzerEvent (RemoveQuizzer.Event.QuizzerNoLongerParticipating event) -> RunQuizEvent.QuizzerNoLongerParticipating event
-        |FailAppealEvent(TeamScoreChanged teamScoreChanged) -> RunQuizEvent.TeamScoreChanged teamScoreChanged
-        |ClearAppealEvent(ClearAppeal.TeamScoreChanged event) -> RunQuizEvent.TeamScoreChanged event
-
-        
-        
         
 let workflowFormError =
     PublishEventError.FormError >> WorkflowError
@@ -317,19 +290,19 @@ let private updateLoaded
     model
     =
 
-    let publishRunQuizEvent quiz event =
+    let publishRunQuizEvent quiz (event:RunQuizEvent) =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
     
-    let publishEvents mapToQuizEvent events =
+    let publishEvents  events =
             events
-            |> List.map mapToQuizEvent
-            |> List.map (fun (event, _) -> publishRunQuizEvent model.Code event)
+            |> List.map (publishRunQuizEvent model.Code)
             |> Async.Parallel
+            |> Async.Ignore
     
     let mapExceptionToPublishEventError =
         (fun exn -> exn |> RemoteError |> WorkflowError)
 
-    let workflowCmdList workflow mapToQuizEvent mapResult =
+    let workflowCmdList workflow (mapToQuizEvent : 'a -> RunQuizEvent) mapResult =
       
         let workflowX = fun _ -> workflow ()
 
@@ -341,7 +314,8 @@ let private updateLoaded
 
         let workflowWithSideEffects x =
             workflowX x
-            |> AsyncResult.bind (publishEvents mapToQuizEvent >> AsyncResult.ofAsync)
+            |> AsyncResult.map (List.map mapToQuizEvent)
+            |> AsyncResult.bind (publishEvents >> AsyncResult.ofAsync)
             |> AsyncResult.mapError WorkflowError.Workflow
             |> AsyncResult.bind (fun _ ->
                 model.Code
@@ -389,7 +363,7 @@ let private updateLoaded
     | OnQuizEvent (Finished quiz) -> refreshModel quiz, Cmd.none, None
     | ChangeCurrentQuestion (Started questionNumber) ->
         let mapToQuizEvent event =
-            event |> RunQuizEvent.CurrentQuestionChanged, event.Quiz
+            event |> RunQuizEvent.CurrentQuestionChanged
 
         let mapWorkflowResult result =
             let moveQuestionErrorMessage error =
@@ -466,8 +440,7 @@ let private updateLoaded
                     |> Message.WorkflowError
 
             let mapQuizEvent event =
-                event |> QuizzerParticipating, event.Quiz
-
+                event |> QuizzerParticipating
             let workflow =
                 fun () ->
                     let inputCommand: AddQuizzer.Command =
@@ -495,8 +468,8 @@ let private updateLoaded
 
         let transformToRunQuizEvent event =
             match event with
-            | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e, e.Quiz
-            | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e, e.Quiz
+            | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
+            | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
 
         let mapResultToMessage result =
             match result with
@@ -515,7 +488,7 @@ let private updateLoaded
         model, (workflowCmdList workflow transformToRunQuizEvent mapResultToMessage), None
     | RemoveQuizzer (Finished quiz) -> refreshModel quiz, Cmd.none, None
     | SelectQuizzer (Started name) ->
-        let mapEvent event = CurrentQuizzerChanged event, event.Quiz
+        let mapEvent event = CurrentQuizzerChanged event
 
         let mapResultToMessage result =
             match result with
@@ -540,10 +513,16 @@ let private updateLoaded
     | AnswerCorrectly (Started _) ->
         let mapEvent event =
             match event with
-            | AnswerCorrectly.CurrentQuestionChanged e -> CurrentQuestionChanged e, e.Quiz
-            | AnswerCorrectly.IndividualScoreChanged e -> IndividualScoreChanged e, e.Quiz
-            | AnswerCorrectly.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
-
+            | AnswerCorrectly.CurrentQuestionChanged e -> CurrentQuestionChanged e
+            | AnswerCorrectly.IndividualScoreChanged e -> IndividualScoreChanged e
+            | AnswerCorrectly.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
+        
+        let mapEvent2 event =
+            match event with
+            | AnswerCorrectly.CurrentQuestionChanged e -> CurrentQuestionChanged e
+            | AnswerCorrectly.IndividualScoreChanged e -> IndividualScoreChanged e
+            | AnswerCorrectly.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
+        
         let workflow =
             fun () ->
                 AnswerCorrectly_Pipeline.answerCorrectly
@@ -574,12 +553,13 @@ let private updateLoaded
             answerCorrectly
             |> Option.map (fun workflow -> workflow { Data = (); Quiz = model.Code; User = model.CurrentUser })
      
-      (*  let cmdOpt =
+        let cmdOpt =
             workflowOpt
             |> Option.map(fun result -> asyncResult {
                 let! events = result
-                do! events |> publishEvents events |> AsyncResult.ofAsync
-            } ) *)
+                let runQuizEvents = events |> List.map mapEvent2
+                do! runQuizEvents |> publishEvents  |> AsyncResult.ofAsync 
+            } ) 
         
         let cmd =
             workflowCmdList workflow mapEvent mapResult
@@ -598,9 +578,9 @@ let private updateLoaded
 
         let mapEvent event =
             match event with
-            | AnswerIncorrectly.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e, e.Quiz
-            | AnswerIncorrectly.Event.IndividualScoreChanged e -> RunQuizEvent.IndividualScoreChanged e, e.Quiz
-            | AnswerIncorrectly.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
+            | AnswerIncorrectly.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
+            | AnswerIncorrectly.Event.IndividualScoreChanged e -> RunQuizEvent.IndividualScoreChanged e
+            | AnswerIncorrectly.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
         let mapResult result =
             match result with
@@ -629,7 +609,7 @@ let private updateLoaded
 
         let mapEvent event =
             match event with
-            | FailAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
+            | FailAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
         let mapResult result =
             match result with
@@ -654,7 +634,7 @@ let private updateLoaded
 
         let mapEvent event =
             match event with
-            | ClearAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e, e.Quiz
+            | ClearAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
         let mapResult result =
             match result with
