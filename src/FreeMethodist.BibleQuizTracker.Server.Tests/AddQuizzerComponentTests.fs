@@ -1,9 +1,13 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AddQuizzerComponentTests
 
 open Elmish
+open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.QuizPage
+open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open Xunit
 
 let publishQuiz _ _ _ = Async.retn ()
@@ -18,8 +22,19 @@ let getQuizAsync code = getQuiz code |> AsyncResult.retn
 let saveQuiz _ = ()
 let saveQuizAsync _ = AsyncResult.retn ()
 
+let capabilitiesProvider : RunQuizCapabilityProvider= {
+    AddQuizzer = fun _ -> Some (fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<QuizzerParticipating>)
+    RemoveQuizzer = fun _ -> Some (fun _ -> AsyncResult.ofSuccess [])
+    AnswerCorrectly = fun _ _ -> Some (fun _ -> AsyncResult.ofSuccess [])
+    AnswerIncorrectly = fun _ _ -> Some (fun _ -> AsyncResult.ofSuccess [])
+    FailAppeal = fun _ _ -> Some (fun _ -> AsyncResult.ofSuccess [])
+    ClearAppeal = fun _ _ -> Some (fun _ -> AsyncResult.ofSuccess [])
+    SelectQuizzer = fun _ -> Some (fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<CurrentQuizzerChanged>)
+    ChangeCurrentQuestion = fun _ -> Some (fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<CurrentQuestionChanged>)
+}
+
 let sut =
-    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync saveQuizAsync
+    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync saveQuizAsync capabilitiesProvider
 
 let mapToLoaded model =
     match model with

@@ -117,7 +117,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync saveQuizAsync quizMsg quizModel
+            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync saveQuizAsync capabilitiesProvider quizMsg quizModel
 
         let newModel =
             match externalMessage with
