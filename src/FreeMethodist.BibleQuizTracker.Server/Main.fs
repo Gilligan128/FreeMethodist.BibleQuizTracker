@@ -8,6 +8,15 @@ open Bolero
 open Bolero.Html
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
+open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
+open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
+open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
+open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
+open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
+open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
+open FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Capabilities
+open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
@@ -56,20 +65,7 @@ let getCodeFromModel model =
     | Loading code -> code
     | Loaded loaded -> loaded.Code
 
-let update
-    connectToQuizEvents
-    onQuizEvent
-    publishQuizEvent
-    getQuizAsync
-    saveQuizAsync
-    saveNewQuiz
-    spectateQuiz
-    (hubConnection: HubConnection)
-    (message: Message)
-    model
-    : Model * Cmd<Message> =
-
-    let disconnectFromQuizCmd (quiz: QuizPage.Model) =
+let disconnectFromQuizCmd (hubConnection: HubConnection) (quiz: QuizPage.Model) =
         hubConnection.Remove((runQuizEventOccuredName))
 
         hubConnection.InvokeAsync(
@@ -82,6 +78,20 @@ let update
         |> Async.AwaitTask
         |> Async.map (fun _ -> Message.ClearError)
         |> Cmd.OfAsync.result
+let update
+    connectToQuizEvents
+    onQuizEvent
+    publishQuizEvent
+    getQuizAsync
+    saveQuizAsync
+    saveNewQuiz
+    spectateQuiz
+    (hubConnection: HubConnection)
+    capabilitiesProvider
+    (message: Message)
+    model
+    : Model * Cmd<Message> =
+
 
     match message, model.Quiz with
     | SetPage (Page.Quiz quizCode), quizOption ->
@@ -102,7 +112,7 @@ let update
         Cmd.map Message.QuizMessage cmd
     | SetPage page, Some quiz ->
 
-        { model with page = page; Quiz = None }, (disconnectFromQuizCmd quiz)
+        { model with page = page; Quiz = None }, (disconnectFromQuizCmd hubConnection quiz)
     | SetPage page, None -> { model with page = page; Quiz = None }, Cmd.none
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
@@ -201,6 +211,99 @@ let view model dispatch =
         )
         .Elt()
 
+type Dependencies =
+    { GetQuiz: GetQuiz
+      SaveQuiz: SaveQuiz }
+
+let runQuizCapabilities dependencies : RunQuizCapabilityProvider =
+    let onlyQuizmastersAndScorekeepers user cap =
+        match user with
+        | Quizmaster -> cap
+        | Scorekeeper -> cap
+        | Spectator -> None
+        | Quizzer _ -> None
+
+    let onlyForCurrentQuizzer currentQuizzer originalCap =
+        currentQuizzer
+        |> Option.bind (fun _ -> originalCap)
+
+    let addQuizzer user =
+        let originalCap =
+            AddQuizzer_Pipeline.addQuizzerAsync dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+
+    let removeQuizzer user =
+        let originalCap =
+            RemoveQuizzer_Pipeline.removeQuizzer dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+
+    let answerCorrectly user quizzerOpt =
+        let originalCap =
+            AnswerCorrectly_Pipeline.answerCorrectly dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+        |> onlyForCurrentQuizzer quizzerOpt
+
+    let answersIncorrectly user quizzerOpt =
+        let originalCap =
+            AnswerIncorrectly.Pipeline.answerIncorrectly dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+        |> onlyForCurrentQuizzer quizzerOpt
+
+    let failAppealCap user quizzerOpt =
+        let originalCap =
+            FailAppeal.Pipeline.failAppeal dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+        |> onlyForCurrentQuizzer quizzerOpt
+
+    let clearAppealCap user quizzerOpt =
+        let originalCap =
+            ClearAppeal.Pipeline.clearAppeal dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+        |> onlyForCurrentQuizzer quizzerOpt
+
+    let changeCurrentQuestionCap user =
+        let originalCap =
+            ChangeCurrentQuestion_Pipeline.changeCurrentQuestionAsync dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+
+    let selectQuizzerCap user =
+        let originalCap =
+            SelectQuizzer_Pipeline.selectQuizzer dependencies.GetQuiz dependencies.SaveQuiz
+
+        originalCap
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+
+    { AddQuizzer = addQuizzer
+      RemoveQuizzer = removeQuizzer
+      AnswerCorrectly = answerCorrectly
+      AnswerIncorrectly = answersIncorrectly
+      FailAppeal = failAppealCap
+      ClearAppeal = clearAppealCap
+      ChangeCurrentQuestion = changeCurrentQuestionCap
+      SelectQuizzer = selectQuizzerCap }
+
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
 
@@ -229,7 +332,6 @@ type MyApp() =
                 |> Async.AwaitTask
 
         let onQuizEvent =
-
             fun (handler: RunQuizEvent -> unit) ->
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
 
@@ -237,7 +339,9 @@ type MyApp() =
             Page.Quiz quizCode
             |> router.getRoute
             |> this.NavigationManager.NavigateTo
-
+        
+        let availableCapabilities = runQuizCapabilities { SaveQuiz = this.SaveQuizAsync; GetQuiz = this.GetQuizAsync }
+        
         let update =
             update
                 connectToQuizEvents
@@ -248,6 +352,7 @@ type MyApp() =
                 this.SaveNewQuiz
                 spectateQUiz
                 hubConnection
+                availableCapabilities
 
         Program.mkProgram
             (fun _ ->
