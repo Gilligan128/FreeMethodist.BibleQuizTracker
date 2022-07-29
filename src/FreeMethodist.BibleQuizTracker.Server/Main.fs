@@ -83,7 +83,6 @@ let update
     onQuizEvent
     publishQuizEvent
     getQuizAsync
-    saveQuizAsync
     saveNewQuiz
     spectateQuiz
     (hubConnection: HubConnection)
@@ -117,7 +116,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync saveQuizAsync capabilitiesProvider quizMsg quizModel
+            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync capabilitiesProvider quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -348,7 +347,6 @@ type MyApp() =
                 onQuizEvent
                 publishQuizEvent
                 this.GetQuizAsync
-                this.SaveQuizAsync
                 this.SaveNewQuiz
                 spectateQUiz
                 hubConnection

@@ -19,9 +19,6 @@ let getQuiz _ =
 
 let getQuizAsync code = getQuiz code |> AsyncResult.retn
 
-let saveQuiz _ = ()
-let saveQuizAsync _ = AsyncResult.retn ()
-
 let capabilitiesProvider : RunQuizCapabilityProvider= {
     AddQuizzer = fun _ -> Some (fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<QuizzerParticipating>)
     RemoveQuizzer = fun _ -> Some (fun _ -> AsyncResult.ofSuccess [])
@@ -34,7 +31,7 @@ let capabilitiesProvider : RunQuizCapabilityProvider= {
 }
 
 let sut =
-    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync saveQuizAsync capabilitiesProvider
+    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync capabilitiesProvider
 
 let mapToLoaded model =
     match model with

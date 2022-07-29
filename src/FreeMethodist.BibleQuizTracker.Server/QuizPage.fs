@@ -288,7 +288,6 @@ let getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) use
 let private updateLoaded
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
-    saveQuizAsync
     capabilityProvider
     msg
     model
@@ -301,7 +300,6 @@ let private updateLoaded
         | WorkflowError.DbError error -> error |> mapDbErrorToString
         | WorkflowError.Workflow workflowError -> workflowError |> mapWorkflowSpecificError
 
-
     let publishRunQuizEvent quiz (event: RunQuizEvent) =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
 
@@ -310,44 +308,6 @@ let private updateLoaded
         |> List.map (publishRunQuizEvent model.Code)
         |> Async.Parallel
         |> Async.Ignore
-
-    let mapExceptionToPublishEventError =
-        (fun exn -> exn |> RemoteError |> WorkflowError)
-
-    let workflowCmdList workflow (mapToQuizEvent: 'a -> RunQuizEvent) mapResult =
-
-        let workflowX = fun _ -> workflow ()
-
-        let mapResultWrapped mapResult workflowResult =
-            match workflowResult with
-            | Ok result -> result |> Result.Ok |> mapResult
-            | Result.Error (WorkflowError.Workflow error) -> error |> Result.Error |> mapResult
-            | Result.Error (WorkflowError.DbError dbError) -> dbError |> mapDbErrorToString |> workflowFormError
-
-        let workflowWithSideEffects x =
-            workflowX x
-            |> AsyncResult.map (List.map mapToQuizEvent)
-            |> AsyncResult.bind (publishEvents >> AsyncResult.ofAsync)
-            |> AsyncResult.mapError WorkflowError.Workflow
-            |> AsyncResult.bind (fun _ ->
-                model.Code
-                |> getQuizAsync
-                |> AsyncResult.mapError WorkflowError.DbError)
-
-        let workflowWithMappedResult x =
-            workflowWithSideEffects x
-            |> Async.map (fun result -> result |> mapResultWrapped mapResult)
-
-        Cmd.OfAsync.either workflowWithMappedResult () id mapExceptionToPublishEventError
-
-    let workflowCmdSingle workflow mapToQuizEvent mapResult =
-        let newWorkflow =
-            fun _ -> workflow () |> AsyncResult.map List.singleton
-
-        workflowCmdList newWorkflow mapToQuizEvent mapResult
-
-    let createQuizStateWorkflowError _ =
-        "Quiz is not running" |> workflowFormError
 
     let matchOptionalCommand cmdOpt =
         match cmdOpt with
@@ -710,7 +670,6 @@ let update
     onQuizEvent
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
-    saveQuizAsync
     capabilityProvider
     msg
     model
@@ -768,7 +727,7 @@ let update
         model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
     | Loaded loadedModel, _ ->
         let loaded, cmd, externalMsg =
-            updateLoaded publishQuizEvent getQuizAsync saveQuizAsync capabilityProvider msg loadedModel
+            updateLoaded publishQuizEvent getQuizAsync capabilityProvider msg loadedModel
 
         Loaded loaded, cmd, externalMsg
     | Loading _, _
