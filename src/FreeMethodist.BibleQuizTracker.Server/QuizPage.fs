@@ -17,6 +17,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow.FailAppeal
+open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
@@ -30,31 +31,7 @@ open Microsoft.FSharp.Core
 open FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Capabilities
 
-type ConnectionStatus =
-    | Connected
-    | Disconnected of DateTimeOffset
-    | Unknown
 
-type AnswerState =
-    | DidNotAnswer
-    | AnsweredCorrectly
-    | AnsweredIncorrectly
-
-type AppealState =
-    | AppealFailure
-    | NoFailure
-
-type QuizzerModel =
-    { Name: string
-      Score: int
-      ConnectionStatus: ConnectionStatus
-      AnswerState: AnswerState
-      AppealState: AppealState }
-
-type TeamModel =
-    { Name: string
-      Score: int
-      Quizzers: QuizzerModel list }
 
 type JumpState =
     | Locked
@@ -159,7 +136,7 @@ let private refreshModel (quiz: Quiz, user: User) =
         | Some appealer when appealer = quizzer -> AppealFailure
         | Some _ -> NoFailure
 
-    let refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerState) =
+    let refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerState) : QuizzerModel =
         { Name = quizzer.Name
           Score = TeamScore.value quizzer.Score
           ConnectionStatus = Unknown
@@ -170,9 +147,9 @@ let private refreshModel (quiz: Quiz, user: User) =
             quizzer.Name
             |> getAppealState currentQuestion.FailedAppeal }
 
-    let refreshTeam currentQuestion (team: QuizTeamState) =
+    let refreshTeam (currentQuestion : QuestionState) (team: QuizTeamState) : TeamModel =
         { Name = team.Name
-          Score = TeamScore.value team.Score
+          Score = team.Score |> TeamScore.value
           Quizzers =
             team.Quizzers
             |> List.map (refreshQuizzer currentQuestion) }
@@ -741,182 +718,6 @@ let update
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
-type ItemizedScoreModel =
-    { TeamOne: TeamModel
-      TeamTwo: TeamModel
-      Questions: Map<Quizzer, AnswerState * AppealState> list }
-
-type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
-
-let private itemizedScoreView model dispatch =
-    let answerScore answerState =
-        let score =
-            TeamScore.initial
-            |> (TeamScore.correctAnswer)
-            |> TeamScore.value
-
-        match answerState with
-        | AnsweredCorrectly -> score
-        | AnsweredIncorrectly -> 0
-        | DidNotAnswer -> 0
-
-    let appealScore appealState =
-        let score =
-            TeamScore.initial
-            |> TeamScore.failAppeal
-            |> TeamScore.value
-
-        match appealState with
-        | NoFailure -> 0
-        | AppealFailure -> score
-
-    let quizzerScore questionState =
-        questionState
-        |> Option.map (fun (answer, appeal) -> (answerScore answer), (appealScore appeal))
-        |> Option.defaultValue (0, 0)
-
-    let scoreList questions questionNumber quizzer =
-        (questions
-         |> List.take (questionNumber)
-         |> List.map (fun qs -> qs |> Map.tryFind (quizzer))
-         |> List.map quizzerScore)
-
-    let quizzerRunningScore questions questionNumber quizzer =
-        scoreList questions questionNumber quizzer
-        |> List.map fst //appeals only score at the team level
-        |> List.sum
-
-    let eventOccurred (answer, appeal) =
-        match answer, appeal with
-        | AnsweredCorrectly, _ -> true
-        | _, AppealFailure -> true
-        | AnsweredIncorrectly, NoFailure -> false
-        | DidNotAnswer, NoFailure -> false
-
-    let teamEventOccurred team question =
-        team.Quizzers
-        |> List.map (fun qz -> question |> Map.tryFind (qz.Name))
-        |> List.exists (fun q ->
-            q
-            |> (Option.defaultValue (AnsweredIncorrectly, NoFailure))
-            |> eventOccurred)
-
-    let teamRunningScore questions questionNumber team =
-        team.Quizzers
-        |> List.fold
-            (fun state qz ->
-                let int32s =
-                    scoreList questions questionNumber qz.Name
-                    |> List.map (fun (f, s) -> f + s)
-
-                state
-                + (int32s //appeals are scored at team level
-                   |> List.sum))
-            0
-
-    let findQuestionQuizzerState question (quizzer: QuizzerModel) = question |> Map.tryFind quizzer.Name
-
-    let formatScore score =
-        match score with
-        | 0 -> "-"
-        | number -> $"{number}"
-
-    let showAppeal questionQuizzerState =
-        match questionQuizzerState with
-        | None -> "is-hidden"
-        | Some (_, NoFailure) -> "is-hidden"
-        | Some (_, AppealFailure) -> ""
-
-    let quizzerView question quizzer =
-        itemizedPage
-            .Quizzer()
-            .AppealVisible(
-                quizzer
-                |> findQuestionQuizzerState question
-                |> showAppeal
-            )
-            .Score(
-                quizzer
-                |> findQuestionQuizzerState question
-                |> quizzerScore
-                |> fst
-                |> formatScore
-            )
-            .Elt()
-
-    itemizedPage()
-        .TeamOneName(model.TeamOne.Name)
-        .TeamOneColspan((model.TeamOne.Quizzers |> List.length) + 1)
-        .TeamOneHeading(
-            concat {
-                for quizzer in model.TeamOne.Quizzers do
-                    th { quizzer.Name }
-            }
-        )
-        .TeamTwoName(model.TeamTwo.Name)
-        .TeamTwoColspan((model.TeamTwo.Quizzers |> List.length) + 1)
-        .TeamTwoHeading(
-            concat {
-                for quizzer in model.TeamTwo.Quizzers do
-                    th { quizzer.Name }
-            }
-        )
-        .Questions(
-            concat {
-                for (number, question) in model.Questions |> List.indexed do
-                    itemizedPage
-                        .Question()
-                        .Number(number + 1 |> string)
-                        .TeamOneScore(
-                            if teamEventOccurred model.TeamOne question then
-                                teamRunningScore model.Questions (number + 1) model.TeamOne
-                                |> formatScore
-                            else
-                                "-"
-                        )
-                        .TeamOneQuizzers(
-                            concat {
-                                for quizzer in model.TeamOne.Quizzers do
-                                    quizzerView question quizzer
-                            }
-                        )
-                        .TeamTwoScore(
-                            if teamEventOccurred model.TeamTwo question then
-                                teamRunningScore model.Questions (number + 1) model.TeamTwo
-                                |> formatScore
-                            else
-                                "-"
-                        )
-                        .TeamTwoQuizzers(
-                            concat {
-                                for quizzer in model.TeamTwo.Quizzers do
-                                    quizzerView question quizzer
-                            }
-                        )
-                        .Elt()
-            }
-        )
-        .TeamOneFooter(
-            concat {
-                for quizzer in model.TeamOne.Quizzers do
-                    td {
-                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
-                        |> formatScore
-                    }
-            }
-        )
-        .TeamOneScore(model.TeamOne.Score |> string)
-        .TeamTwoFooter(
-            concat {
-                for quizzer in model.TeamTwo.Quizzers do
-                    td {
-                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
-                        |> formatScore
-                    }
-            }
-        )
-        .TeamTwoScore(model.TeamTwo.Score |> string)
-        .Elt()
 
 let private teamView
     position
@@ -1049,7 +850,7 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .FailAppeal(fun _ -> dispatch (FailAppeal(Started())))
             .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
             .ItemizedScore(
-                itemizedScoreView
+                ItemizedScore.itemizedScoreView
                     { TeamOne = model.TeamOne
                       TeamTwo = model.TeamTwo
                       Questions = model.QuestionScores }
