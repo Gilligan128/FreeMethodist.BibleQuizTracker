@@ -81,6 +81,8 @@ type CheckQuizCodeExists = QuizCode -> AsyncResult<Option<string>, string>
 type GetJumps = QuizCode -> Jump seq
 type SaveJump = Jump -> unit
 
+type TryGetQuiz = QuizCode -> AsyncResult<Option<Quiz>, DbError>
+
 //Event Handling
 type PublishQuizEventTask = string -> QuizCode -> obj -> Async<unit>
 

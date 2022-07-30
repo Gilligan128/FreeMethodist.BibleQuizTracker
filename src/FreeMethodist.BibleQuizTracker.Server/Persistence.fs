@@ -127,7 +127,11 @@ let matchInnerException (exn: exn) =
     | null -> None
     | _ -> Some(exn.InnerException)
 
-
+let checkIfNotFound (exn: exn) =
+    match exn.InnerException with
+    | null -> false
+    | :? RequestFailedException as ex when ex.Status = 404 -> true
+    | _ -> false
 
 let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetQuiz =
     let mapChoiceToResult choice =
@@ -263,3 +267,46 @@ let saveQuizToLocalOrBlob saveToLocal saveToBlob : SaveQuiz =
         |> function
             | true -> saveToLocal quiz
             | false -> saveToBlob quiz
+
+
+let tryGetQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize : TryGetQuiz =
+    let mapChoiceToResult choice =
+        match choice with
+        | Choice1Of2 one -> Some one |> Ok
+        | Choice2Of2 exn ->
+            exn
+            |> fun ex ->
+                if checkIfNotFound ex then
+                    Ok None
+                else
+                    ex
+                    |> matchInnerException
+                    |> Option.defaultValue ex
+                    |> DbError.Exception
+                    |> Error
+
+    fun quizCode ->
+        asyncResult {
+
+            let blobContainerClient =
+                blobServiceClient.GetBlobContainerClient(containerName)
+
+            let blobClient =
+                blobContainerClient.GetBlobClient($"quiz-{quizCode}")
+
+            let! response =
+                blobClient.DownloadContentAsync()
+                |> Async.AwaitTask
+                |> Async.Catch
+                |> Async.map mapChoiceToResult
+
+            let! responseOpt =
+                response
+                |> Option.map validateBlobOperation
+                |> Option.transpose
+                |> AsyncResult.ofResult
+
+            return
+                responseOpt
+                |> Option.map (fun response -> response.Content.ToString() |> deserialize)
+        }
