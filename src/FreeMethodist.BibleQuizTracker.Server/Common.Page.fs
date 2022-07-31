@@ -3,6 +3,7 @@
 open System
 open Bolero
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open Microsoft.AspNetCore.Http
 
 type AsyncOperationStatus<'started, 'finished> =
     | Started of 'started
@@ -13,6 +14,7 @@ type Page =
     | [<EndPoint "/">] Home
     | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
+    | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string
 
 type ConnectionStatus =
     | Connected

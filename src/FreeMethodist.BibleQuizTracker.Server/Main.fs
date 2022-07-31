@@ -204,6 +204,7 @@ let view model dispatch =
                     | None -> Node.Empty()
                     | Some quizModel ->
                         page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
+                | QuizLiveScore quizCode -> LiveScorePage.page
         )
         .Error(
             cond model.Error
