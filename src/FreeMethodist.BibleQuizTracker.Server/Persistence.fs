@@ -320,6 +320,9 @@ let tryGetQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: J
                  else
                      Some quizJsonString)
                 |> Option.map (fun json -> JsonSerializer.Deserialize<Quiz>(json, options))
+                |> function 
+                    | None ->  initExample quizCode |> Some
+                    | Some quiz -> quiz |> Some
         }
 
 let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =

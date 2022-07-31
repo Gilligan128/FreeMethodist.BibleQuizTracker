@@ -88,6 +88,26 @@ type Startup() =
 
                     Persistence.saveNewQuizToBlob blobServiceClient fsharpJsonOptions)
             )
+            .AddScoped<TryGetQuiz>(
+                Func<IServiceProvider, TryGetQuiz> (fun provider ->
+                    let blobServiceClient =
+                        provider.GetRequiredService<BlobServiceClient>()
+
+                    let localStorage =
+                        provider.GetRequiredService<ProtectedLocalStorage>()
+
+                    let tryGetLocal =
+                        Persistence.tryGetQuizFromLocalStorage localStorage fsharpJsonOptions
+
+                    let deserialize (json: string) =
+                        JsonSerializer.Deserialize(json, fsharpJsonOptions)
+
+                    let tryGetBlob =
+                        Persistence.tryGetQuizFromBlob blobServiceClient deserialize
+
+                    Persistence.tryGetQuizFromLocalOrBlob tryGetLocal tryGetBlob)
+            )
+
             .AddScoped<HubConnection>(
                 Func<IServiceProvider, HubConnection> (fun provider ->
                     let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore

@@ -82,7 +82,7 @@ type ChangeQuestionError =
     | QuizError of ChangeCurrentQuestion.Error
 
 type Message =
-    | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz, DbError>>
+    | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz option, DbError>>
     | OnQuizEvent of AsyncOperationStatus<unit, Quiz>
     | ChangeCurrentQuestion of AsyncOperationStatus<int, WorkflowResult<ChangeQuestionError>>
     | WorkflowError of PublishEventError
@@ -652,6 +652,7 @@ let update
     onQuizEvent
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
+    (tryGetQuiz: TryGetQuiz)
     capabilityProvider
     msg
     model
@@ -659,7 +660,12 @@ let update
     match model, msg with
     | Loading (code, user), Message.InitializeQuizAndConnections (Finished result) ->
         match result with
-        | Ok quiz -> Loaded(refreshModel (quiz, user)), Cmd.none, None
+        | Ok quiz ->
+            let model = quiz |> Option.map (fun q -> Loaded(refreshModel (q, user))) |> Option.defaultValue (NotYetLoaded (code, user))
+            let externalMessage = quiz |> function 
+                                           | None -> Some (ExternalMessage.Error $"Quiz {code} not found")
+                                           | Some _ -> None
+            model, Cmd.none, externalMessage
         | Result.Error error ->
             let externalMessage =
                 error |> mapDbErrorToString
@@ -672,7 +678,7 @@ let update
                     connectToQuizEvents code previousQuizCode
                     |> AsyncResult.ofAsync
 
-                let! quiz = getQuizAsync code
+                let! quiz = tryGetQuiz code
 
                 return quiz
             }

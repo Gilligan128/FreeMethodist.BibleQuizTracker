@@ -84,6 +84,7 @@ let update
     publishQuizEvent
     getQuizAsync
     saveNewQuiz
+    tryGetQuiz
     spectateQuiz
     (hubConnection: HubConnection)
     capabilitiesProvider
@@ -119,7 +120,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync capabilitiesProvider quizMsg quizModel
+            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync tryGetQuiz capabilitiesProvider quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -156,7 +157,7 @@ let homePage model dispatch =
         .CreateQuizStart(fun _ ->
             dispatch << Message.CreateQuiz
             <| CreateQuizForm.Start)
-        .ScorekeepUrl(fun _ ->
+        .ScorekeepUrl(
             model.QuizCode
             |> Option.map (fun code -> router.Link(Page.QuizRun code))
             |> Option.defaultValue "")
@@ -324,6 +325,9 @@ type MyApp() =
 
     [<Inject>]
     member val SaveNewQuiz = Unchecked.defaultof<SaveNewQuiz> with get, set
+    
+    [<Inject>]
+    member val TryGetQuiz = Unchecked.defaultof<TryGetQuiz> with get, set
 
     override this.Program =
         let hubConnection = this.HubConnection
@@ -345,7 +349,7 @@ type MyApp() =
             Page.QuizRun quizCode
             |> router.getRoute
             |> this.NavigationManager.NavigateTo
-        
+           
         let availableCapabilities = runQuizCapabilities { SaveQuiz = this.SaveQuizAsync; GetQuiz = this.GetQuizAsync }
         
         let update =
@@ -355,6 +359,7 @@ type MyApp() =
                 publishQuizEvent
                 this.GetQuizAsync
                 this.SaveNewQuiz
+                this.TryGetQuiz
                 spectateQUiz
                 hubConnection
                 availableCapabilities

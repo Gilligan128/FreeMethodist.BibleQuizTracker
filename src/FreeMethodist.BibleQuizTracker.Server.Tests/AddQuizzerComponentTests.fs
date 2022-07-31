@@ -18,6 +18,8 @@ let getQuiz _ =
           CompetitionStyle = Team { TeamOneName = ""; TeamTwoName = "" } }
 
 let getQuizAsync code = getQuiz code |> AsyncResult.retn
+let tryGetQuizAsync code = getQuiz code |> Some |> AsyncResult.retn
+
 
 let capabilitiesProvider : RunQuizCapabilityProvider= {
     AddQuizzer = fun _ -> Some (fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<QuizzerParticipating>)
@@ -31,7 +33,7 @@ let capabilitiesProvider : RunQuizCapabilityProvider= {
 }
 
 let sut =
-    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync capabilitiesProvider
+    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync tryGetQuizAsync capabilitiesProvider
 
 let mapToLoaded model =
     match model with
