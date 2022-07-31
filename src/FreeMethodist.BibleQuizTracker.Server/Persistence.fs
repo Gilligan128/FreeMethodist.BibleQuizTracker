@@ -102,8 +102,7 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
         asyncResult {
             let code = quiz |> getCodeFromQuiz
 
-            let json =
-                JsonSerializer.Serialize(quiz, options)
+            let json = JsonSerializer.Serialize(quiz, options)
 
             return!
                 localStorage
@@ -147,11 +146,9 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
     fun quizCode ->
         asyncResult {
 
-            let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(containerName)
+            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
 
-            let blobClient =
-                blobContainerClient.GetBlobClient($"quiz-{quizCode}")
+            let blobClient = blobContainerClient.GetBlobClient($"quiz-{quizCode}")
 
             let! response =
                 blobClient.DownloadContentAsync()
@@ -165,8 +162,7 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
 
             let quizJson = response.Content.ToString()
 
-            let quiz =
-                JsonSerializer.Deserialize<Quiz>(quizJson, options)
+            let quiz = JsonSerializer.Deserialize<Quiz>(quizJson, options)
 
             return quiz
         }
@@ -174,8 +170,7 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
 let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveQuiz =
     fun quiz ->
         asyncResult {
-            let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(containerName)
+            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
 
             do!
                 blobContainerClient.CreateIfNotExistsAsync()
@@ -210,8 +205,7 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
 let saveNewQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveNewQuiz =
     fun quiz ->
         asyncResult {
-            let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(containerName)
+            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
 
             do!
                 blobContainerClient.CreateIfNotExistsAsync()
@@ -288,11 +282,9 @@ let tryGetQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize : TryG
     fun quizCode ->
         asyncResult {
 
-            let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(containerName)
+            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
 
-            let blobClient =
-                blobContainerClient.GetBlobClient($"quiz-{quizCode}")
+            let blobClient = blobContainerClient.GetBlobClient($"quiz-{quizCode}")
 
             let! response =
                 blobClient.DownloadContentAsync()
@@ -310,3 +302,29 @@ let tryGetQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize : TryG
                 responseOpt
                 |> Option.map (fun response -> response.Content.ToString() |> deserialize)
         }
+
+let tryGetQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonSerializerOptions) : TryGetQuiz =
+    fun quizCode ->
+        asyncResult {
+            let! quizJsonString =
+                (localStorage
+                    .GetAsync<string>($"QUIZ-{quizCode}")
+                     .AsTask()
+                 |> Async.AwaitTask)
+                |> Async.map (fun storageResult -> storageResult.Value)
+                |> AsyncResult.ofAsync
+
+            return
+                (if quizJsonString = null then
+                     None
+                 else
+                     Some quizJsonString)
+                |> Option.map (fun json -> JsonSerializer.Deserialize<Quiz>(json, options))
+        }
+
+let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
+    fun quizCode ->
+        if isAnExampleQuiz quizCode then
+            getFromLocal quizCode
+        else
+            getFromBlob quizCode
