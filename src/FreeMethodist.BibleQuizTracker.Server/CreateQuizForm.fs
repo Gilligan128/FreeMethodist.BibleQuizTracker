@@ -91,7 +91,7 @@ module CreateQuizForm =
                 |> AsyncResult.mapError mapErrorToString
                 |> Async.timeoutNone 3000
                 |> Async.map (Option.defaultValue (Result.Error "Creating the quiz timed out"))
-                |> Async.map mapToFinished       
+                |> Async.map mapToFinished
                 |> Cmd.OfAsync.result
 
             Submitting activeModel, cmd
@@ -108,7 +108,17 @@ module CreateQuizForm =
         | _, Inert -> model, Cmd.none
         | SetCode code, Active formData -> Active { formData with Code = code }, Cmd.none
         | SetCompetitionStyle competitionStyle, Active quizFormData ->
-            Active { quizFormData with CompetitionStyle = competitionStyle }, Cmd.none
+            let newCompetitionStyle newStyle existingStyle =
+                match existingStyle, newStyle with
+                | CompetitionStyle.Individual, CompetitionStyle.Team _
+                | CompetitionStyle.Team _, CompetitionStyle.Individual -> newStyle
+                | CompetitionStyle.Team _, CompetitionStyle.Team _
+                | CompetitionStyle.Individual, CompetitionStyle.Individual -> existingStyle
+
+            Active
+                { quizFormData with
+                    CompetitionStyle = newCompetitionStyle competitionStyle quizFormData.CompetitionStyle },
+            Cmd.none
 
     let competitionStyleView formData dispatch : Node =
         cond formData.CompetitionStyle

@@ -158,7 +158,7 @@ type Main = Template<"wwwroot/main.html">
 
 let homePage model dispatch =
     Main
-        .Home()
+        .Home() 
         .CreateQuizStart(fun _ ->
             dispatch << Message.CreateQuiz
             <| CreateQuizForm.Start)
@@ -171,6 +171,10 @@ let homePage model dispatch =
             |> Option.map (fun code -> router.Link(Page.QuizSpectate code))
             |> Option.defaultValue ""
         )
+        .LiveScoreUrl(
+            model.QuizCode
+            |> Option.map (fun code -> router.Link(Page.QuizLiveScore (code,Router.noModel)))
+            |> Option.defaultValue "")
         .QuizCode(model.QuizCode |> Option.defaultValue "", (fun code -> code |> Message.SetQuizCode |> dispatch))
         .CreateQuizModal(CreateQuizForm.view model.CreateQuizForm (dispatch << Message.CreateQuiz))
         .Elt()

@@ -23,25 +23,28 @@
                     <div class="columns">
                         <div class="column is-one-quarter">
                             <section class="section" id="quizzes">
-                            <h2>Quizzes</h2>
-                            <button class="button is-link" onclick="${CreateQuizStart}">Start Quiz</button>
-                            <h3>or, if you already have a code, join or spectate quiz: </h3>
-                            <div class="field">
-                                <label class="label">Code</label>
-                                <input type="text" class="input" placeholder="Quiz Code" bind="${QuizCode}"/>
-                            </div>
-                            <div class="field is-grouped">
-                                <div class="control">
-                                    <a href="${ScorekeepUrl}" class="button is-link" >Run</a>
+                                <h2>Quizzes</h2>
+                                <button class="button is-link" onclick="${CreateQuizStart}">Start Quiz</button>
+                                <h3>or, if you already have a code, join or spectate quiz: </h3>
+                                <div class="field">
+                                    <label class="label">Code</label>
+                                    <input type="text" class="input" placeholder="Quiz Code" bind="${QuizCode}"/>
                                 </div>
-                                <div class="control">
-                                    <a href="${SpectateUrl}" class="button is-info">Spectate</a></div>
-                            </div>
+                                <div class="field is-grouped">
+                                    <div class="control">
+                                        <a href="${ScorekeepUrl}" class="button is-link">Track</a>
+                                    </div>
+                                    <div class="control">
+                                        <a href="${SpectateUrl}" class="button is-info">Spectate</a></div>
+                                    <div class="contorl">
+                                        <a href="${LiveScoreUrl}" class="button is-link">Live Score</a>
+                                    </div>
+                                </div>
                             </section>
                             <section class="section" id="guide">
-                            <h2>
-                                Guide
-                            </h2>
+                                <h2>
+                                    Guide
+                                </h2>
                             </section>
                         </div>
                     </div>
