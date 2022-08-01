@@ -146,8 +146,13 @@ let update
         { model with CreateQuizForm = createQuizModel }, cmd |> Cmd.map Message.CreateQuiz
 
 /// Connects the routing system to the Elmish application.
+let defaultModel = function
+        | QuizRun _-> ()
+        | QuizSpectate _ -> ()
+        | Home -> ()
+        | QuizLiveScore (quizCode, pageModel) -> Router.definePageModel pageModel { Code = ""; Scores = Deferred.NotYetLoaded }
 let router =
-    Router.infer SetPage (fun model -> model.page)
+    Router.inferWithModel SetPage (fun model -> model.page) defaultModel
 
 type Main = Template<"wwwroot/main.html">
 
@@ -204,7 +209,9 @@ let view model dispatch =
                     | None -> Node.Empty()
                     | Some quizModel ->
                         page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
-                | QuizLiveScore quizCode -> LiveScorePage.page
+                | QuizLiveScore(quizCode, pageModel) ->
+                    let model = {pageModel.Model with Code = quizCode}
+                    LiveScorePage.page model
         )
         .Error(
             cond model.Error

@@ -8,13 +8,30 @@ open Microsoft.AspNetCore.Http
 type AsyncOperationStatus<'started, 'finished> =
     | Started of 'started
     | Finished of 'finished
+
+type Deferred<'T> =
+    | NotYetLoaded
+    | InProgress
+    | Loaded
     
+//Page models
+type LiveScoreQuizzer = { Score : TeamScore; Name : Quizzer }
+type LiveScoreIndividuals = { Quizzers : LiveScoreQuizzer list }
+type LiveScoreTeam = { Score : TeamScore; Quizzers: LiveScoreQuizzer list  }
+type LiveScoreCompetitionStyle =
+    | Individual of LiveScoreIndividuals
+    | Team of LiveScoreTeam*LiveScoreTeam
+
+
+type LiveScores = { CurrentQuestion: QuestionNumber; CompetitionStyle : LiveScoreCompetitionStyle }
+type LiveScoreModel = { Code : QuizCode; Scores: Deferred<LiveScores>  }
+
 /// Routing endpoints definition.
 type Page =
     | [<EndPoint "/">] Home
     | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
-    | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string
+    | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string*PageModel<LiveScoreModel>
 
 type ConnectionStatus =
     | Connected
