@@ -696,8 +696,7 @@ let update
                 let refreshQuizOnEvent _ =
                     getQuizAsync code
                     |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
-                    |> Async.Ignore
-                    |> Async.StartImmediate //RunSynchronously did not work here
+                    |> Async.Ignore 
 
                 (onQuizEvent refreshQuizOnEvent) |> ignore)
             |> Cmd.ofSub

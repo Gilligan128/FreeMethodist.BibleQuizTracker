@@ -2,6 +2,7 @@
 
 open System
 open Bolero
+open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.AspNetCore.Http
 
@@ -66,3 +67,15 @@ let mapDbErrorToString error =
     match error with
     | Exception exn -> exn.Message
     | DbError.RemoteError message -> message
+
+//Connecting to SignalR
+type HandleQuizEvent<'T> = 'T -> Async<unit>
+type ConnectAndHandleQuizEvents<'T> = HandleQuizEvent<'T> -> QuizCode*QuizCode option-> Async<unit>
+
+let connectAndHandleQuizEvents connectToQuiz onEvent : ConnectAndHandleQuizEvents<'T> =
+    fun handleEvent (quizCode, previousCode) ->
+       let connectTask = connectToQuiz quizCode previousCode
+       let onEventTask = onEvent handleEvent
+       Async.Parallel [connectTask; onEventTask]
+       |> Async.Ignore
+      

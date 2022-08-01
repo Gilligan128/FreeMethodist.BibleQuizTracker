@@ -2,6 +2,7 @@ module FreeMethodist.BibleQuizTracker.Server.Main
 
 open System
 open System.Threading
+open System.Threading.Tasks
 open Azure.Storage.Blobs
 open Elmish
 open Bolero
@@ -354,8 +355,10 @@ type MyApp() =
                 |> Async.AwaitTask
 
         let onQuizEvent =
-            fun (handler: RunQuizEvent -> unit) ->
-                hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handler)
+            fun (handler: HandleQuizEvent<RunQuizEvent>) ->
+                let handlerTask = fun event ->
+                    handler event |> Async.startAsPlainTask
+                hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, Func<RunQuizEvent, Task>(handlerTask)) |> ignore
 
         let spectateQUiz quizCode =
             Page.QuizRun quizCode
