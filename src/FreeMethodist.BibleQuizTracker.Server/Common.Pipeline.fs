@@ -138,8 +138,8 @@ let validateQuiz: ValidateQuizIsRunning =
         | Quiz.Unvalidated u -> Error(WrongQuizState(u.GetType()))
 
 //Score calculation
-type CalculateQuizzerScore = Map<QuestionNumber, QuizAnswer> -> Quizzer -> TeamScore
-type CalculateTeamScore = Map<Quizzer, TeamScore> -> TeamScore
+
+//type QuestionQuizzerEvents = 
 
 //Changing current question
 let changeCurrentQuestionInQuiz question quiz  =

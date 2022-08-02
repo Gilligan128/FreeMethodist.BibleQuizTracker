@@ -80,8 +80,6 @@ let disconnectFromQuizCmd (hubConnection: HubConnection) (quiz: QuizPage.Model) 
         |> Async.map (fun _ -> Message.ClearError)
         |> Cmd.OfAsync.result
 let update
-    connectToQuizEvents
-    onQuizEvent
     connectAndHandleQuizEvents
     publishQuizEvent
     getQuizAsync
@@ -350,17 +348,17 @@ type MyApp() =
             hubConnection.InvokeAsync("ConnectToQuiz", quizCode, previousQuizCode, CancellationToken.None)
             |> Async.AwaitTask
 
+        let onQuizEvent =
+            fun handler ->
+                let handlerTask = fun event ->
+                    handler event |> Async.startAsPlainTask
+                hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, Func<RunQuizEvent, Task>(handlerTask)) |> ignore
+                
         let publishQuizEvent =
             fun methodName quiz event ->
                 hubConnection.InvokeAsync(methodName, quiz, event, CancellationToken.None)
                 |> Async.AwaitTask
-
-        let onQuizEvent =
-            fun (handler: HandleQuizEvent<RunQuizEvent>) ->
-                let handlerTask = fun event ->
-                    handler event |> Async.startAsPlainTask
-                hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, Func<RunQuizEvent, Task>(handlerTask)) |> ignore
-
+                
         let spectateQUiz quizCode =
             Page.QuizRun quizCode
             |> router.getRoute
@@ -370,8 +368,6 @@ type MyApp() =
         
         let update =
             update
-                connectToQuizEvents
-                onQuizEvent
                 (connectAndHandleQuizEvents connectToQuizEvents onQuizEvent)
                 publishQuizEvent
                 this.GetQuizAsync

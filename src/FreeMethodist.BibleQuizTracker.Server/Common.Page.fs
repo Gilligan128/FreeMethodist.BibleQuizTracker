@@ -13,18 +13,16 @@ type AsyncOperationStatus<'started, 'finished> =
 type Deferred<'T> =
     | NotYetLoaded
     | InProgress
-    | Loaded
+    | Loaded of 'T
     
-//Page models
+//Live Score model
 type LiveScoreQuizzer = { Score : TeamScore; Name : Quizzer }
 type LiveScoreIndividuals = { Quizzers : LiveScoreQuizzer list }
-type LiveScoreTeam = { Score : TeamScore; Quizzers: LiveScoreQuizzer list  }
+type LiveScoreTeam = { Name : string; Score : TeamScore; Quizzers: LiveScoreQuizzer list  }
 type LiveScoreCompetitionStyle =
     | Individual of LiveScoreIndividuals
     | Team of LiveScoreTeam*LiveScoreTeam
-
-
-type LiveScores = { CurrentQuestion: QuestionNumber; CompetitionStyle : LiveScoreCompetitionStyle }
+type LiveScores = { LastUpdated : DateTimeOffset; CurrentQuestion: QuestionNumber; CompetitionStyle : LiveScoreCompetitionStyle }
 type LiveScoreModel = { Code : QuizCode; Scores: Deferred<LiveScores>  }
 
 /// Routing endpoints definition.
@@ -48,7 +46,6 @@ type AppealState =
     | AppealFailure
     | NoFailure
 
-
 type QuizzerModel =
     { Name: string
       Score: int
@@ -62,15 +59,20 @@ type TeamModel =
       Quizzers: QuizzerModel list }
 
 
-
 let mapDbErrorToString error =
     match error with
     | Exception exn -> exn.Message
     | DbError.RemoteError message -> message
 
-//Connecting to SignalR
-type HandleQuizEvent<'T> = 'T -> Async<unit>
+//Scoring types
+type EventState = { AnswerState : QuizAnswer; AppealState : AppealState }
 
+type EventPosition = QuestionNumber*Quizzer
+
+type QuestionQuizzerEvent = { Position : EventPosition; State: EventState }
+type QuestionQuizzerEvents = QuestionQuizzerEvent list
+
+//Connecting to SignalR
 type HandleEventSub<'T,'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
 type ConnectAndHandleQuizEvents<'T, 'Msg> = HandleEventSub<'T,'Msg> -> QuizCode*QuizCode option -> Sub<'Msg>
 
