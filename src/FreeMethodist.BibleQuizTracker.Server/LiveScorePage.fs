@@ -2,6 +2,7 @@
 
 open System
 open Bolero
+open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
@@ -57,4 +58,8 @@ module LiveScorePage =
             | InProgress -> model, Cmd.none
             | Loaded loaded -> { model with Scores = Loaded { loaded with LastUpdated = DateTimeOffset.Now}}, Cmd.none
 
-    let page model = Html.empty ()
+    let page model : Node =
+        match model.Scores with
+        | NotYetLoaded -> h1 { "Not yet loaded" }
+        | InProgress -> h1 { "Loading..."}
+        | Loaded _ -> h1 {"Loaded"}
