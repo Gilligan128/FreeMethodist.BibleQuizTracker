@@ -648,8 +648,7 @@ let private updateLoaded
         quiz |> refreshQuizOrError mapAppealError
 
 let update
-    connectToQuizEvents
-    onQuizEvent
+    (connectAndHandle : ConnectAndHandleQuizEvents<RunQuizEvent, Message>)
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
     (tryGetQuiz: TryGetQuiz)
@@ -672,16 +671,15 @@ let update
 
             NotYetLoaded (code, user), Cmd.none, ExternalMessage.Error externalMessage |> Some
     | NotYetLoaded (code, user), Message.InitializeQuizAndConnections (Started previousQuizCode) ->
-        let loadAndConnectToQuizCmd =
-            asyncResult {
-                do!
-                    connectToQuizEvents code previousQuizCode
-                    |> AsyncResult.ofAsync
-
-                let! quiz = tryGetQuiz code
-
-                return quiz
-            }
+        let handleEventSub dispatch _ =
+            getQuizAsync code
+                |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
+                |> Async.Ignore 
+        let connectCmd = connectAndHandle handleEventSub (code, previousQuizCode)
+                        |> Cmd.ofSub
+                        
+        let loadCmd =
+            tryGetQuiz code
             |> Async.timeoutNone 3000
             |> Async.map (fun task ->
                 task
@@ -691,19 +689,8 @@ let update
                 |> (Message.InitializeQuizAndConnections << Finished))
             |> Cmd.OfAsync.result
 
-        let listenToEventsCmd =
-            (fun dispatch ->
-                let refreshQuizOnEvent _ =
-                    getQuizAsync code
-                    |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
-                    |> Async.Ignore 
-
-                (onQuizEvent refreshQuizOnEvent) |> ignore)
-            |> Cmd.ofSub
-
         Loading (code,user),
-        Cmd.batch [ loadAndConnectToQuizCmd
-                    listenToEventsCmd ],
+        Cmd.batch [ connectCmd; loadCmd ],
         None
     | _, Message.WorkflowError error ->
         let errorMessage =

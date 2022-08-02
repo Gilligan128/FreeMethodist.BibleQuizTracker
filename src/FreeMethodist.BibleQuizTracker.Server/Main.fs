@@ -82,6 +82,7 @@ let disconnectFromQuizCmd (hubConnection: HubConnection) (quiz: QuizPage.Model) 
 let update
     connectToQuizEvents
     onQuizEvent
+    connectAndHandleQuizEvents
     publishQuizEvent
     getQuizAsync
     saveNewQuiz
@@ -121,7 +122,7 @@ let update
     | ClearError, _ -> { model with Error = None }, Cmd.none
     | QuizMessage quizMsg, Some quizModel ->
         let (updatedModel, quizCommand, externalMessage) =
-            update connectToQuizEvents onQuizEvent publishQuizEvent getQuizAsync tryGetQuiz capabilitiesProvider quizMsg quizModel
+            update connectAndHandleQuizEvents publishQuizEvent getQuizAsync tryGetQuiz capabilitiesProvider quizMsg quizModel
 
         let newModel =
             match externalMessage with
@@ -371,6 +372,7 @@ type MyApp() =
             update
                 connectToQuizEvents
                 onQuizEvent
+                (connectAndHandleQuizEvents connectToQuizEvents onQuizEvent)
                 publishQuizEvent
                 this.GetQuizAsync
                 this.SaveNewQuiz

@@ -33,7 +33,7 @@ let capabilitiesProvider : RunQuizCapabilityProvider= {
 }
 
 let sut =
-    update (fun _ _ -> Async.retn ()) (fun _ -> ()) publishQuiz getQuizAsync tryGetQuizAsync capabilitiesProvider
+    update (fun _  _ -> ignore)  publishQuiz getQuizAsync tryGetQuizAsync capabilitiesProvider
 
 let mapToLoaded model =
     match model with
