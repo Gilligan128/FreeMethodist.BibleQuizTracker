@@ -187,6 +187,8 @@ module TeamScore =
     let failAppeal (TeamScore value) = TeamScore(value - 20)
 
     let revertAppealFailure (TeamScore value) = TeamScore(value + 20)
+    
+    let toString (TeamScore value) = string value
 
 [<RequireQualifiedAccess>]
 module RevertedCorrectAnswer =
