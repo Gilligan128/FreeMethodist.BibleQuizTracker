@@ -648,7 +648,7 @@ let private updateLoaded
         quiz |> refreshQuizOrError mapAppealError
 
 let update
-    (connectAndHandle : ConnectAndHandleQuizEvents<RunQuizEvent, Message>)
+    connectAndHandle 
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
     (tryGetQuiz: TryGetQuiz)

@@ -74,6 +74,7 @@ type QuestionQuizzerEvents = QuestionQuizzerEvent list
 
 //Connecting to SignalR
 type HandleEventSub<'T,'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
+
 type ConnectAndHandleQuizEvents<'T, 'Msg> = HandleEventSub<'T,'Msg> -> QuizCode*QuizCode option -> Sub<'Msg>
 
 let connectAndHandleQuizEvents connectToQuiz onEvent : ConnectAndHandleQuizEvents<'T, 'Msg> =

@@ -53,6 +53,7 @@ type Message =
     | SetQuizCode of string
     | JoinQuiz
     | CreateQuiz of CreateQuizForm.Message
+    | LiveScoreMessage of LiveScorePage.Message
 
 let clientStub =
     Unchecked.defaultof<QuizHub.Client>
@@ -88,7 +89,8 @@ let disconnectCmdForPreviousModel disconnectCommand (previousPage: Page) =
     | Page.Home -> Cmd.none
 
 let update
-    connectAndHandleQuizEvents
+    connectToQuizEvents
+    onQuizEvent
     publishQuizEvent
     getQuizAsync
     saveNewQuiz
@@ -119,6 +121,9 @@ let update
             Quiz = Some quizModel },
         Cmd.map Message.QuizMessage cmd
 
+    let connectToQuizFactory = //to avoid being locked into one message type
+        fun () -> (Common_Page.connectAndHandleQuizEvents connectToQuizEvents onQuizEvent)
+
     match message with
     | SetPage (Page.QuizRun quizCode) ->
         let disconnectCmd =
@@ -135,7 +140,17 @@ let update
         let model, initCmd =
             initializeQuiz (QuizSpectate quizCode) Spectator quizCode None
 
-        model, Cmd.batch [ disconnectCmd; initCmd ]
+        { model with page = Page.QuizRun quizCode }, Cmd.batch [ disconnectCmd; initCmd ]
+    | SetPage (QuizLiveScore (quizCode, pageModel)) ->
+        let disconnectCmd =
+            disconnectPreviousPage model.page
+
+        let scoreModel, initCmd =
+            LiveScorePage.init quizCode
+
+        { model with page = QuizLiveScore(quizCode, { Model = scoreModel }) },
+        Cmd.batch [ disconnectCmd
+                    initCmd |> Cmd.map LiveScoreMessage ]
     | SetPage page ->
         let disconnectCmd =
             disconnectPreviousPage model.page
@@ -147,7 +162,7 @@ let update
         | Some quizModel ->
             let (updatedModel, quizCommand, externalMessage) =
                 update
-                    connectAndHandleQuizEvents
+                    (connectToQuizFactory ())
                     publishQuizEvent
                     getQuizAsync
                     tryGetQuiz
@@ -176,6 +191,23 @@ let update
                 model.CreateQuizForm
 
         { model with CreateQuizForm = createQuizModel }, cmd |> Cmd.map Message.CreateQuiz
+    | LiveScoreMessage message ->
+        let updateLiveScore message =
+            match model.page with
+            | QuizLiveScore (code, liveScoreModel) ->
+                
+                let newScoreModel, cmd =
+                    LiveScorePage.update (connectToQuizFactory ()) liveScoreModel.Model message
+
+                let newModel =
+                    { model with page = QuizLiveScore(code, { Model = newScoreModel }) }
+
+                let newCmd = cmd |> Cmd.map LiveScoreMessage
+                newModel, newCmd
+            | _ -> model, Cmd.none
+
+        updateLiveScore message
+
 
 /// Connects the routing system to the Elmish application.
 let defaultModel =
@@ -395,10 +427,7 @@ type MyApp() =
                 let handlerTask =
                     fun event -> handler event |> Async.startAsPlainTask
 
-                hubConnection.On<RunQuizEvent>(
-                    nameof clientStub.RunQuizEventOccurred,
-                    Func<RunQuizEvent, Task>(handlerTask)
-                )
+                hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handlerTask)
                 |> ignore
 
         let publishQuizEvent =
@@ -418,7 +447,8 @@ type MyApp() =
 
         let update =
             update
-                (connectAndHandleQuizEvents connectToQuizEvents onQuizEvent)
+                connectToQuizEvents
+                onQuizEvent
                 publishQuizEvent
                 this.GetQuizAsync
                 this.SaveNewQuiz

@@ -14,10 +14,15 @@ module LiveScorePage =
         | Initialize of AsyncOperationStatus<unit, unit>
         | OnQuizEvent of RunQuizEvent
 
+    let init quizCode =
+        { Code = quizCode
+          Scores = NotYetLoaded },
+        (Cmd.ofMsg (Message.Initialize(Started())))
+
     let update connectToQuizEvents (model: LiveScoreModel) message =
         match message with
         | Initialize (Started _) ->
-            let handleQuizEvent dispatch event = dispatch (OnQuizEvent event)
+            let handleQuizEvent dispatch event = dispatch (OnQuizEvent event) |> Async.retn
 
             let cmd =
                 connectToQuizEvents handleQuizEvent (model.Code, None)
@@ -52,16 +57,14 @@ module LiveScorePage =
                                 ) } }
 
             model, Cmd.none
-        | OnQuizEvent event -> 
+        | OnQuizEvent event ->
             match model.Scores with
             | NotYetLoaded -> model, Cmd.none
             | InProgress -> model, Cmd.none
-            | Loaded loaded -> { model with Scores = Loaded { loaded with LastUpdated = DateTimeOffset.Now}}, Cmd.none
+            | Loaded loaded -> { model with Scores = Loaded { loaded with LastUpdated = DateTimeOffset.Now } }, Cmd.none
 
     let page model : Node =
         match model.Scores with
         | NotYetLoaded -> h1 { "Not yet loaded" }
-        | InProgress -> h1 { "Loading..."}
-        | Loaded loaded -> h1 {
-            $"Last Update { loaded.LastUpdated}"
-        }
+        | InProgress -> h1 { "Loading..." }
+        | Loaded loaded -> h1 { $"Last Update {loaded.LastUpdated}" }
