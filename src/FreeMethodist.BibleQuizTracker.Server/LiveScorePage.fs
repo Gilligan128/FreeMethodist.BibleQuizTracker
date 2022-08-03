@@ -28,7 +28,7 @@ module LiveScorePage =
                 connectToQuizEvents handleQuizEvent (model.Code, None)
                 |> Cmd.ofSub
 
-            model, cmd
+            {model with Scores = InProgress}, Cmd.batch [cmd; Cmd.ofMsg (Initialize (Finished ()))]
         | Initialize (Finished _) ->
             let model =
                 { model with
