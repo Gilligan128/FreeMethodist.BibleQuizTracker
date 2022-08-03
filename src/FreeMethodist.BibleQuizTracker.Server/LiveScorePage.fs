@@ -77,18 +77,18 @@ module LiveScorePage =
                 div {
                     attr.``class`` "column"
                     attr.id $"quizzer-name-{model.Name}"
-                    h3 { $"{model.Name}:" }
+                    h4 { $"{model.Name}:" }
                 }
 
                 div {
                     attr.``class`` "column"
                     attr.id $"quizzer-score-{model.Name}"
-                    h3 { text (model.Score |> TeamScore.toString) }
+                    h4 { text (model.Score |> TeamScore.toString) }
                 }
             }
         }
 
-    let teamScoreView (model: LiveScoreTeam) (bgColor,textColor) : Node =
+    let teamScoreView (model: LiveScoreTeam) (bgColor, textColor) : Node =
         div {
             attr.``class`` "column"
 
@@ -118,8 +118,7 @@ module LiveScorePage =
 
                 }
 
-                forEach model.Quizzers
-                <| quizzerScoreView
+                forEach model.Quizzers <| quizzerScoreView
             }
         }
 
@@ -129,20 +128,27 @@ module LiveScorePage =
         | InProgress -> h1 { "Loading..." }
         | Loaded loaded ->
             concat {
-                h1 { $"Last Update {loaded.LastUpdated}" }
-
                 div {
                     attr.``class`` "content"
 
                     div {
-                        attr.``class`` "box has-text-centered has-background-white-ter"
-                        h3 { $"Quiz: {model.Code}" }
+                        attr.``class`` "box has-background-white-ter columns"
+
+                        div {
+                            attr.``class`` "column"
+                            h3 { $"Quiz: {model.Code}" }
+                        }
+
+                        div {
+                            attr.``class`` "column"
+                            h1 { $"Question: {loaded.CurrentQuestion |> PositiveNumber.value}" }
+                        }
+                        div {
+                            attr.``class`` "column"
+                            h4 { $"Last update: {loaded.LastUpdated}" }
+                        }
                     }
 
-                    div {
-                        attr.``class`` "box has-text-centered has-background-white-bis"
-                        h1 { $"Question: {loaded.CurrentQuestion |> PositiveNumber.value}" }
-                    }
 
                     div {
                         attr.``class`` "columns"
