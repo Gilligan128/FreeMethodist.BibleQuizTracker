@@ -62,4 +62,6 @@ module LiveScorePage =
         match model.Scores with
         | NotYetLoaded -> h1 { "Not yet loaded" }
         | InProgress -> h1 { "Loading..."}
-        | Loaded _ -> h1 {"Loaded"}
+        | Loaded loaded -> h1 {
+            $"Last Update { loaded.LastUpdated}"
+        }

@@ -66,19 +66,27 @@ let getCodeFromModel model =
     | Loading (code, _) -> code
     | Loaded loaded -> loaded.Code
 
-let disconnectFromQuizCmd (hubConnection: HubConnection) (quiz: QuizPage.Model) =
-        hubConnection.Remove((runQuizEventOccuredName))
+let disconnectFromQuizCmd (hubConnection: HubConnection) quizCode =
+    hubConnection.Remove((runQuizEventOccuredName))
 
-        hubConnection.InvokeAsync(
-            (nameof
-                Unchecked.defaultof<QuizHub.Hub>
-                    .DisconnectFromQuiz),
-            quiz |> getCodeFromModel,
-            CancellationToken.None
-        )
-        |> Async.AwaitTask
-        |> Async.map (fun _ -> Message.ClearError)
-        |> Cmd.OfAsync.result
+    hubConnection.InvokeAsync(
+        (nameof
+            Unchecked.defaultof<QuizHub.Hub>
+                .DisconnectFromQuiz),
+        quizCode,
+        CancellationToken.None
+    )
+    |> Async.AwaitTask
+    |> Async.map (fun _ -> Message.ClearError)
+    |> Cmd.OfAsync.result
+
+let disconnectCmdForPreviousModel disconnectCommand (previousPage: Page) =
+    match previousPage with
+    | Page.QuizRun quizCode
+    | Page.QuizLiveScore (quizCode, _)
+    | Page.QuizSpectate quizCode -> quizCode |> disconnectCommand
+    | Page.Home -> Cmd.none
+
 let update
     connectAndHandleQuizEvents
     publishQuizEvent
@@ -91,8 +99,10 @@ let update
     (message: Message)
     model
     : Model * Cmd<Message> =
-    
-    let initializeQuiz page user quizCode quizOption=
+    let disconnectPreviousPage page =
+        disconnectCmdForPreviousModel (disconnectFromQuizCmd hubConnection) page
+
+    let initializeQuiz page user quizCode quizOption =
         let oldCodeOpt =
             (quizOption
              |> Option.bind (fun q ->
@@ -103,38 +113,60 @@ let update
 
         let quizModel, cmd =
             init user quizCode oldCodeOpt
-    
+
         { model with
             page = page
             Quiz = Some quizModel },
         Cmd.map Message.QuizMessage cmd
 
-    match message, model.Quiz with
-    | SetPage (Page.QuizRun quizCode), quizOption ->
-       initializeQuiz (QuizRun quizCode) Scorekeeper quizCode quizOption
-    | SetPage (QuizSpectate quizCode), quizOption ->
-       initializeQuiz (QuizSpectate quizCode) Spectator quizCode quizOption
-    | SetPage page, Some quiz ->
-        { model with page = page; Quiz = None }, (disconnectFromQuizCmd hubConnection quiz)
-    | SetPage page, None -> { model with page = page; Quiz = None }, Cmd.none
-    | ClearError, _ -> { model with Error = None }, Cmd.none
-    | QuizMessage quizMsg, Some quizModel ->
-        let (updatedModel, quizCommand, externalMessage) =
-            update connectAndHandleQuizEvents publishQuizEvent getQuizAsync tryGetQuiz capabilitiesProvider quizMsg quizModel
+    match message with
+    | SetPage (Page.QuizRun quizCode) ->
+        let disconnectCmd =
+            disconnectPreviousPage model.page
 
-        let newModel =
-            match externalMessage with
-            | None -> { model with Error = None }
-            | Some message ->
-                match message with
-                | Error er -> { model with Error = Some er }
+        let model, initCmd =
+            initializeQuiz (QuizRun quizCode) Scorekeeper quizCode None
 
-        { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
-    | QuizMessage _, None ->
-        { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
-    | SetQuizCode code, _ -> { model with QuizCode = Some code }, Cmd.none
-    | JoinQuiz, _ -> { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
-    | CreateQuiz message, _ ->
+        model, Cmd.batch [ disconnectCmd; initCmd ]
+    | SetPage (QuizSpectate quizCode) ->
+        let disconnectCmd =
+            disconnectPreviousPage model.page
+
+        let model, initCmd =
+            initializeQuiz (QuizSpectate quizCode) Spectator quizCode None
+
+        model, Cmd.batch [ disconnectCmd; initCmd ]
+    | SetPage page ->
+        let disconnectCmd =
+            disconnectPreviousPage model.page
+
+        { model with page = page; Quiz = None }, disconnectCmd
+    | ClearError -> { model with Error = None }, Cmd.none
+    | QuizMessage quizMsg ->
+        match model.Quiz with
+        | Some quizModel ->
+            let (updatedModel, quizCommand, externalMessage) =
+                update
+                    connectAndHandleQuizEvents
+                    publishQuizEvent
+                    getQuizAsync
+                    tryGetQuiz
+                    capabilitiesProvider
+                    quizMsg
+                    quizModel
+
+            let newModel =
+                match externalMessage with
+                | None -> { model with Error = None }
+                | Some message ->
+                    match message with
+                    | Error er -> { model with Error = Some er }
+
+            { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
+        | None -> { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
+    | SetQuizCode code -> { model with QuizCode = Some code }, Cmd.none
+    | JoinQuiz -> { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
+    | CreateQuiz message ->
         let createQuizModel, cmd =
             CreateQuizForm.update
                 HumanReadableIds.HumanReadableIds.generateCode
@@ -146,11 +178,17 @@ let update
         { model with CreateQuizForm = createQuizModel }, cmd |> Cmd.map Message.CreateQuiz
 
 /// Connects the routing system to the Elmish application.
-let defaultModel = function
-        | QuizRun _-> ()
-        | QuizSpectate _ -> ()
-        | Home -> ()
-        | QuizLiveScore (quizCode, pageModel) -> Router.definePageModel pageModel { Code = ""; Scores = Deferred.NotYetLoaded }
+let defaultModel =
+    function
+    | QuizRun _ -> ()
+    | QuizSpectate _ -> ()
+    | Home -> ()
+    | QuizLiveScore (quizCode, pageModel) ->
+        Router.definePageModel
+            pageModel
+            { Code = ""
+              Scores = Deferred.NotYetLoaded }
+
 let router =
     Router.inferWithModel SetPage (fun model -> model.page) defaultModel
 
@@ -158,14 +196,15 @@ type Main = Template<"wwwroot/main.html">
 
 let homePage model dispatch =
     Main
-        .Home() 
+        .Home()
         .CreateQuizStart(fun _ ->
             dispatch << Message.CreateQuiz
             <| CreateQuizForm.Start)
         .ScorekeepUrl(
             model.QuizCode
             |> Option.map (fun code -> router.Link(Page.QuizRun code))
-            |> Option.defaultValue "")
+            |> Option.defaultValue ""
+        )
         .SpectateUrl(
             model.QuizCode
             |> Option.map (fun code -> router.Link(Page.QuizSpectate code))
@@ -173,8 +212,9 @@ let homePage model dispatch =
         )
         .LiveScoreUrl(
             model.QuizCode
-            |> Option.map (fun code -> router.Link(Page.QuizLiveScore (code,Router.noModel)))
-            |> Option.defaultValue "")
+            |> Option.map (fun code -> router.Link(Page.QuizLiveScore(code, Router.noModel)))
+            |> Option.defaultValue ""
+        )
         .QuizCode(model.QuizCode |> Option.defaultValue "", (fun code -> code |> Message.SetQuizCode |> dispatch))
         .CreateQuizModal(CreateQuizForm.view model.CreateQuizForm (dispatch << Message.CreateQuiz))
         .Elt()
@@ -207,14 +247,16 @@ let view model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | QuizSpectate code 
+                | QuizSpectate code
                 | QuizRun code ->
                     match model.Quiz with
                     | None -> Node.Empty()
                     | Some quizModel ->
                         page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
-                | QuizLiveScore(quizCode, pageModel) ->
-                    let model = {pageModel.Model with Code = quizCode}
+                | QuizLiveScore (quizCode, pageModel) ->
+                    let model =
+                        { pageModel.Model with Code = quizCode }
+
                     LiveScorePage.page model
         )
         .Error(
@@ -337,7 +379,7 @@ type MyApp() =
 
     [<Inject>]
     member val SaveNewQuiz = Unchecked.defaultof<SaveNewQuiz> with get, set
-    
+
     [<Inject>]
     member val TryGetQuiz = Unchecked.defaultof<TryGetQuiz> with get, set
 
@@ -350,22 +392,30 @@ type MyApp() =
 
         let onQuizEvent =
             fun handler ->
-                let handlerTask = fun event ->
-                    handler event |> Async.startAsPlainTask
-                hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, Func<RunQuizEvent, Task>(handlerTask)) |> ignore
-                
+                let handlerTask =
+                    fun event -> handler event |> Async.startAsPlainTask
+
+                hubConnection.On<RunQuizEvent>(
+                    nameof clientStub.RunQuizEventOccurred,
+                    Func<RunQuizEvent, Task>(handlerTask)
+                )
+                |> ignore
+
         let publishQuizEvent =
             fun methodName quiz event ->
                 hubConnection.InvokeAsync(methodName, quiz, event, CancellationToken.None)
                 |> Async.AwaitTask
-                
+
         let spectateQUiz quizCode =
             Page.QuizRun quizCode
             |> router.getRoute
             |> this.NavigationManager.NavigateTo
-           
-        let availableCapabilities = runQuizCapabilities { SaveQuiz = this.SaveQuizAsync; GetQuiz = this.GetQuizAsync }
-        
+
+        let availableCapabilities =
+            runQuizCapabilities
+                { SaveQuiz = this.SaveQuizAsync
+                  GetQuiz = this.GetQuizAsync }
+
         let update =
             update
                 (connectAndHandleQuizEvents connectToQuizEvents onQuizEvent)
