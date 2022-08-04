@@ -25,16 +25,14 @@ type CompletedTeamQuiz =
       losingTeam: CompletedTeam
       CompletedQuestions: CompletedQuestion list }
 
-type OfficialQuizzer = { Name: Quizzer; Score: TeamScore }
-
 type OfficialTeam =
     { Name: TeamName
       Score: TeamScore
-      QuizzerOne: OfficialQuizzer
-      QuizzerTwo: OfficialQuizzer
-      QuizzerThree: OfficialQuizzer option
-      QuizzerFour: OfficialQuizzer option
-      QuizzerFive: OfficialQuizzer option }
+      QuizzerOne: CompletedQuizzer
+      QuizzerTwo: CompletedQuizzer
+      QuizzerThree: CompletedQuizzer option
+      QuizzerFour: CompletedQuizzer option
+      QuizzerFive: CompletedQuizzer option }
 
 type OfficialTeamQuiz =
     { Code: QuizCode

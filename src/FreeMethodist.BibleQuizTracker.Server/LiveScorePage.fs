@@ -33,10 +33,25 @@ module LiveScorePage =
         { Name = quizzer.Name
           Score = quizzer.Score }
 
-    let loadRunningTeam (team: QuizTeamState) : LiveScoreTeam =
+    let private loadRunningTeam (team: QuizTeamState) : LiveScoreTeam =
         { Name = team.Name
           Score = team.Score
           Quizzers = team.Quizzers |> List.map loadRunningQuizzer }
+
+    let private mapOptionToList opt =
+        match opt with
+        | Some value -> [ value ]
+        | None -> []
+
+    let private loadOfficialTeam (team: OfficialTeam) : LiveScoreTeam =
+        { Name = team.Name
+          Score = team.Score
+          Quizzers =
+            [ team.QuizzerOne; team.QuizzerTwo ]
+            @ (mapOptionToList team.QuizzerThree)
+              @ (mapOptionToList team.QuizzerFour)
+                @ (mapOptionToList team.QuizzerFive)
+            |> List.map loadCompletedQuizzer }
 
     let private loadFromQuiz quiz =
         match quiz with
@@ -53,7 +68,15 @@ module LiveScorePage =
               QuestionState = Current quizState.CurrentQuestion
               CompetitionStyle =
                 LiveScoreCompetitionStyle.Team((loadRunningTeam quizState.TeamOne), (loadRunningTeam quizState.TeamTwo)) }
-        | Official quizState -> Unchecked.defaultof<LiveScores>
+        | Official quizState ->
+            { LastUpdated = DateTimeOffset.Now
+              QuestionState = Completed quizState.CompletedQuestions.Length
+              CompetitionStyle =
+                LiveScoreCompetitionStyle.Team(
+                    (loadOfficialTeam quizState.WinningTeam),
+                    (loadOfficialTeam quizState.LosingTeam)
+                ) }
+
 
     let update connectToQuizEvents tryGetQuiz (model: LiveScoreModel) message =
         match message with
@@ -84,9 +107,8 @@ module LiveScorePage =
             | NotYetStarted -> model, Cmd.none
             | InProgress -> model, Cmd.none
             | Resolved (Ok (Some loaded)) ->
-                { model with Scores = Resolved(Ok (Some { loaded with LastUpdated = DateTimeOffset.Now })) }, Cmd.none
-            | Resolved (Ok None) ->
-                { model with Scores = Resolved(Ok None) }, Cmd.none
+                { model with Scores = Resolved(Ok(Some { loaded with LastUpdated = DateTimeOffset.Now })) }, Cmd.none
+            | Resolved (Ok None) -> { model with Scores = Resolved(Ok None) }, Cmd.none
             | Resolved (Error _) -> model, Cmd.none //silently fail for now.
 
     let quizzerScoreView (model: LiveScoreQuizzer) : Node =
@@ -150,7 +172,7 @@ module LiveScorePage =
         | NotYetStarted -> h1 { "Not yet loaded" }
         | InProgress -> h1 { "Loading..." }
         | Resolved (Error error) -> h1 { $"There was an error while loading: {error}" }
-        | Resolved (Ok (None)) -> h1 {$"Quiz {model.Code} was not found"}
+        | Resolved (Ok (None)) -> h1 { $"Quiz {model.Code} was not found" }
         | Resolved (Ok (Some loaded)) ->
             concat {
                 div {
