@@ -14,26 +14,43 @@ type Deferred<'T> =
     | NotYetStarted
     | InProgress
     | Resolved of 'T
-    
+
 //Live Score model
-type LiveScoreQuizzer = { Score : TeamScore; Name : Quizzer }
-type LiveScoreIndividuals = { Quizzers : LiveScoreQuizzer list }
-type LiveScoreTeam = { Name : string; Score : TeamScore; Quizzers: LiveScoreQuizzer list  }
+type LiveScoreQuizzer = { Score: TeamScore; Name: Quizzer }
+type LiveScoreIndividuals = { Quizzers: LiveScoreQuizzer list }
+
+type LiveScoreTeam =
+    { Name: string
+      Score: TeamScore
+      Quizzers: LiveScoreQuizzer list }
+
 type LiveScoreCompetitionStyle =
     | Individual of LiveScoreIndividuals
-    | Team of LiveScoreTeam*LiveScoreTeam
-type LiveScores = { LastUpdated : DateTimeOffset; CurrentQuestion: QuestionNumber; CompetitionStyle : LiveScoreCompetitionStyle }
+    | Team of LiveScoreTeam * LiveScoreTeam
 
-type LoadingError = | DbError of DbError
-                    | QuizState of QuizStateError
-type LiveScoreModel = { Code : QuizCode; Scores: Deferred<Result<LiveScores, DbError>>  }
+type LiveScoreQuestionState =
+    | Current of QuestionNumber
+    | Completed of int
+
+type LiveScores =
+    { LastUpdated: DateTimeOffset
+      QuestionState: LiveScoreQuestionState
+      CompetitionStyle: LiveScoreCompetitionStyle }
+
+type LoadingError =
+    | DbError of DbError
+    | QuizState of QuizStateError
+
+type LiveScoreModel =
+    { Code: QuizCode
+      Scores: Deferred<Result<LiveScores, DbError>> }
 
 /// Routing endpoints definition.
 type Page =
     | [<EndPoint "/">] Home
     | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
-    | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string*PageModel<LiveScoreModel>
+    | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string * PageModel<LiveScoreModel>
 
 type ConnectionStatus =
     | Connected
@@ -68,24 +85,31 @@ let mapDbErrorToString error =
     | DbError.RemoteError message -> message
 
 //Scoring types
-type EventState = { AnswerState : QuizAnswer; AppealState : AppealState }
+type EventState =
+    { AnswerState: QuizAnswer
+      AppealState: AppealState }
 
-type EventPosition = QuestionNumber*Quizzer
+type EventPosition = QuestionNumber * Quizzer
 
-type QuestionQuizzerEvent = { Position : EventPosition; State: EventState }
+type QuestionQuizzerEvent =
+    { Position: EventPosition
+      State: EventState }
+
 type QuestionQuizzerEvents = QuestionQuizzerEvent list
 
 //Connecting to SignalR
-type HandleEventSub<'T,'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
+type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
 
-type ConnectAndHandleQuizEvents<'T, 'Msg> = HandleEventSub<'T,'Msg> -> QuizCode*QuizCode option -> Sub<'Msg>
+type ConnectAndHandleQuizEvents<'T, 'Msg> = HandleEventSub<'T, 'Msg> -> QuizCode * QuizCode option -> Sub<'Msg>
 
 let connectAndHandleQuizEvents connectToQuiz onEvent : ConnectAndHandleQuizEvents<'T, 'Msg> =
     fun handleEvent (quizCode, previousCode) ->
-       fun dispatch ->
-           let connectTask = connectToQuiz quizCode previousCode
-           connectTask
-           |> Async.Ignore
-           |> Async.StartImmediate
-           onEvent (handleEvent dispatch)
-      
+        fun dispatch ->
+            let connectTask =
+                connectToQuiz quizCode previousCode
+
+            connectTask
+            |> Async.Ignore
+            |> Async.StartImmediate
+
+            onEvent (handleEvent dispatch)

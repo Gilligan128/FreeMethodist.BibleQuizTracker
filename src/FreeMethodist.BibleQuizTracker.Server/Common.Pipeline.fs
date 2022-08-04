@@ -12,18 +12,18 @@ type QuizRoomState =
     | Closed
 
 
-type CompletedQuizzer = { Name: Quizzer; Score: int }
+type CompletedQuizzer = { Name: Quizzer; Score: TeamScore }
 
 type CompletedTeam =
     { Name: TeamName
-      Score: int
-      Quizzers: Quizzer list }
+      Score: TeamScore
+      Quizzers: CompletedQuizzer list }
 
 type CompletedTeamQuiz =
     { code: QuizCode
       winningTeam: CompletedTeam
       losingTeam: CompletedTeam
-      completedQuestions: CompletedQuestion list }
+      CompletedQuestions: CompletedQuestion list }
 
 type OfficialQuizzer = { Name: Quizzer; Score: TeamScore }
 

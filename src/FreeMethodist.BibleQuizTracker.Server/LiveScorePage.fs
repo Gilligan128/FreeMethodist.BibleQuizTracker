@@ -20,6 +20,23 @@ module LiveScorePage =
           Scores = NotYetStarted },
         (Cmd.ofMsg (Message.Initialize(Started())))
 
+    let private loadCompletedQuizzer (quizzer : CompletedQuizzer): LiveScoreQuizzer =
+        { Name = quizzer.Name
+          Score = quizzer.Score }
+
+    let private loadCompleteTeam (team: CompletedTeam) : LiveScoreTeam =
+        { Name = team.Name
+          Score = team.Score
+          Quizzers = team.Quizzers |> List.map loadCompletedQuizzer }
+
+    let private loadFromQuiz quiz =
+        match quiz with
+        | Quiz.Completed quizState ->
+            { LastUpdated = DateTimeOffset.Now
+              QuestionState = Completed quizState.CompletedQuestions.Length
+              CompetitionStyle = LiveScoreCompetitionStyle.Team ((loadCompleteTeam quizState.winningTeam),(loadCompleteTeam quizState.losingTeam)) }
+        | Running quizState -> Unchecked.defaultof<LiveScores>
+        | Official quizState -> Unchecked.defaultof<LiveScores>
 
     let update connectToQuizEvents tryGetQuiz (model: LiveScoreModel) message =
         match message with
@@ -44,7 +61,7 @@ module LiveScorePage =
                 { model with
                     Scores =
                         { LastUpdated = DateTimeOffset.Now
-                          CurrentQuestion = PositiveNumber.one
+                          QuestionState = Current PositiveNumber.one
                           CompetitionStyle =
                             LiveScoreCompetitionStyle.Team(
                                 { Name = "Team One"
@@ -74,7 +91,7 @@ module LiveScorePage =
             | NotYetStarted -> model, Cmd.none
             | InProgress -> model, Cmd.none
             | Resolved (Ok loaded) ->
-                { model with Scores = Resolved( Ok { loaded with LastUpdated = DateTimeOffset.Now }) }, Cmd.none
+                { model with Scores = Resolved(Ok { loaded with LastUpdated = DateTimeOffset.Now }) }, Cmd.none
             | Resolved (Error _) -> model, Cmd.none //silently fail for now. I Should wire up telemetry soon.
 
     let quizzerScoreView (model: LiveScoreQuizzer) : Node =
@@ -137,7 +154,7 @@ module LiveScorePage =
         match model.Scores with
         | NotYetStarted -> h1 { "Not yet loaded" }
         | InProgress -> h1 { "Loading..." }
-        | Resolved (Error error )  -> h1 { $"There was an error while loading: {error}" }
+        | Resolved (Error error) -> h1 { $"There was an error while loading: {error}" }
         | Resolved (Ok loaded) ->
             concat {
                 div {
@@ -153,7 +170,10 @@ module LiveScorePage =
 
                         div {
                             attr.``class`` "column"
-                            h1 { $"Question: {loaded.CurrentQuestion |> PositiveNumber.value}" }
+                            cond loaded.QuestionState <| function
+                                | Current current -> h1 { $"Question: {current |> PositiveNumber.value}" }
+                                | Completed completed -> h1 { $"{completed} Questions"  }
+                            
                         }
 
                         div {
