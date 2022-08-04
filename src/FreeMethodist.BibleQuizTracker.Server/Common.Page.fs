@@ -43,7 +43,7 @@ type LoadingError =
 
 type LiveScoreModel =
     { Code: QuizCode
-      Scores: Deferred<Result<LiveScores, DbError>> }
+      Scores: Deferred<Result<LiveScores option, DbError>> }
 
 /// Routing endpoints definition.
 type Page =

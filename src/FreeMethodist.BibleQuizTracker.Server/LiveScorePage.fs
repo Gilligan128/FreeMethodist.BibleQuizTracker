@@ -20,7 +20,7 @@ module LiveScorePage =
           Scores = NotYetStarted },
         (Cmd.ofMsg (Message.Initialize(Started())))
 
-    let private loadCompletedQuizzer (quizzer : CompletedQuizzer): LiveScoreQuizzer =
+    let private loadCompletedQuizzer (quizzer: CompletedQuizzer) : LiveScoreQuizzer =
         { Name = quizzer.Name
           Score = quizzer.Score }
 
@@ -28,28 +28,31 @@ module LiveScorePage =
         { Name = team.Name
           Score = team.Score
           Quizzers = team.Quizzers |> List.map loadCompletedQuizzer }
-    
+
     let private loadRunningQuizzer (quizzer: QuizzerState) : LiveScoreQuizzer =
         { Name = quizzer.Name
-          Score = quizzer.Score
-         }
-    
-    let loadRunningTeam (team : QuizTeamState) : LiveScoreTeam =
+          Score = quizzer.Score }
+
+    let loadRunningTeam (team: QuizTeamState) : LiveScoreTeam =
         { Name = team.Name
           Score = team.Score
           Quizzers = team.Quizzers |> List.map loadRunningQuizzer }
-    
+
     let private loadFromQuiz quiz =
         match quiz with
         | Quiz.Completed quizState ->
             { LastUpdated = DateTimeOffset.Now
               QuestionState = Completed quizState.CompletedQuestions.Length
-              CompetitionStyle = LiveScoreCompetitionStyle.Team ((loadCompleteTeam quizState.winningTeam),(loadCompleteTeam quizState.losingTeam)) }
-        | Running quizState -> { 
-            LastUpdated = DateTimeOffset.Now
-            QuestionState = Current quizState.CurrentQuestion
-            CompetitionStyle = LiveScoreCompetitionStyle.Team ((loadRunningTeam quizState.TeamOne), (loadRunningTeam quizState.TeamTwo))
-            }
+              CompetitionStyle =
+                LiveScoreCompetitionStyle.Team(
+                    (loadCompleteTeam quizState.winningTeam),
+                    (loadCompleteTeam quizState.losingTeam)
+                ) }
+        | Running quizState ->
+            { LastUpdated = DateTimeOffset.Now
+              QuestionState = Current quizState.CurrentQuestion
+              CompetitionStyle =
+                LiveScoreCompetitionStyle.Team((loadRunningTeam quizState.TeamOne), (loadRunningTeam quizState.TeamTwo)) }
         | Official quizState -> Unchecked.defaultof<LiveScores>
 
     let update connectToQuizEvents tryGetQuiz (model: LiveScoreModel) message =
@@ -71,42 +74,20 @@ module LiveScorePage =
             { model with Scores = InProgress }, Cmd.batch [ cmd; loadQuizCmd ]
 
         | Initialize (Finished (Ok quiz)) ->
-            let model =
-                { model with
-                    Scores =
-                        { LastUpdated = DateTimeOffset.Now
-                          QuestionState = Current PositiveNumber.one
-                          CompetitionStyle =
-                            LiveScoreCompetitionStyle.Team(
-                                { Name = "Team One"
-                                  Score = TeamScore.ofQuestions 2
-                                  Quizzers =
-                                    [ { Name = "Jack"
-                                        Score = TeamScore.ofQuestions 1 }
-                                      { Name = "Jill"
-                                        Score = TeamScore.ofQuestions 1 }
-                                      { Name = "Bob"
-                                        Score = TeamScore.initial } ] },
-                                { Name = "Team Two"
-                                  Score = TeamScore.ofQuestions 1
-                                  Quizzers =
-                                    [ { Name = "Juni"
-                                        Score = TeamScore.ofQuestions 1 }
-                                      { Name = "Jorge"
-                                        Score = TeamScore.initial } ] }
-                            ) }
-                        |> Ok
-                        |> Resolved }
+            let loaded =
+                quiz |> Option.map loadFromQuiz |> Ok |> Resolved
 
-            model, Cmd.none
+            { model with Scores = loaded }, Cmd.none
         | Initialize (Finished (Error error)) -> model, Cmd.none
         | OnQuizEvent event ->
             match model.Scores with
             | NotYetStarted -> model, Cmd.none
             | InProgress -> model, Cmd.none
-            | Resolved (Ok loaded) ->
-                { model with Scores = Resolved(Ok { loaded with LastUpdated = DateTimeOffset.Now }) }, Cmd.none
-            | Resolved (Error _) -> model, Cmd.none //silently fail for now. I Should wire up telemetry soon.
+            | Resolved (Ok (Some loaded)) ->
+                { model with Scores = Resolved(Ok (Some { loaded with LastUpdated = DateTimeOffset.Now })) }, Cmd.none
+            | Resolved (Ok None) ->
+                { model with Scores = Resolved(Ok None) }, Cmd.none
+            | Resolved (Error _) -> model, Cmd.none //silently fail for now.
 
     let quizzerScoreView (model: LiveScoreQuizzer) : Node =
         div {
@@ -130,7 +111,7 @@ module LiveScorePage =
             }
         }
 
-    let teamScoreView (model: LiveScoreTeam) (bgColor, textColor) : Node =
+    let teamScoreView (model: LiveScoreTeam) (bgColor) : Node =
         div {
             attr.``class`` "column"
 
@@ -169,7 +150,8 @@ module LiveScorePage =
         | NotYetStarted -> h1 { "Not yet loaded" }
         | InProgress -> h1 { "Loading..." }
         | Resolved (Error error) -> h1 { $"There was an error while loading: {error}" }
-        | Resolved (Ok loaded) ->
+        | Resolved (Ok (None)) -> h1 {$"Quiz {model.Code} was not found"}
+        | Resolved (Ok (Some loaded)) ->
             concat {
                 div {
                     attr.``class`` "content"
@@ -184,10 +166,12 @@ module LiveScorePage =
 
                         div {
                             attr.``class`` "column"
-                            cond loaded.QuestionState <| function
+
+                            cond loaded.QuestionState
+                            <| function
                                 | Current current -> h1 { $"Question: {current |> PositiveNumber.value}" }
-                                | Completed completed -> h1 { $"{completed} Questions"  }
-                            
+                                | Completed completed -> h1 { $"{completed} Questions" }
+
                         }
 
                         div {
@@ -204,8 +188,8 @@ module LiveScorePage =
                         <| function
                             | LiveScoreCompetitionStyle.Team (teamOne, teamTwo) ->
                                 concat {
-                                    teamScoreView teamOne ("success", None)
-                                    teamScoreView teamTwo ("danger", None)
+                                    teamScoreView teamOne ("success")
+                                    teamScoreView teamTwo ("danger")
                                 }
                             | LiveScoreCompetitionStyle.Individual individualStyle -> empty ()
 
