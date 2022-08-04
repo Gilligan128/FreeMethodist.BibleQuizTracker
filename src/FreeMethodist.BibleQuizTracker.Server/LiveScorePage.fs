@@ -28,14 +28,28 @@ module LiveScorePage =
         { Name = team.Name
           Score = team.Score
           Quizzers = team.Quizzers |> List.map loadCompletedQuizzer }
-
+    
+    let private loadRunningQuizzer (quizzer: QuizzerState) : LiveScoreQuizzer =
+        { Name = quizzer.Name
+          Score = quizzer.Score
+         }
+    
+    let loadRunningTeam (team : QuizTeamState) : LiveScoreTeam =
+        { Name = team.Name
+          Score = team.Score
+          Quizzers = team.Quizzers |> List.map loadRunningQuizzer }
+    
     let private loadFromQuiz quiz =
         match quiz with
         | Quiz.Completed quizState ->
             { LastUpdated = DateTimeOffset.Now
               QuestionState = Completed quizState.CompletedQuestions.Length
               CompetitionStyle = LiveScoreCompetitionStyle.Team ((loadCompleteTeam quizState.winningTeam),(loadCompleteTeam quizState.losingTeam)) }
-        | Running quizState -> Unchecked.defaultof<LiveScores>
+        | Running quizState -> { 
+            LastUpdated = DateTimeOffset.Now
+            QuestionState = Current quizState.CurrentQuestion
+            CompetitionStyle = LiveScoreCompetitionStyle.Team ((loadRunningTeam quizState.TeamOne), (loadRunningTeam quizState.TeamTwo))
+            }
         | Official quizState -> Unchecked.defaultof<LiveScores>
 
     let update connectToQuizEvents tryGetQuiz (model: LiveScoreModel) message =
