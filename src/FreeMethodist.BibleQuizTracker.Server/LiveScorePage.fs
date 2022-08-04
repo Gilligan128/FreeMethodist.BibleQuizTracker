@@ -153,7 +153,7 @@ module LiveScorePage =
                 attr.id $"team-box-{model.Name} "
 
                 div {
-                    attr.``class`` $"box has-background-grey-lighter"
+                    attr.``class`` $"box has-background-white-ter"
                     attr.id $"team-header-{model.Name}"
 
                     div {
