@@ -137,7 +137,7 @@ module LiveScorePage =
         match model.Scores with
         | NotYetStarted -> h1 { "Not yet loaded" }
         | InProgress -> h1 { "Loading..." }
-        | Resolved (Error error )  -> empty() 
+        | Resolved (Error error )  -> h1 { $"There was an error while loading: {error}" }
         | Resolved (Ok loaded) ->
             concat {
                 div {
