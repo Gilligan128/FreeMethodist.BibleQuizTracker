@@ -13,7 +13,7 @@ module LiveScorePage =
 
     type Message =
         | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
-        | OnQuizEvent of RunQuizEvent
+        | OnQuizEvent of AsyncOperationStatus<RunQuizEvent, Result<Quiz option, DbError>>
 
     let init quizCode =
         { Code = quizCode
@@ -82,7 +82,8 @@ module LiveScorePage =
         match message with
         | Initialize (Started _) ->
             let handleQuizEvent dispatch event =
-                dispatch (OnQuizEvent event) |> Async.retn
+                dispatch (OnQuizEvent(Started event))
+                |> Async.retn
 
             let cmd =
                 connectToQuizEvents handleQuizEvent (model.Code, None)
@@ -96,20 +97,30 @@ module LiveScorePage =
 
             { model with Scores = InProgress }, Cmd.batch [ cmd; loadQuizCmd ]
 
-        | Initialize (Finished (Ok quiz)) ->
+        | Initialize (Finished quizResult) ->
             let loaded =
-                quiz |> Option.map loadFromQuiz |> Ok |> Resolved
+                quizResult
+                |> Result.map (Option.map loadFromQuiz)
+                |> Resolved
 
             { model with Scores = loaded }, Cmd.none
-        | Initialize (Finished (Error error)) -> model, Cmd.none
-        | OnQuizEvent event ->
+        | OnQuizEvent (Started _) ->
+            let loadedModelResultCmd =
+                model.Code
+                |> tryGetQuiz
+                |> Async.map (OnQuizEvent << Finished)
+                |> Cmd.OfAsync.result
+
+            model, loadedModelResultCmd
+        | OnQuizEvent (Finished (Ok (Some quiz))) ->
             match model.Scores with
             | NotYetStarted -> model, Cmd.none
             | InProgress -> model, Cmd.none
-            | Resolved (Ok (Some loaded)) ->
-                { model with Scores = Resolved(Ok(Some { loaded with LastUpdated = DateTimeOffset.Now })) }, Cmd.none
-            | Resolved (Ok None) -> { model with Scores = Resolved(Ok None) }, Cmd.none
-            | Resolved (Error _) -> model, Cmd.none //silently fail for now.
+            | Resolved _ ->
+                let newScores = quiz |> loadFromQuiz
+                { model with Scores = newScores |> Some |> Ok |> Resolved }, Cmd.none
+        | OnQuizEvent (Finished (Ok None))
+        | OnQuizEvent (Finished (Error _)) -> model, Cmd.none //silently fail for now
 
     let quizzerScoreView (model: LiveScoreQuizzer) : Node =
         div {

@@ -1,8 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizPage
 
 open System
-open System.Collections.ObjectModel
-open System.ComponentModel
 open Bolero
 open Bolero.Html
 open Elmish
@@ -10,13 +8,10 @@ open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
-open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow.ClearAppeal
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow.FailAppeal
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
 open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
@@ -24,12 +19,8 @@ open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
-open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
-open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
-open FreeMethodist.BibleQuizTracker.Server.ChangeCurrentQuestion_Pipeline
-open FreeMethodist.BibleQuizTracker.Server.Capabilities
 
 
 
@@ -326,7 +317,7 @@ let private updateLoaded
     let refreshQuizOrError mapWorkflowSpecificErrors result =
         match result with
         | Ok quiz -> refreshModel quiz, Cmd.none, None
-        | Result.Error (error) ->
+        | Result.Error error ->
             error
             |> mapWorkflowErrors mapWorkflowSpecificErrors
             |> fun errorString -> errorString |> updateResultWithExternalError
@@ -507,15 +498,15 @@ let private updateLoaded
     | SelectQuizzer (Finished result) ->
         let mapSelectError error =
             match error with
-            | (SelectQuizzer.Error.QuizState quizStateError) -> "Quiz is not running"
-            | (SelectQuizzer.Error.QuizzerAlreadyCurrent) -> ""
-            | (SelectQuizzer.Error.DbError dbError) -> dbError |> mapDbErrorToString
-            | (SelectQuizzer.Error.QuizzerNotParticipating quizzer) -> $"Quizzer {quizzer} is not participating"
+            | SelectQuizzer.Error.QuizState quizStateError -> "Quiz is not running"
+            | SelectQuizzer.Error.QuizzerAlreadyCurrent -> ""
+            | SelectQuizzer.Error.DbError dbError -> dbError |> mapDbErrorToString
+            | SelectQuizzer.Error.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is not participating"
 
         result
         |> function
             | Ok result -> result |> refreshModel, Cmd.none, None
-            | Result.Error (WorkflowError.Workflow (SelectQuizzer.Error.QuizzerAlreadyCurrent)) -> model, Cmd.none, None
+            | Result.Error (WorkflowError.Workflow SelectQuizzer.Error.QuizzerAlreadyCurrent) -> model, Cmd.none, None
             | Result.Error error ->
                 model,
                 Cmd.none,
@@ -550,18 +541,18 @@ let private updateLoaded
     | AnswerCorrectly (Finished result) ->
         let mapWorkflowSpecificErrors workflowError =
             match workflowError with
-            | (AnswerCorrectly.Error.DuplicateQuizzer er) -> $"There is more than one quizzer with name {er}"
-            | (AnswerCorrectly.QuizzerNotFound er) -> $"Quizzer {er} was not found in this quiz"
-            | (AnswerCorrectly.Error.QuizStateError _) -> "Quiz is not running"
-            | (AnswerCorrectly.Error.NoCurrentQuizzer) -> "No one has jumped yet"
+            | AnswerCorrectly.Error.DuplicateQuizzer er -> $"There is more than one quizzer with name {er}"
+            | AnswerCorrectly.QuizzerNotFound er -> $"Quizzer {er} was not found in this quiz"
+            | AnswerCorrectly.Error.QuizStateError _ -> "Quiz is not running"
+            | AnswerCorrectly.Error.NoCurrentQuizzer -> "No one has jumped yet"
             | (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (QuizAnswer.QuizzerAlreadyAnsweredCorrectly (quizzer,
                                                                                                                   question))) ->
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
-            | (AnswerCorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString
+            | AnswerCorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString
 
         match result with
         | Ok quiz -> refreshModel quiz, Cmd.none, None
-        | Result.Error (error) ->
+        | Result.Error error ->
             error
             |> mapWorkflowErrors mapWorkflowSpecificErrors
             |> fun errorString -> errorString |> updateResultWithExternalError
@@ -588,12 +579,12 @@ let private updateLoaded
     | AnswerIncorrectly (Finished result) ->
         let mapIncorrectError error =
             match error with
-            | (AnswerIncorrectly.QuizState _) -> "Quiz iz not running"
-            | (AnswerIncorrectly.NoCurrentQuizzer _) -> "No current Quizzer"
+            | AnswerIncorrectly.QuizState _ -> "Quiz iz not running"
+            | AnswerIncorrectly.NoCurrentQuizzer _ -> "No current Quizzer"
             | (AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly (QuizAnswer.QuizzerAlreadyAnsweredIncorrectly (quizzer,
                                                                                                                   questionNumber))) ->
                 $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
-            | (AnswerIncorrectly.Error.DbError dbError) -> dbError |> mapDbErrorToString
+            | AnswerIncorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString
 
         result |> refreshQuizOrError mapIncorrectError
     | FailAppeal (Started _) ->
@@ -615,10 +606,10 @@ let private updateLoaded
     | FailAppeal (Finished quiz) ->
         let mapFailError error =
             match error with
-            | (FailAppeal.Error.QuizState _) -> "Wrong Quiz state"
-            | (FailAppeal.Error.AppealAlreadyFailed _) -> "Appeal already failed"
-            | (FailAppeal.Error.NoCurrentQuizzer _) -> "No current quizzer"
-            | (FailAppeal.Error.DbError error) -> error |> mapDbErrorToString
+            | FailAppeal.Error.QuizState _ -> "Wrong Quiz state"
+            | FailAppeal.Error.AppealAlreadyFailed _ -> "Appeal already failed"
+            | FailAppeal.Error.NoCurrentQuizzer _ -> "No current quizzer"
+            | FailAppeal.Error.DbError error -> error |> mapDbErrorToString
 
         quiz |> refreshQuizOrError mapFailError
     | ClearAppeal (Started _) ->
@@ -640,9 +631,9 @@ let private updateLoaded
     | ClearAppeal (Finished quiz) ->
         let mapAppealError error =
             match error with
-            | (ClearAppeal.Error.QuizState _) -> "Wrong Quiz state"
-            | (ClearAppeal.Error.NoFailedAppeal _) -> "There is no failed appeal to clear"
-            | (ClearAppeal.Error.DbError dbError) -> dbError |> mapDbErrorToString
+            | ClearAppeal.Error.QuizState _ -> "Wrong Quiz state"
+            | ClearAppeal.Error.NoFailedAppeal _ -> "There is no failed appeal to clear"
+            | ClearAppeal.Error.DbError dbError -> dbError |> mapDbErrorToString
 
         quiz |> refreshQuizOrError mapAppealError
 

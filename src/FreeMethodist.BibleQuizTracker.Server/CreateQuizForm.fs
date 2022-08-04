@@ -5,7 +5,6 @@ open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
-open FreeMethodist.BibleQuizTracker.Server.QuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Workflow
 open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Pipeline

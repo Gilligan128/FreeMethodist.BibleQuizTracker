@@ -1,6 +1,5 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Pipeline
 
-open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow

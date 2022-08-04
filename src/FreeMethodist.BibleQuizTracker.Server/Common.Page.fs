@@ -4,7 +4,6 @@ open System
 open Bolero
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open Microsoft.AspNetCore.Http
 
 type AsyncOperationStatus<'started, 'finished> =
     | Started of 'started

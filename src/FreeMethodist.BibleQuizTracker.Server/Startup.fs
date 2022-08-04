@@ -16,10 +16,7 @@ open Microsoft.AspNetCore.SignalR
 open Microsoft.AspNetCore.SignalR.Client
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open Bolero
-open Bolero.Remoting.Server
 open Bolero.Server
-open FreeMethodist.BibleQuizTracker
 open Bolero.Templating.Server
 open Microsoft.Extensions.Logging
 

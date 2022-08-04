@@ -1,6 +1,5 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
-open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open Elmish
