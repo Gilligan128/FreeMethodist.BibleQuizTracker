@@ -12,13 +12,8 @@ open Xunit
 
 let publishQuiz _ _ _ = Async.retn ()
 
-let getQuiz _ =
-    Quiz.Unvalidated
-        { Code = ""
-          CompetitionStyle = Team { TeamOneName = ""; TeamTwoName = "" } }
-
-let getQuizAsync code = getQuiz code |> AsyncResult.retn
-let tryGetQuizAsync code = getQuiz code |> Some |> AsyncResult.retn
+let getQuizAsync code = RunningTeamQuiz.identity |> Running |> AsyncResult.retn
+let tryGetQuizAsync code = RunningTeamQuiz.identity |> Running |> Some |> AsyncResult.retn
 
 
 let capabilitiesProvider : RunQuizCapabilityProvider= {
@@ -37,7 +32,7 @@ let sut =
 
 let mapToLoaded model =
     match model with
-    | NotYetLoaded _ -> failwith "not yet loaded"
+    | NotYetStarted _ -> failwith "not yet loaded"
     | Loading _ -> failwith "loading"
     | Loaded loadedModel -> loadedModel
 

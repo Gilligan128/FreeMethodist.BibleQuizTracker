@@ -63,7 +63,7 @@ let runQuizEventOccuredName =
 
 let getCodeFromModel model =
     match model with
-    | NotYetLoaded (code, _) -> code
+    | NotYetStarted (code, _) -> code
     | Loading (code, _) -> code
     | Loaded loaded -> loaded.Code
 
@@ -109,7 +109,7 @@ let update
             (quizOption
              |> Option.bind (fun q ->
                  match q with
-                 | NotYetLoaded _ -> None
+                 | NotYetStarted _ -> None
                  | Loading _ -> None
                  | Loaded loaded -> Some loaded.Code))
 
@@ -197,7 +197,7 @@ let update
             | QuizLiveScore (code, liveScoreModel) ->
                 
                 let newScoreModel, cmd =
-                    LiveScorePage.update (connectToQuizFactory ()) liveScoreModel.Model message
+                    LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz liveScoreModel.Model message
 
                 let newModel =
                     { model with page = QuizLiveScore(code, { Model = newScoreModel }) }
@@ -219,7 +219,7 @@ let defaultModel =
         Router.definePageModel
             pageModel
             { Code = ""
-              Scores = Deferred.NotYetLoaded }
+              Scores = Deferred.NotYetStarted }
 
 let router =
     Router.inferWithModel SetPage (fun model -> model.page) defaultModel

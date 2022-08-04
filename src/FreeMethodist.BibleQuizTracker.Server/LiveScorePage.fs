@@ -4,6 +4,7 @@ open System
 open Bolero
 open Bolero.Html
 open Elmish
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
@@ -11,15 +12,16 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 module LiveScorePage =
 
     type Message =
-        | Initialize of AsyncOperationStatus<unit, unit>
+        | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
         | OnQuizEvent of RunQuizEvent
 
     let init quizCode =
         { Code = quizCode
-          Scores = NotYetLoaded },
+          Scores = NotYetStarted },
         (Cmd.ofMsg (Message.Initialize(Started())))
 
-    let update connectToQuizEvents (model: LiveScoreModel) message =
+
+    let update connectToQuizEvents tryGetQuiz (model: LiveScoreModel) message =
         match message with
         | Initialize (Started _) ->
             let handleQuizEvent dispatch event =
@@ -29,46 +31,55 @@ module LiveScorePage =
                 connectToQuizEvents handleQuizEvent (model.Code, None)
                 |> Cmd.ofSub
 
-            { model with Scores = InProgress },
-            Cmd.batch [ cmd
-                        Cmd.ofMsg (Initialize(Finished())) ]
-        | Initialize (Finished _) ->
+            let loadQuizCmd =
+                model.Code
+                |> tryGetQuiz
+                |> Async.map (Initialize << Finished)
+                |> Cmd.OfAsync.result
+
+            { model with Scores = InProgress }, Cmd.batch [ cmd; loadQuizCmd ]
+
+        | Initialize (Finished (Ok quiz)) ->
             let model =
                 { model with
                     Scores =
-                        Loaded
-                            { LastUpdated = DateTimeOffset.Now
-                              CurrentQuestion = PositiveNumber.one
-                              CompetitionStyle =
-                                LiveScoreCompetitionStyle.Team(
-                                    { Name = "Team One"
-                                      Score = TeamScore.ofQuestions 2
-                                      Quizzers =
-                                        [ { Name = "Jack"
-                                            Score = TeamScore.ofQuestions 1 }
-                                          { Name = "Jill"
-                                            Score = TeamScore.ofQuestions 1 }
-                                          { Name = "Bob"
-                                            Score = TeamScore.initial } ] },
-                                    { Name = "Team Two"
-                                      Score = TeamScore.ofQuestions 1
-                                      Quizzers =
-                                        [ { Name = "Juni"
-                                            Score = TeamScore.ofQuestions 1 }
-                                          { Name = "Jorge"
-                                            Score = TeamScore.initial } ] }
-                                ) } }
+                        { LastUpdated = DateTimeOffset.Now
+                          CurrentQuestion = PositiveNumber.one
+                          CompetitionStyle =
+                            LiveScoreCompetitionStyle.Team(
+                                { Name = "Team One"
+                                  Score = TeamScore.ofQuestions 2
+                                  Quizzers =
+                                    [ { Name = "Jack"
+                                        Score = TeamScore.ofQuestions 1 }
+                                      { Name = "Jill"
+                                        Score = TeamScore.ofQuestions 1 }
+                                      { Name = "Bob"
+                                        Score = TeamScore.initial } ] },
+                                { Name = "Team Two"
+                                  Score = TeamScore.ofQuestions 1
+                                  Quizzers =
+                                    [ { Name = "Juni"
+                                        Score = TeamScore.ofQuestions 1 }
+                                      { Name = "Jorge"
+                                        Score = TeamScore.initial } ] }
+                            ) }
+                        |> Ok
+                        |> Resolved }
 
             model, Cmd.none
+        | Initialize (Finished (Error error)) -> model, Cmd.none
         | OnQuizEvent event ->
             match model.Scores with
-            | NotYetLoaded -> model, Cmd.none
+            | NotYetStarted -> model, Cmd.none
             | InProgress -> model, Cmd.none
-            | Loaded loaded -> { model with Scores = Loaded { loaded with LastUpdated = DateTimeOffset.Now } }, Cmd.none
+            | Resolved (Ok loaded) ->
+                { model with Scores = Resolved( Ok { loaded with LastUpdated = DateTimeOffset.Now }) }, Cmd.none
+            | Resolved (Error _) -> model, Cmd.none //silently fail for now. I Should wire up telemetry soon.
 
     let quizzerScoreView (model: LiveScoreQuizzer) : Node =
         div {
-            attr.``class`` "box has-background-grey-white-ter"
+            attr.``class`` "box has-background-grey-white-ter my-2"
             attr.id $"quizzer-box-{model.Name}"
 
             div {
@@ -81,7 +92,7 @@ module LiveScorePage =
                 }
 
                 div {
-                    attr.``class`` "column"
+                    attr.``class`` "column is-one-third"
                     attr.id $"quizzer-score-{model.Name}"
                     h4 { text (model.Score |> TeamScore.toString) }
                 }
@@ -110,7 +121,7 @@ module LiveScorePage =
                         }
 
                         div {
-                            attr.``class`` "column"
+                            attr.``class`` "column is-one-third"
                             attr.id $"team-score-{model.Name}"
                             h1 { text (model.Score |> TeamScore.toString) }
                         }
@@ -124,9 +135,10 @@ module LiveScorePage =
 
     let page model : Node =
         match model.Scores with
-        | NotYetLoaded -> h1 { "Not yet loaded" }
+        | NotYetStarted -> h1 { "Not yet loaded" }
         | InProgress -> h1 { "Loading..." }
-        | Loaded loaded ->
+        | Resolved (Error error )  -> empty() 
+        | Resolved (Ok loaded) ->
             concat {
                 div {
                     attr.``class`` "content"
@@ -136,13 +148,14 @@ module LiveScorePage =
 
                         div {
                             attr.``class`` "column"
-                            h3 { $"Quiz: {model.Code}" }
+                            h1 { $"Quiz: {model.Code}" }
                         }
 
                         div {
                             attr.``class`` "column"
                             h1 { $"Question: {loaded.CurrentQuestion |> PositiveNumber.value}" }
                         }
+
                         div {
                             attr.``class`` "column"
                             h4 { $"Last update: {loaded.LastUpdated}" }

@@ -56,7 +56,7 @@ type LoadedModel =
 
 
 type Model =
-    | NotYetLoaded of QuizCode*User
+    | NotYetStarted of QuizCode*User
     | Loading of QuizCode*User
     | Loaded of LoadedModel
 
@@ -215,12 +215,11 @@ let private refreshModel (quiz: Quiz, user: User) =
                     |> sortedList
                     |> List.map refreshQuestionScore }
         | Quiz.Completed _
-        | Official _
-        | Unvalidated _ -> emptyModel
+        | Official _ -> emptyModel
     {stateMatchedModel with CurrentUser = user}
 
 let init user quizCode previousQuizCode =
-    NotYetLoaded (quizCode, user), Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
+    NotYetStarted (quizCode, user), Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
 
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
@@ -660,7 +659,7 @@ let update
     | Loading (code, user), Message.InitializeQuizAndConnections (Finished result) ->
         match result with
         | Ok quiz ->
-            let model = quiz |> Option.map (fun q -> Loaded(refreshModel (q, user))) |> Option.defaultValue (NotYetLoaded (code, user))
+            let model = quiz |> Option.map (fun q -> Loaded(refreshModel (q, user))) |> Option.defaultValue (NotYetStarted (code, user))
             let externalMessage = quiz |> function 
                                            | None -> Some (ExternalMessage.Error $"Quiz {code} not found")
                                            | Some _ -> None
@@ -669,8 +668,8 @@ let update
             let externalMessage =
                 error |> mapDbErrorToString
 
-            NotYetLoaded (code, user), Cmd.none, ExternalMessage.Error externalMessage |> Some
-    | NotYetLoaded (code, user), Message.InitializeQuizAndConnections (Started previousQuizCode) ->
+            NotYetStarted (code, user), Cmd.none, ExternalMessage.Error externalMessage |> Some
+    | NotYetStarted (code, user), Message.InitializeQuizAndConnections (Started previousQuizCode) ->
         let handleEventSub dispatch _ =
             getQuizAsync code
                 |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
@@ -705,7 +704,7 @@ let update
 
         Loaded loaded, cmd, externalMsg
     | Loading _, _
-    | NotYetLoaded _, _ -> model, Cmd.none, None
+    | NotYetStarted _, _ -> model, Cmd.none, None
 
 
 type private quizPage = Template<"wwwroot/Quiz.html">
@@ -784,7 +783,7 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
         | Active (_, TeamTwo) -> teamTwoValue
 
     match model with
-    | NotYetLoaded (code, _) -> p { $"Quiz {code} has not yet been loaded" }
+    | NotYetStarted (code, _) -> p { $"Quiz {code} has not yet been loaded" }
     | Loading (code, _) -> p { $"Quiz {code} is loading..." }
     | Loaded model ->
         quizPage()

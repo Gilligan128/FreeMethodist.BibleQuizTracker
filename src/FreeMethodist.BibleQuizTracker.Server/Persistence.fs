@@ -91,7 +91,6 @@ let getCodeFromQuiz quiz =
     | Running runningTeamQuiz -> runningTeamQuiz.Code
     | Completed completedTeamQuiz -> completedTeamQuiz.code
     | Official officialTeamQuiz -> officialTeamQuiz.Code
-    | Unvalidated unvalidatedTeamQuiz -> unvalidatedTeamQuiz.Code
 
 let getBlobName quizCode = $"quiz-{quizCode}"
 

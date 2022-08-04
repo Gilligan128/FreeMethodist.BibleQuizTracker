@@ -43,7 +43,6 @@ type OfficialTeamQuiz =
       CompletedQuestions: CompletedQuestion list }
 
 type Quiz =
-    | Unvalidated of UnvalidatedQuiz
     | Running of RunningTeamQuiz
     | Completed of CompletedTeamQuiz
     | Official of OfficialTeamQuiz
@@ -135,7 +134,6 @@ let validateQuiz: ValidateQuizIsRunning =
         | Quiz.Running running -> Ok running
         | Quiz.Completed c -> Error(WrongQuizState(c.GetType()))
         | Quiz.Official o -> Error(WrongQuizState(o.GetType()))
-        | Quiz.Unvalidated u -> Error(WrongQuizState(u.GetType()))
 
 //Score calculation
 

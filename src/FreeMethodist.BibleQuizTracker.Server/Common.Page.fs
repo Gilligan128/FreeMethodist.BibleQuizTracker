@@ -11,9 +11,9 @@ type AsyncOperationStatus<'started, 'finished> =
     | Finished of 'finished
 
 type Deferred<'T> =
-    | NotYetLoaded
+    | NotYetStarted
     | InProgress
-    | Loaded of 'T
+    | Resolved of 'T
     
 //Live Score model
 type LiveScoreQuizzer = { Score : TeamScore; Name : Quizzer }
@@ -23,7 +23,10 @@ type LiveScoreCompetitionStyle =
     | Individual of LiveScoreIndividuals
     | Team of LiveScoreTeam*LiveScoreTeam
 type LiveScores = { LastUpdated : DateTimeOffset; CurrentQuestion: QuestionNumber; CompetitionStyle : LiveScoreCompetitionStyle }
-type LiveScoreModel = { Code : QuizCode; Scores: Deferred<LiveScores>  }
+
+type LoadingError = | DbError of DbError
+                    | QuizState of QuizStateError
+type LiveScoreModel = { Code : QuizCode; Scores: Deferred<Result<LiveScores, DbError>>  }
 
 /// Routing endpoints definition.
 type Page =
