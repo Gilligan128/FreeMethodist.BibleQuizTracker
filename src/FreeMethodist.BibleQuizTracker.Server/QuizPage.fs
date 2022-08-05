@@ -13,7 +13,7 @@ open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Workflows
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
 

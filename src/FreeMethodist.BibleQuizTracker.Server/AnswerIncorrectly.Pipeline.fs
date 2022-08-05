@@ -1,9 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
 
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
-open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Microsoft.FSharp.Core
 
 type UpdatedQuiz =

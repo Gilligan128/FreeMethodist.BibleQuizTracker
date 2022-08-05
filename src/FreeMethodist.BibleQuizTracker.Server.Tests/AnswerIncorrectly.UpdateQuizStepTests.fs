@@ -1,8 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AnswerIncorrectly_UpdateQuizStepTests
 
 open FreeMethodist.BibleQuizTracker.Server
-open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Tests.Quiz
 open Xunit
 
@@ -110,7 +111,7 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
 
     let expectedResult =
         QuizAnswer.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
-        |> AnswerIncorrectly.Workflow.AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly
+        |> AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly
         |> Result.Error
 
     Assert.Equal(expectedResult, result)
@@ -135,7 +136,7 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
 
     let expectedResult =
         QuizAnswer.QuizzerAlreadyAnsweredIncorrectly(answerer.Name, initialQuiz.CurrentQuestion)
-        |> AnswerIncorrectly.Workflow.AnswerIncorrectly.QuizzerAlreadyAnsweredIncorrectly
+        |> AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly
         |> Result.Error
 
     Assert.Equal(expectedResult, result)

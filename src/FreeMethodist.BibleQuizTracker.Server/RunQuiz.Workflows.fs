@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.Workflows
+﻿namespace FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow

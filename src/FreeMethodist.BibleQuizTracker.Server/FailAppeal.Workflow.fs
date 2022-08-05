@@ -2,7 +2,9 @@
 
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open Microsoft.FSharp.Core
 
+[<RequireQualifiedAccess>]
 module FailAppeal =
     type Command = WithinQuizCommand<unit>
 
