@@ -71,3 +71,17 @@ module AnswerCorrectly =
         | TeamScoreChanged of TeamScoreChanged
 
     type Workflow = Command -> AsyncResult<Event list, Error>
+
+[<RequireQualifiedAccess>]
+module AnswerIncorrectly =
+    type Command = WithinQuizCommand<unit>
+    type Event =
+        | CurrentQuizzerChanged of CurrentQuizzerChanged
+        | IndividualScoreChanged of IndividualScoreChanged
+        | TeamScoreChanged of TeamScoreChanged
+    type Error =
+        | QuizState of QuizStateError
+        | NoCurrentQuizzer of NoCurrentQuizzer
+        | QuizzerAlreadyAnsweredIncorrectly of QuizAnswer.QuizzerAlreadyAnsweredIncorrectly
+        | DbError of DbError
+    type Workflow = Command -> AsyncResult<Event list, Error>

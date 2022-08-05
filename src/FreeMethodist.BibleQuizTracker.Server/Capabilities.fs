@@ -1,7 +1,6 @@
 ﻿namespace  FreeMethodist.BibleQuizTracker.Server.Capabilities
 
 open FreeMethodist.BibleQuizTracker.Server
-open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow

@@ -1,10 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
 
-open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow
-open FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Workflow.AnswerIncorrectly
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Microsoft.FSharp.Core
 
 type UpdatedQuiz =
@@ -31,7 +30,7 @@ let updateQuiz: UpdateQuiz =
 
             let! changedQuestion, revertedCorrectAnswer =
                 updateOrAddQuestion quizzer quizCurrentQuestion currentAnswerRecord
-                |> Result.mapError Error.QuizzerAlreadyAnsweredIncorrectly
+                |> Result.mapError AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly
 
             let updateScore revertedAnswer (quizzer: QuizzerState) =
                 match revertedAnswer with
@@ -88,37 +87,37 @@ let createEvents: CreateEvents =
                     Quizzer = quizzer.Name
                     NewScore = quizzer.Score
                     Question = quiz.QuizState.CurrentQuestion }
-                  |> Event.IndividualScoreChanged
+                  |> AnswerIncorrectly.Event.IndividualScoreChanged
                   { Quiz = quiz.QuizState.Code
                     NewScore =
                       quiz.QuizState
                       |> RunningTeamQuiz.getTeam team
                       |> fun team -> team.Score
                     Team = team }
-                  |> Event.TeamScoreChanged ])
+                  |> AnswerIncorrectly.Event.TeamScoreChanged ])
             |> Option.defaultValue []
 
         let quizzerChanged =
             { Quiz = quiz.QuizState.Code
               CurrentQuizzer = quiz.QuizState.CurrentQuizzer }
-            |> Event.CurrentQuizzerChanged
+            |> AnswerIncorrectly.Event.CurrentQuizzerChanged
 
         [ quizzerChanged
           yield! revertedEvents ]
 
-let answerIncorrectly getQuiz saveQuiz : Workflow =
+let answerIncorrectly getQuiz saveQuiz : AnswerIncorrectly.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError DbError
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError AnswerIncorrectly.DbError
 
             let! runningQuiz =
                 validateQuiz quiz
                 |> AsyncResult.ofResult
-                |> AsyncResult.mapError QuizState
+                |> AsyncResult.mapError AnswerIncorrectly.QuizState
 
             let! validQuizzer =
                 validateCurrentQuizzer runningQuiz
-                |> Result.mapError Error.NoCurrentQuizzer
+                |> Result.mapError AnswerIncorrectly.Error.NoCurrentQuizzer
                 |> AsyncResult.ofResult
 
             let! updatedQuiz =
