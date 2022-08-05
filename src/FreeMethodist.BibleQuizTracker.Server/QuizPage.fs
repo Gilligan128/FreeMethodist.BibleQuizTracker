@@ -13,12 +13,12 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
-open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
 

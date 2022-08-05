@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
+﻿module FreeMethodist.BibleQuizTracker.Server.Workflows
 
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow

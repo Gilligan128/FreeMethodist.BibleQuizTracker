@@ -11,7 +11,7 @@
         <Compile Include="Common.Workflow.fs" />
         <Compile Include="HumanReadableIds.fs" />
         <Compile Include="Events.Workflow.fs" />
-        <Compile Include="ChangeCurrentQuestion.Workflow.fs" />
+        <Compile Include="RunQuiz.Workflows.fs" />
         <Compile Include="AddQuizzer.Workflow.fs" />
         <Compile Include="RemoveQuizzer.Workflow.fs" />
         <Compile Include="SelectQuizzer.Workflow.fs" />

@@ -2,8 +2,8 @@
 
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.MoveQuestion_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 
 type CreateEvent = RunningTeamQuiz -> CurrentQuestionChanged
 
