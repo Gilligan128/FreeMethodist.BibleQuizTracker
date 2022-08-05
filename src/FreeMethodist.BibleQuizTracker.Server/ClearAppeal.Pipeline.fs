@@ -1,7 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Pipeline
 
-open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
-open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow.ClearAppeal
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
@@ -66,14 +65,14 @@ let createEvents: CreateEvents =
 
         revertedEvents
 
-let clearAppeal getQuiz saveQuiz : Workflow =
+let clearAppeal getQuiz saveQuiz : ClearAppeal.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError DbError
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError  ClearAppeal.DbError
 
             let! validQuiz =
                 validateQuiz quiz
-                |> Result.mapError Error.QuizState
+                |> Result.mapError  ClearAppeal.Error.QuizState
                 |> AsyncResult.ofResult
 
             let! updatedQuiz, revertedTeam =

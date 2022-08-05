@@ -1,6 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.ClearAppeal.UpdateQuizStepTests
 
-open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Pipeline
 open Xunit

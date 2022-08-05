@@ -99,3 +99,16 @@ module FailAppeal =
     type Event = TeamScoreChanged of TeamScoreChanged
 
     type Workflow = Command -> AsyncResult<Event list, Error>
+
+[<RequireQualifiedAccess>]
+module ClearAppeal =
+    type Command = WithinQuizCommand<unit>
+    
+    type Error =
+        | QuizState of QuizStateError
+        | NoFailedAppeal
+        | DbError of DbError
+    
+    type Event = TeamScoreChanged of TeamScoreChanged
+    
+    type Workflow = Command -> AsyncResult<Event list, Error>

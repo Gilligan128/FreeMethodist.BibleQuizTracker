@@ -11,7 +11,6 @@ open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
