@@ -20,12 +20,10 @@ type CompletedTeam =
 
 type CompletedCompetitionStyle = | Individual of CompletedQuizzer list
                                  | Team of CompletedTeam*CompletedTeam
-                                 
+                  
 type CompletedQuiz =
     { Code: QuizCode
       CompetitionStyle : CompletedCompetitionStyle
-      WinningTeam: CompletedTeam
-      LosingTeam: CompletedTeam
       CompletedQuestions: CompletedQuestion list }
 
 type OfficialTeam =

@@ -30,18 +30,6 @@ let ``When completing a quiz Then quiz is in a Completed state`` () =
                         initialQuiz.TeamTwo.Quizzers
                         |> List.map (fun q -> { Name = q.Name; Score = q.Score }) }
                 )
-              WinningTeam =
-                { Name = initialQuiz.TeamOne.Name
-                  Score = initialQuiz.TeamOne.Score
-                  Quizzers =
-                    initialQuiz.TeamOne.Quizzers
-                    |> List.map (fun q -> { Name = q.Name; Score = q.Score }) }
-              LosingTeam =
-                { Name = initialQuiz.TeamTwo.Name
-                  Score = initialQuiz.TeamTwo.Score
-                  Quizzers =
-                    initialQuiz.TeamTwo.Quizzers
-                    |> List.map (fun q -> { Name = q.Name; Score = q.Score }) }
               CompletedQuestions = [] }
 
     Assert.True(true)

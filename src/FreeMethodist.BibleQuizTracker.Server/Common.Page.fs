@@ -16,7 +16,6 @@ type Deferred<'T> =
 
 //Live Score model
 type LiveScoreQuizzer = { Score: TeamScore; Name: Quizzer }
-type LiveScoreIndividuals = { Quizzers: LiveScoreQuizzer list }
 
 type LiveScoreTeam =
     { Name: string
@@ -24,7 +23,7 @@ type LiveScoreTeam =
       Quizzers: LiveScoreQuizzer list }
 
 type LiveScoreCompetitionStyle =
-    | Individual of LiveScoreIndividuals
+    | Individual of LiveScoreQuizzer list
     | Team of LiveScoreTeam * LiveScoreTeam
 
 type LiveScoreQuestionState =
