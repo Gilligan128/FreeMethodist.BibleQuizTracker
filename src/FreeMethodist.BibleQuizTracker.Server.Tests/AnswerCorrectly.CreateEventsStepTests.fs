@@ -2,10 +2,10 @@ module FreeMethodist.BibleQuizTracker.Server.Tests.AnswerCorrectly.CreateEventsS
 
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
-open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Tests.Quiz
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Xunit
 
 [<Fact>]

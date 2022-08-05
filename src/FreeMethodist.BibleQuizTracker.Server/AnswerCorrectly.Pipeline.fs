@@ -1,10 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
 
-open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
-open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow.AnswerCorrectly
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Microsoft.FSharp.Core
 
 //Answer Question
@@ -74,7 +73,7 @@ let updateQuiz: UpdateQuiz =
                 |> Map.tryFind quiz.CurrentQuestion
                 |> Option.map (fun q -> q.AnswerState)
                 |> recordAnsweredQuestion quizzer quiz.CurrentQuestion
-                |> Result.mapError (fun error -> error |> Error.QuizzerAlreadyAnsweredCorrectly)
+                |> Result.mapError (fun error -> error |> AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly)
 
             let currentQuestionInQuiz = 
                 { quiz with
@@ -107,8 +106,8 @@ let updateQuiz: UpdateQuiz =
 
             let! updatedQuizResult =
                 match teamOneOpt, teamTwoOpt with
-                | Some _, Some _ -> Error(DuplicateQuizzer quizzerName)
-                | None, None -> Error(QuizzerNotFound quizzerName)
+                | Some _, Some _ -> Error(AnswerCorrectly.DuplicateQuizzer quizzerName)
+                | None, None -> Error(AnswerCorrectly.QuizzerNotFound quizzerName)
                 | Some teamOne, None -> Ok({ updatedQuizInfo with TeamOne = teamOne })
                 | None, Some teamTwo -> Ok({ updatedQuizInfo with TeamTwo = teamTwo })
 
@@ -143,7 +142,7 @@ let createEvents: CreateEvents =
             findAnswerer quizzer quizState
 
         let answererScoreChanged =
-            Event.IndividualScoreChanged
+            AnswerCorrectly.Event.IndividualScoreChanged
                 { NewScore = answerer.Score
                   Quiz = quizState.Code
                   Quizzer = quizzer
@@ -161,11 +160,11 @@ let createEvents: CreateEvents =
                       Quiz = quizState.Code
                       Quizzer = revertedQuizzer
                       Question = quizState.CurrentQuestion }
-                    |> Event.IndividualScoreChanged
+                    |> AnswerCorrectly.Event.IndividualScoreChanged
 
                 let teamScoreChanged =
                     if teamUpdated <> revertedTeam then
-                        [ Event.TeamScoreChanged
+                        [ AnswerCorrectly.Event.TeamScoreChanged
                               { NewScore = updatedTeamScore quizState revertedTeam
                                 Team = revertedTeam
                                 Quiz = quizState.Code } ]
@@ -176,13 +175,13 @@ let createEvents: CreateEvents =
                   yield! teamScoreChanged ]
 
         let teamScoreChanged =
-            Event.TeamScoreChanged
+            AnswerCorrectly.Event.TeamScoreChanged
                 { NewScore = updatedTeamScore quizState teamUpdated
                   Team = teamUpdated
                   Quiz = quizState.Code }
 
         let currentQuestionChanged =
-            Event.CurrentQuestionChanged
+            AnswerCorrectly.Event.CurrentQuestionChanged
                 { Quiz = quizState.Code
                   NewQuestion = quizState.CurrentQuestion }
 
@@ -191,22 +190,22 @@ let createEvents: CreateEvents =
           currentQuestionChanged
           yield! revertedScoresChanged ]
 
-let answerCorrectly getQuiz saveQuiz : Workflow =
+let answerCorrectly getQuiz saveQuiz : AnswerCorrectly.Workflow =
     fun command ->
         asyncResult {
             let! quiz =
                 getQuiz command.Quiz
-                |> AsyncResult.mapError DbError
+                |> AsyncResult.mapError AnswerCorrectly.Error.DbError
                 |> AsyncResult.bind (fun quiz ->
                     quiz
                     |> Common.Pipeline.validateQuiz
                     |> AsyncResult.ofResult
-                    |> AsyncResult.mapError Error.QuizStateError)
+                    |> AsyncResult.mapError AnswerCorrectly.Error.QuizStateError)
 
             let! currentQuizzer =
                 quiz
                 |> validateCurrentQuizzer
-                |> Result.mapError (fun e -> Error.NoCurrentQuizzer)
+                |> Result.mapError (fun e -> AnswerCorrectly.Error.NoCurrentQuizzer)
                 |> AsyncResult.ofResult
 
             let! updatedQuiz =

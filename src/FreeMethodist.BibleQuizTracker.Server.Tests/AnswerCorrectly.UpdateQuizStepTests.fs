@@ -1,10 +1,10 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AnswerCorrectly.UpdateQuizStepTests
 
-open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Workflow
 open FreeMethodist.BibleQuizTracker.Server.AnswerCorrectly_Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Tests.Common
 open FreeMethodist.BibleQuizTracker.Server.Tests.Quiz
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Xunit
 
 
