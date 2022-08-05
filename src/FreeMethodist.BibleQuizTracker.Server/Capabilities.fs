@@ -7,7 +7,6 @@ open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.SelectQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflows
 

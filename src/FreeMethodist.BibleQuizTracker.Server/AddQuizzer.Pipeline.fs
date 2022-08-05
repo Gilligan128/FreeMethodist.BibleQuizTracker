@@ -1,9 +1,9 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Pipeline
 
-open FreeMethodist.BibleQuizTracker.Server.AddQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Microsoft.FSharp.Core
 
 type ValidateQuizzerAdd = Quiz -> AddQuizzer.Data -> Result<RunningTeamQuiz, AddQuizzer.Error>

@@ -12,3 +12,15 @@ module ChangeCurrentQuestion =
     type Error = | QuizState of QuizStateError
                  | DbError of DbError
     type Workflow = Command -> AsyncResult<CurrentQuestionChanged, Error>
+
+[<RequireQualifiedAccess>]
+module AddQuizzer =
+    type Data = { Name: Quizzer; Team: TeamPosition }
+    type Command = WithinQuizCommand<Data>
+
+    type Error =
+        | QuizState of QuizStateError
+        | QuizzerAlreadyAdded of Quizzer
+        | DbError of DbError
+
+    type Workflow = Command -> AsyncResult<QuizzerParticipating, Error>
