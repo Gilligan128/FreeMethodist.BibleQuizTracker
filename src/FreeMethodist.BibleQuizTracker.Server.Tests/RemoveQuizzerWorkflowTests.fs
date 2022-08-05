@@ -1,8 +1,8 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.RemoveQuizzerWorkflowTests
 
 open FreeMethodist.BibleQuizTracker.Server
-open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 open Xunit
 
 let initialTeamStateWithQuizzer quizzer =

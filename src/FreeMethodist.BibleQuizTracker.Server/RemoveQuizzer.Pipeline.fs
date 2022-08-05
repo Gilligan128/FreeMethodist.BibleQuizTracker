@@ -2,8 +2,8 @@
 
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.RemoveQuizzer_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Workflows
 
 type ValidateRemoval = Quiz -> RemoveQuizzer.Data -> Result<RunningTeamQuiz, RemoveQuizzer.Error>
 
