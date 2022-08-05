@@ -20,7 +20,8 @@ type CompletedTeam =
 
 type CompletedCompetitionStyle = | Individual of CompletedQuizzer list
                                  | Team of CompletedTeam*CompletedTeam
-                  
+
+type CompletedQuestion = { FailedAppeal : Quizzer option; AnswerState : CompletedAnswer }                  
 type CompletedQuiz =
     { Code: QuizCode
       CompetitionStyle : CompletedCompetitionStyle
@@ -39,7 +40,7 @@ type OfficialTeamQuiz =
     { Code: QuizCode
       WinningTeam: OfficialTeam
       LosingTeam: OfficialTeam
-      CompletedQuestions: CompletedQuestion list }
+      CompletedQuestions: CompletedAnswer list }
 
 type Quiz =
     | Running of RunningTeamQuiz

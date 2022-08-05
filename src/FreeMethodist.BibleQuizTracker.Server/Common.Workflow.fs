@@ -33,7 +33,7 @@ type AnsweredQuestion =
     { Answerer: Quizzer
       IncorrectAnswerers: Quizzer list }
 
-type CompletedQuestion =
+type CompletedAnswer =
     | Answered of AnsweredQuestion
     | Unanswered of Quizzer list
 
@@ -67,7 +67,7 @@ type QuizzerState =
 
 //don't initialize directly. Use the QuizQuestion module.
 type QuizAnswer =
-    | Complete of CompletedQuestion
+    | Complete of CompletedAnswer
     | Incomplete of Quizzer list
 
 type RevertedCorrectAnswer =

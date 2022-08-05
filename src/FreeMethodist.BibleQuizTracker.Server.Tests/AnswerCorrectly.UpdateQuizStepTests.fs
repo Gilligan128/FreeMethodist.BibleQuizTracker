@@ -113,7 +113,7 @@ let ``When Quizzer Answers then record answered question for history`` () =
         let expectedAnswer =
             { Answerer = quizzer.Name
               IncorrectAnswerers = [] }
-            |> CompletedQuestion.Answered
+            |> CompletedAnswer.Answered
             |> QuizAnswer.Complete
 
         Assert.Equal(
