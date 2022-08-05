@@ -14,4 +14,5 @@ module Capabilities =
         ClearAppeal : User -> Quizzer option -> ClearAppeal.Workflow option
         ChangeCurrentQuestion : User -> ChangeCurrentQuestion.Workflow option
         SelectQuizzer: User -> SelectQuizzer.Workflow option
+        CompleteQuiz: User -> CompleteQuiz.Workflow option
     }

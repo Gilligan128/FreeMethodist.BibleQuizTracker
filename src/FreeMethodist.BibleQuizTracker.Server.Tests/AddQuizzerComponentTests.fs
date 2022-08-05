@@ -24,6 +24,7 @@ let capabilitiesProvider : RunQuizCapabilityProvider= {
     ClearAppeal = fun _ _ -> Some (fun _ -> AsyncResult.ofSuccess [])
     SelectQuizzer = fun _ -> Some (fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<CurrentQuizzerChanged>)
     ChangeCurrentQuestion = fun _ -> Some (fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<CurrentQuestionChanged>)
+    CompleteQuiz = fun _ -> None
 }
 
 let sut =

@@ -36,3 +36,4 @@ type RunQuizEvent =
     | QuizzerParticipating of QuizzerParticipating
     | CurrentQuizzerChanged of CurrentQuizzerChanged
     | IndividualScoreChanged of IndividualScoreChanged
+    | QuizStateChanged of QuizStateChanged

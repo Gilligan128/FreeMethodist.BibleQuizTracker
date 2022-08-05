@@ -37,7 +37,7 @@ let updateQuizToComplete (quiz: RunningTeamQuiz) : CompletedQuiz =
 let completeQuiz getQuiz saveQuiz : CompleteQuiz.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = command |> getQuiz
+            let! quiz = command |> getQuiz |> AsyncResult.mapError CompleteQuiz.DbError
 
             let! validQuiz =
                 quiz
