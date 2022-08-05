@@ -19,8 +19,7 @@ type TeamName = NonEmptyString
 
 type WithinQuizCommand<'data> =
     { Data: 'data
-      Quiz: QuizCode
-      User: User }
+      Quiz: QuizCode }
 
 type TeamScore = private TeamScore of int //increments of 20
 
@@ -107,7 +106,6 @@ type Jump =
       Quizzer: Quizzer
       ServerTimestamp: DateTimeOffset }
 
-//Create Quiz Workflow
 type UnvalidatedQuiz =
     { Code: QuizCode
       CompetitionStyle: CompetitionStyle }

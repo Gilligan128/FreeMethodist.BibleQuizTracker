@@ -27,6 +27,8 @@ type IndividualScoreChanged =
       NewScore: TeamScore
       Question: QuestionNumber }
 
+type QuizStateChanged = { Quiz: QuizCode; NewState : string }
+
 type RunQuizEvent =
     | QuizzerNoLongerParticipating of QuizzerNoLongerParticipating
     | TeamScoreChanged of TeamScoreChanged

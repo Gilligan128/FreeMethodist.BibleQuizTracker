@@ -60,8 +60,8 @@ module LiveScorePage =
               QuestionState = Completed quizState.CompletedQuestions.Length
               CompetitionStyle =
                 LiveScoreCompetitionStyle.Team(
-                    (loadCompleteTeam quizState.winningTeam),
-                    (loadCompleteTeam quizState.losingTeam)
+                    (loadCompleteTeam quizState.WinningTeam),
+                    (loadCompleteTeam quizState.LosingTeam)
                 ) }
         | Running quizState ->
             { LastUpdated = DateTimeOffset.Now

@@ -89,7 +89,7 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) (options: Json
 let getCodeFromQuiz quiz =
     match quiz with
     | Running runningTeamQuiz -> runningTeamQuiz.Code
-    | Completed completedTeamQuiz -> completedTeamQuiz.code
+    | Completed completedTeamQuiz -> completedTeamQuiz.Code
     | Official officialTeamQuiz -> officialTeamQuiz.Code
 
 let getBlobName quizCode = $"quiz-{quizCode}"

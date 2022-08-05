@@ -18,10 +18,14 @@ type CompletedTeam =
       Score: TeamScore
       Quizzers: CompletedQuizzer list }
 
-type CompletedTeamQuiz =
-    { code: QuizCode
-      winningTeam: CompletedTeam
-      losingTeam: CompletedTeam
+type CompletedCompetitionStyle = | Individual of CompletedQuizzer list
+                                 | Team of CompletedTeam*CompletedTeam
+                                 
+type CompletedQuiz =
+    { Code: QuizCode
+      CompetitionStyle : CompletedCompetitionStyle
+      WinningTeam: CompletedTeam
+      LosingTeam: CompletedTeam
       CompletedQuestions: CompletedQuestion list }
 
 type OfficialTeam =
@@ -41,15 +45,15 @@ type OfficialTeamQuiz =
 
 type Quiz =
     | Running of RunningTeamQuiz
-    | Completed of CompletedTeamQuiz
+    | Completed of CompletedQuiz
     | Official of OfficialTeamQuiz
 
 [<RequireQualifiedAccess>]
 module Quiz =
-    let start unvalidatedQuiz =
+    let start (unvalidatedQuiz :UnvalidatedQuiz)=
         match unvalidatedQuiz.CompetitionStyle with
-        | Individual -> Result.Error ()
-        | Team teams ->
+        | CompetitionStyle.Individual -> Result.Error ()
+        | CompetitionStyle.Team teams ->
             Running
                 { Code = unvalidatedQuiz.Code
                   TeamOne =

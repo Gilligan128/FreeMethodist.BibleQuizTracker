@@ -25,8 +25,8 @@
         <Compile Include="FailAppeal.Pipeline.fs" />
         <Compile Include="ClearAppeal.Pipeline.fs" />
         <Compile Include="CreateQuiz.Pipeline.fs" />
+        <Compile Include="CompleteQuiz.Pipeline.fs" />
         <Compile Include="QuizHub.fs" />
-        <Compile Include="EnterQuizPipeline.fs" />
         <Compile Include="JumpPipeline.fs" />
         <Compile Include="Common.Page.fs" />
         <Compile Include="ItemizedScoreView.fs" />

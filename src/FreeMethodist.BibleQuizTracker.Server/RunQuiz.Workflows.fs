@@ -112,3 +112,28 @@ module ClearAppeal =
     type Event = TeamScoreChanged of TeamScoreChanged
     
     type Workflow = Command -> AsyncResult<Event list, Error>
+    
+[<RequireQualifiedAccess>]
+module CompleteQuiz =
+    type Command = QuizCode
+    
+    type Error =
+        | QuizState of QuizStateError
+        | DbError of DbError
+    
+    type Event = QuizStateChanged of QuizStateChanged
+    
+    type Workflow = Command -> AsyncResult<Event list, Error>
+    
+[<RequireQualifiedAccess>]
+module Reopen =
+    type Command = QuizCode
+    
+    type Error =
+        | QuizState of QuizStateError
+        | NoFailedAppeal
+        | DbError of DbError
+    
+    type Event = TeamScoreChanged of TeamScoreChanged
+    
+    type Workflow = Command -> AsyncResult<Event list, Error>
