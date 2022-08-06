@@ -126,7 +126,7 @@ module CompleteQuiz =
     type Workflow = Command -> AsyncResult<Event list, Error>
     
 [<RequireQualifiedAccess>]
-module Reopen =
+module ReopenQuiz =
     type Command = QuizCode
     
     type Error =
@@ -134,6 +134,5 @@ module Reopen =
         | NoFailedAppeal
         | DbError of DbError
     
-    type Event = TeamScoreChanged of TeamScoreChanged
-    
+    type Event = QuizStateChanged of QuizStateChanged
     type Workflow = Command -> AsyncResult<Event list, Error>

@@ -90,7 +90,7 @@ let failAppeal getQuiz saveQuiz : FailAppeal.Workflow =
             let! quiz = getQuiz command.Quiz |> AsyncResult.mapError FailAppeal.DbError
 
             let! validQuiz =
-                validateQuiz quiz
+                validateRunningQuiz quiz
                 |> Result.mapError FailAppeal.Error.QuizState
                 |> AsyncResult.ofResult
 

@@ -14,7 +14,7 @@ let validateSelection: ValidateSelection =
     fun teamQuiz input ->
         result {
             let! validQuiz =
-                validateQuiz teamQuiz
+                validateRunningQuiz teamQuiz
                 |> Result.mapError SelectQuizzer.Error.QuizState
 
             let hasQuizzer =

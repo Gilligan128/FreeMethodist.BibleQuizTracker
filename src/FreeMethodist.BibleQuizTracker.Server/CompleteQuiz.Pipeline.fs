@@ -41,7 +41,7 @@ let completeQuiz getQuiz saveQuiz : CompleteQuiz.Workflow =
 
             let! validQuiz =
                 quiz
-                |> validateQuiz
+                |> validateRunningQuiz
                 |> Result.mapError CompleteQuiz.QuizState
                 |> AsyncResult.ofResult
 

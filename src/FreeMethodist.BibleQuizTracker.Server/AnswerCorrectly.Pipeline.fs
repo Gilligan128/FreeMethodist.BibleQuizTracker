@@ -198,7 +198,7 @@ let answerCorrectly getQuiz saveQuiz : AnswerCorrectly.Workflow =
                 |> AsyncResult.mapError AnswerCorrectly.Error.DbError
                 |> AsyncResult.bind (fun quiz ->
                     quiz
-                    |> Common.Pipeline.validateQuiz
+                    |> Common.Pipeline.validateRunningQuiz
                     |> AsyncResult.ofResult
                     |> AsyncResult.mapError AnswerCorrectly.Error.QuizStateError)
 

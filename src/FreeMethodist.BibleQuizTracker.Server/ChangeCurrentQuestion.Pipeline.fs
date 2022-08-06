@@ -22,7 +22,7 @@ let changeCurrentQuestionAsync
 
             let! runningQuiz =
                 quiz
-                |> validateQuiz
+                |> validateRunningQuiz
                 |> AsyncResult.ofResult
                 |> AsyncResult.mapError ChangeCurrentQuestion.QuizState
 

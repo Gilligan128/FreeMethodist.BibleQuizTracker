@@ -18,13 +18,17 @@ type CompletedTeam =
       Score: TeamScore
       Quizzers: CompletedQuizzer list }
 
-type CompletedCompetitionStyle = | Individual of CompletedQuizzer list
-                                 | Team of CompletedTeam*CompletedTeam
+type CompletedCompetitionStyle =
+    | Individual of CompletedQuizzer list
+    | Team of CompletedTeam * CompletedTeam
 
-type CompletedQuestion = { FailedAppeal : Quizzer option; AnswerState : CompletedAnswer }                  
+type CompletedQuestion =
+    { FailedAppeal: Quizzer option
+      AnswerState: CompletedAnswer }
+
 type CompletedQuiz =
     { Code: QuizCode
-      CompetitionStyle : CompletedCompetitionStyle
+      CompetitionStyle: CompletedCompetitionStyle
       CompletedQuestions: CompletedQuestion list }
 
 type OfficialTeam =
@@ -49,17 +53,16 @@ type Quiz =
 
 [<RequireQualifiedAccess>]
 module Quiz =
-    let start (unvalidatedQuiz :UnvalidatedQuiz)=
+    let start (unvalidatedQuiz: UnvalidatedQuiz) =
         match unvalidatedQuiz.CompetitionStyle with
-        | CompetitionStyle.Individual -> Result.Error ()
+        | CompetitionStyle.Individual -> Result.Error()
         | CompetitionStyle.Team teams ->
             Running
                 { Code = unvalidatedQuiz.Code
                   TeamOne =
                     { Name = teams.TeamOneName
                       Score = TeamScore.initial
-                      Quizzers = []
-                   }
+                      Quizzers = [] }
                   TeamTwo =
                     { Name = teams.TeamTwoName
                       Score = TeamScore.initial
@@ -68,7 +71,7 @@ module Quiz =
                   CurrentQuestion = PositiveNumber.one
                   Questions =
                     Map.empty
-                    |> Map.add PositiveNumber.one QuestionState.initial}
+                    |> Map.add PositiveNumber.one QuestionState.initial }
             |> Ok
 
 //Persistence
@@ -126,9 +129,13 @@ let validateCurrentQuizzerWithTeam: ValidateCurrentQuizzerWithTeam =
         | None, Some quizzer -> Ok(quizzer, TeamTwo)
         | Some quizzer1, Some _ -> Ok(quizzer1, TeamOne) //should be an error, really
 
+let validateCompleteQuiz quiz =
+    match quiz with
+    | Quiz.Running running -> Error(WrongQuizState(running.GetType()))
+    | Quiz.Completed c -> c |> Choice1Of2 |> Ok
+    | Quiz.Official official -> official |> Choice2Of2 |> Ok
 
-
-let validateQuiz: ValidateQuizIsRunning =
+let validateRunningQuiz: ValidateQuizIsRunning =
     fun quiz ->
         match quiz with
         | Quiz.Running running -> Ok running
@@ -137,10 +144,8 @@ let validateQuiz: ValidateQuizIsRunning =
 
 //Score calculation
 
-//type QuestionQuizzerEvents = 
-
 //Changing current question
-let changeCurrentQuestionInQuiz question quiz  =
+let changeCurrentQuestionInQuiz question quiz =
     { quiz with
         CurrentQuestion = question
         Questions =
@@ -149,4 +154,7 @@ let changeCurrentQuestionInQuiz question quiz  =
                 q
                 |> Option.defaultValue (QuestionState.create ([] |> Unanswered |> Complete))
                 |> Some)
-            |> Map.change question (fun q -> q |> (Option.defaultValue QuestionState.initial) |> Some)  }
+            |> Map.change question (fun q ->
+                q
+                |> (Option.defaultValue QuestionState.initial)
+                |> Some) }

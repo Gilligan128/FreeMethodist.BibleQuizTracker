@@ -71,7 +71,7 @@ let clearAppeal getQuiz saveQuiz : ClearAppeal.Workflow =
             let! quiz = getQuiz command.Quiz |> AsyncResult.mapError  ClearAppeal.DbError
 
             let! validQuiz =
-                validateQuiz quiz
+                validateRunningQuiz quiz
                 |> Result.mapError  ClearAppeal.Error.QuizState
                 |> AsyncResult.ofResult
 

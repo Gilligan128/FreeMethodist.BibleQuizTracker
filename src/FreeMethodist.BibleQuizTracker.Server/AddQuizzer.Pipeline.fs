@@ -60,7 +60,7 @@ let addQuizzerAsync getQuiz (saveQuiz: SaveQuiz) : AddQuizzer.Workflow =
             let! quiz = getQuiz command.Quiz |> AsyncResult.mapError AddQuizzer.DbError
 
             let! validQuiz =
-                validateQuizzerAdd (validateQuiz) quiz command.Data
+                validateQuizzerAdd (validateRunningQuiz) quiz command.Data
                 |> Async.retn
 
             return!
