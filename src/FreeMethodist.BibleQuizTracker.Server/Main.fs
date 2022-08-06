@@ -381,7 +381,12 @@ let runQuizCapabilities dependencies : RunQuizCapabilityProvider =
         CompleteQuiz.Pipeline.completeQuiz dependencies.GetQuiz dependencies.SaveQuiz
         |> Some
         |> onlyQuizmastersAndScorekeepers user
-        
+    
+    let reopenQuizCap user =
+        ReopenQuiz.Pipeline.reopenQuiz dependencies.GetQuiz dependencies.SaveQuiz
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+      
     { AddQuizzer = addQuizzer
       RemoveQuizzer = removeQuizzer
       AnswerCorrectly = answerCorrectly
@@ -390,7 +395,8 @@ let runQuizCapabilities dependencies : RunQuizCapabilityProvider =
       ClearAppeal = clearAppealCap
       ChangeCurrentQuestion = changeCurrentQuestionCap
       SelectQuizzer = selectQuizzerCap
-      CompleteQuiz = completeQuizCap }
+      CompleteQuiz = completeQuizCap
+      ReopenQuiz = reopenQuizCap }
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()

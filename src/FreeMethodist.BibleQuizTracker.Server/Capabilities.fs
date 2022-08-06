@@ -15,4 +15,5 @@ module Capabilities =
         ChangeCurrentQuestion : User -> ChangeCurrentQuestion.Workflow option
         SelectQuizzer: User -> SelectQuizzer.Workflow option
         CompleteQuiz: User -> CompleteQuiz.Workflow option
+        ReopenQuiz: User -> ReopenQuiz.Workflow option
     }

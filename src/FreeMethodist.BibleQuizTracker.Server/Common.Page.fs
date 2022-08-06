@@ -82,6 +82,9 @@ let mapDbErrorToString error =
     | Exception exn -> exn.Message
     | DbError.RemoteError message -> message
 
+let mapQuizStateErrorToString _ =
+    "Wrong quiz state"
+
 //Scoring types
 type EventState =
     { AnswerState: QuizAnswer

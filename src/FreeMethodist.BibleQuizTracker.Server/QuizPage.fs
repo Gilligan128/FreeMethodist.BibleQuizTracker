@@ -1,6 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizPage
 
 open System
+open System.Linq.Expressions
 open Bolero
 open Bolero.Html
 open Elmish
@@ -77,7 +78,8 @@ type Message =
     | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
     | FailAppeal of AsyncOperationStatus<unit, WorkflowResult<FailAppeal.Error>>
     | ClearAppeal of AsyncOperationStatus<unit, WorkflowResult<ClearAppeal.Error>>
-    | DoNothing
+    | CompleteQuiz of AsyncOperationStatus<unit, WorkflowResult<CompleteQuiz.Error>>
+    | ReopenQuiz of AsyncOperationStatus<unit, WorkflowResult<ReopenQuiz.Error>>
 
 
 type ExternalMessage = Error of string
@@ -209,10 +211,10 @@ let init user quizCode previousQuizCode =
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
 
-let workflowFormError =
+let private workflowFormError =
     PublishEventError.FormError >> WorkflowError
 
-let getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) user currentQuizzerOpt =
+let private getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) user currentQuizzerOpt =
     let addQuizzer =
         capabilityProvider.AddQuizzer user
 
@@ -237,6 +239,12 @@ let getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) use
     let changeCurrentQuestion =
         capabilityProvider.ChangeCurrentQuestion user
 
+    let completeQuiz =
+        capabilityProvider.CompleteQuiz user
+
+    let reopenQuiz =
+        capabilityProvider.ReopenQuiz user
+
     addQuizzer,
     removeQuizzer,
     answerCorrectly,
@@ -244,8 +252,9 @@ let getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) use
     failAppeal,
     clearAppeal,
     selectQuizzer,
-    changeCurrentQuestion
-
+    changeCurrentQuestion,
+    completeQuiz,
+    reopenQuiz
 
 
 let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync: GetQuiz) capabilityProvider msg model =
@@ -316,11 +325,12 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
          failAppeal,
          clearAppeal,
          selectQuizzer,
-         changeCurrentQuestion) =
+         changeCurrentQuestion,
+         completeQuiz,
+         reopenQuiz) =
         getAvailableCapabilities capabilityProvider model.CurrentUser model.CurrentQuizzer
 
     match msg with
-    | DoNothing
     | InitializeQuizAndConnections (Started _)
     | InitializeQuizAndConnections (Finished _) -> model, Cmd.none, None
     | OnQuizEvent (Started _) ->
@@ -606,6 +616,50 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
             | ClearAppeal.Error.DbError dbError -> dbError |> mapDbErrorToString
 
         quiz |> refreshQuizOrError mapAppealError
+    | CompleteQuiz (Started _) ->
+        let mapQuizEvent event =
+            match event with
+            | CompleteQuiz.Event.QuizStateChanged e -> RunQuizEvent.QuizStateChanged e
+
+        let inputCommand = model.Code
+
+        completeQuiz
+        |> Option.map (fun workflow ->
+            workflow inputCommand
+            |> AsyncResult.map (List.map mapQuizEvent)
+            |> publishWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd (CompleteQuiz))
+        |> matchOptionalCommand
+    | CompleteQuiz (Finished result) ->
+        let mapErrors error =
+            match error with
+            | CompleteQuiz.Error.DbError dbError -> mapDbErrorToString dbError
+            | CompleteQuiz.QuizState quizStateError -> mapQuizStateErrorToString quizStateError
+
+        result |> refreshQuizOrError mapErrors
+      | ReopenQuiz (Started _) ->
+        let mapQuizEvent event =
+            match event with
+            | ReopenQuiz.Event.QuizStateChanged e -> RunQuizEvent.QuizStateChanged e
+
+        let inputCommand = model.Code
+
+        reopenQuiz
+        |> Option.map (fun workflow ->
+            workflow inputCommand
+            |> AsyncResult.map (List.map mapQuizEvent)
+            |> publishWorkflowEventsAsync
+            |> reloadQuizAsync
+            |> mapToAsyncOperationCmd (ReopenQuiz))
+        |> matchOptionalCommand
+    | ReopenQuiz (Finished result) ->
+        let mapErrors error =
+            match error with
+            | ReopenQuiz.Error.DbError dbError -> mapDbErrorToString dbError
+            | ReopenQuiz.QuizState quizStateError -> mapQuizStateErrorToString quizStateError
+
+        result |> refreshQuizOrError mapErrors
 
 let update
     connectAndHandle

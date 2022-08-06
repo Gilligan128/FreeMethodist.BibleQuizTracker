@@ -131,7 +131,6 @@ module ReopenQuiz =
     
     type Error =
         | QuizState of QuizStateError
-        | NoFailedAppeal
         | DbError of DbError
     
     type Event = QuizStateChanged of QuizStateChanged
