@@ -37,21 +37,14 @@ module LiveScorePage =
         { Name = team.Name
           Score = team.Score
           Quizzers = team.Quizzers |> List.map loadRunningQuizzer }
-
-    let private mapOptionToList opt =
-        match opt with
-        | Some value -> [ value ]
-        | None -> []
-
+    
     let private loadOfficialTeam (team: OfficialTeam) : LiveScoreTeam =
         { Name = team.Name
           Score = team.Score
           Quizzers =
-            [ team.QuizzerOne; team.QuizzerTwo ]
-            @ (mapOptionToList team.QuizzerThree)
-              @ (mapOptionToList team.QuizzerFour)
-                @ (mapOptionToList team.QuizzerFive)
-            |> List.map loadCompletedQuizzer }
+            team
+            |> OfficialTeam.quizzerList
+            |> List.choose (Option.map loadCompletedQuizzer) }
 
     let private loadFromQuiz quiz =
         match quiz with

@@ -14,6 +14,23 @@ let private mapCompletedTeamToRunning (team: CompletedTeam) : QuizTeamState =
               Score = q.Score
               Participation = Out }) }
 
+let private mapOptionToList opt =
+    match opt with
+    | Some value -> [ value ]
+    | None -> []
+
+let private mapOfficialToRunning (team: OfficialTeam) : QuizTeamState =
+    { Name = team.Name
+      Score = team.Score
+      Quizzers =
+        team
+        |> OfficialTeam.quizzerList
+        |> List.choose id
+        |> List.map (fun q ->
+            { Name = q.Name
+              Score = q.Score
+              Participation = Out }) }
+
 let ofNumber value =
     value
     |> PositiveNumber.create ""
@@ -21,18 +38,22 @@ let ofNumber value =
         | Ok number -> number
         | Error _ -> PositiveNumber.one
 
+let mapQuestionToRunning (key, value: CompletedQuestion) : PositiveNumber * QuestionState =
+    key + 1 |> ofNumber,
+    { FailedAppeal = value.FailedAppeal
+      AnswerState = QuizAnswer.Complete value.AnswerState }
+
 let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : RunningTeamQuiz =
+    let emptyTeam =
+        { Name = ""
+          Score = TeamScore.initial
+          Quizzers = [] }
+
     match quiz with
     | Choice1Of2 completed ->
         let teamOne, teamTwo =
             match completed.CompetitionStyle with
-            | CompletedCompetitionStyle.Individual _ ->
-                { Name = ""
-                  Score = TeamScore.initial
-                  Quizzers = [] },
-                { Name = ""
-                  Score = TeamScore.initial
-                  Quizzers = [] }
+            | CompletedCompetitionStyle.Individual _ -> emptyTeam, emptyTeam
             | CompletedCompetitionStyle.Team (teamOne, teamTwo) ->
                 (mapCompletedTeamToRunning teamOne), (mapCompletedTeamToRunning teamTwo)
 
@@ -44,12 +65,24 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
           Questions =
             completed.CompletedQuestions
             |> List.indexed
-            |> List.map (fun (key, value) ->
-                key + 1 |> ofNumber,
-                { FailedAppeal = value.FailedAppeal
-                  AnswerState = QuizAnswer.Complete value.AnswerState })
+            |> List.map mapQuestionToRunning
             |> Map.ofList }
-    | Choice2Of2 official -> Unchecked.defaultof<RunningTeamQuiz>
+    | Choice2Of2 official ->
+        let teamOne, teamTwo =
+            match official.CompetitionStyle with
+            | OfficialCompetitionStyle.Individual _ -> emptyTeam, emptyTeam
+            | OfficialCompetitionStyle.Team (one, two) -> (one |> mapOfficialToRunning, two |> mapOfficialToRunning)
+
+        { Code = official.Code
+          TeamOne = teamOne
+          TeamTwo = teamTwo
+          CurrentQuestion = official.CompletedQuestions.Length |> ofNumber
+          CurrentQuizzer = None
+          Questions =
+            official.CompletedQuestions
+            |> List.indexed
+            |> List.map mapQuestionToRunning
+            |> Map.ofList }
 
 let reopenQuiz getQuiz saveQuiz =
     fun command ->

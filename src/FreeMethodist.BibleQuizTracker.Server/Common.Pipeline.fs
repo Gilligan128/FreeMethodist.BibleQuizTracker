@@ -40,11 +40,21 @@ type OfficialTeam =
       QuizzerFour: CompletedQuizzer option
       QuizzerFive: CompletedQuizzer option }
 
+[<RequireQualifiedAccess>]
+module OfficialTeam =
+    let quizzerList (team : OfficialTeam) =
+         [ Some team.QuizzerOne; Some team.QuizzerTwo; team.QuizzerThree; team.QuizzerFour; team.QuizzerFive]
+
+type OfficialCompetitionStyle =
+    | Individual of CompletedQuizzer list
+    | Team of OfficialTeam*OfficialTeam
+
 type OfficialTeamQuiz =
     { Code: QuizCode
       WinningTeam: OfficialTeam
       LosingTeam: OfficialTeam
-      CompletedQuestions: CompletedAnswer list }
+      CompetitionStyle : OfficialCompetitionStyle
+      CompletedQuestions: CompletedQuestion list }
 
 type Quiz =
     | Running of RunningTeamQuiz

@@ -7,10 +7,15 @@ module Option =
         match fOpt, xOpt with
         | Some f, Some x -> Some(f x)
         | _ -> None
-  
-    
-    let transpose (optionOfResult: Option<Result<'a, 'b>>) : Result<Option<'a>,'b> =
-            match optionOfResult with
-            | Some (Ok a ) -> Ok (Some a)
-            | Some (Error b) -> Error (b)
-            | None -> Ok None
+
+
+    let transpose (optionOfResult: Option<Result<'a, 'b>>) : Result<Option<'a>, 'b> =
+        match optionOfResult with
+        | Some (Ok a) -> Ok(Some a)
+        | Some (Error b) -> Error(b)
+        | None -> Ok None
+
+    let toList opt =
+        match opt with
+        | Some value -> [ value ]
+        | None -> []

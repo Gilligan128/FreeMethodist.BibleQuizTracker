@@ -16,10 +16,10 @@ let ``When completing a quiz Then quiz is in a Completed state`` () =
     let actualQuiz =
         updateQuizToComplete initialQuiz
 
-    let expectedQuiz =
+    let expectedQuiz: CompletedQuiz =
         { Code = initialQuiz.Code
           CompetitionStyle =
-            Team(
+            CompletedCompetitionStyle.Team(
                 { Name = initialQuiz.TeamOne.Name
                   Score = initialQuiz.TeamOne.Score
                   Quizzers =
@@ -44,15 +44,22 @@ let private numberOf value =
 [<Fact>]
 let ``Given existing questions When completing a quiz Then all questions are complete`` () =
 
-    let unansweredIncorrectAnswerers =  [ "Juni" ] 
-    let unansweredQuestion : QuestionState =
+    let unansweredIncorrectAnswerers =
+        [ "Juni" ]
+
+    let unansweredQuestion: QuestionState =
         { FailedAppeal = None
-          AnswerState = QuizAnswer.Complete <| Unanswered unansweredIncorrectAnswerers}
-    
-    let answeredAnswerState =  { IncorrectAnswerers = [ "Jim" ]
-                                 Answerer = "Jim" }
-    let answeredAppealFailure =  Some "Jina"
-    let answeredQuestion : QuestionState=
+          AnswerState =
+            QuizAnswer.Complete
+            <| Unanswered unansweredIncorrectAnswerers }
+
+    let answeredAnswerState =
+        { IncorrectAnswerers = [ "Jim" ]
+          Answerer = "Jim" }
+
+    let answeredAppealFailure = Some "Jina"
+
+    let answeredQuestion: QuestionState =
         { FailedAppeal = answeredAppealFailure
           AnswerState =
             Answered answeredAnswerState
@@ -60,7 +67,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
 
     let incompleteAnswerers = [ "Juni" ]
 
-    let incompleteQuestion :QuestionState =
+    let incompleteQuestion: QuestionState =
         { FailedAppeal = None
           AnswerState = QuizAnswer.Incomplete <| incompleteAnswerers }
 
@@ -80,11 +87,14 @@ let ``Given existing questions When completing a quiz Then all questions are com
 
     let actualQuestions =
         actualQuiz.CompletedQuestions
+
     let expectedQuestions =
-        [ { FailedAppeal = None; AnswerState = Unanswered unansweredIncorrectAnswerers }
-          { FailedAppeal = answeredAppealFailure; AnswerState = Answered answeredAnswerState }
-          { FailedAppeal = None; 
-            AnswerState = Unanswered incompleteAnswerers } ] 
-    
+        [ { FailedAppeal = None
+            AnswerState = Unanswered unansweredIncorrectAnswerers }
+          { FailedAppeal = answeredAppealFailure
+            AnswerState = Answered answeredAnswerState }
+          { FailedAppeal = None
+            AnswerState = Unanswered incompleteAnswerers } ]
+
     Assert.Equal(expectedQuestions.Length, actualQuestions.Length)
     Assert.Equal<CompletedQuestion list>(expectedQuestions, actualQuestions)
