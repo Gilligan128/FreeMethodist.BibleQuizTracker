@@ -869,4 +869,6 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                       Questions = model.QuestionScores }
                     dispatch
             )
+            .CompleteQuiz(fun _ -> dispatch (CompleteQuiz(Started ())))
+            .ReopenQuiz(fun _ -> dispatch (ReopenQuiz(Started ())))
             .Elt()
