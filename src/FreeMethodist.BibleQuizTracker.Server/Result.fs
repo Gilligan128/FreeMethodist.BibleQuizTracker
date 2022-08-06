@@ -313,8 +313,7 @@ module Async =
          cts.Token)
       return! res.Task |> Async.AwaitTask }
     
-    module Async =
-     let inline awaitPlainTask (task: Task) = 
+    let inline awaitPlainTask (task: Task) = 
         // rethrow exception from preceding task if it faulted
         let continuation (t : Task) : unit =
             match t.IsFaulted with

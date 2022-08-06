@@ -102,7 +102,7 @@ let tee sideEffect =
         do sideEffect x
         x
 
-let private refreshModel (quiz: Quiz, user: User) =
+let private refreshModel (quiz: RunningTeamQuiz, user: User) =
     let getAnswerState quizAnswer (quizzerState: QuizzerState) =
         let quizzerWasIncorrect =
             List.contains quizzerState.Name
@@ -178,10 +178,8 @@ let private refreshModel (quiz: Quiz, user: User) =
         |> Seq.sortBy (fun k -> k |> PositiveNumber.value)
         |> Seq.map (fun k -> questionMap[k])
         |> Seq.toList
-
+    let runningQuiz = quiz
     let stateMatchedModel =
-        match quiz with
-        | Running runningQuiz ->
             let currentQuestion =
                 runningQuiz.Questions.TryFind(runningQuiz.CurrentQuestion)
                 |> Option.defaultValue QuestionState.initial
@@ -200,8 +198,6 @@ let private refreshModel (quiz: Quiz, user: User) =
                     runningQuiz.Questions
                     |> sortedList
                     |> List.map refreshQuestionScore }
-        | Quiz.Completed _
-        | Official _ -> emptyModel
 
     { stateMatchedModel with CurrentUser = user }
 
@@ -257,7 +253,7 @@ let private getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvi
     reopenQuiz
 
 
-let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync: GetQuiz) capabilityProvider msg model =
+let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync: GetQuiz) capabilityProvider navigate msg model =
     let refreshModel quiz = refreshModel (quiz, model.CurrentUser)
 
     let updateResultWithExternalError error =
@@ -312,7 +308,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
 
     let refreshQuizOrError mapWorkflowSpecificErrors result =
         match result with
-        | Ok quiz -> refreshModel quiz, Cmd.none, None
+        | Ok (Running quiz) -> refreshModel quiz, Cmd.none, None
+        | Ok (Quiz.Completed _) | Ok (Official _) -> model, (fun _ -> navigate Page.Home) |> Cmd.ofSub, "Quiz is not running" |> ExternalMessage.Error |> Some
         | Result.Error error ->
             error
             |> mapWorkflowErrors mapWorkflowSpecificErrors
@@ -342,7 +339,11 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
                 | Result.Error error -> error |> mapDbErrorToString |> workflowFormError)
 
         model, Cmd.OfAsync.result getQuizToRefresh, None
-    | OnQuizEvent (Finished quiz) -> refreshModel quiz, Cmd.none, None
+    | OnQuizEvent (Finished quiz) ->
+        match quiz with
+        | Quiz.Running quiz ->
+            refreshModel quiz, Cmd.none, None
+        | Quiz.Completed _ | Official _ -> model, Cmd.none, "Quiz is not running" |> ExternalMessage.Error |> Some
     | ChangeCurrentQuestion (Started questionNumber) ->
         let mapToQuizEvent event =
             event |> RunQuizEvent.CurrentQuestionChanged
@@ -435,17 +436,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
             | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
             | AddQuizzer.DbError dbError -> dbError |> mapDbErrorToString
 
-        result
-        |> function
-            | Ok quiz ->
-                quiz
-                |> refreshModel
-                |> fun model -> { model with AddQuizzer = Inert }, Cmd.none, None
-            | Result.Error error ->
-                let error =
-                    error |> mapWorkflowErrors mapAddQuizzerError
-
-                { model with AddQuizzer = Inert }, Cmd.none, error |> ExternalMessage.Error |> Some
+        let model, cmd, externalMsg = result |> refreshQuizOrError mapAddQuizzerError
+        { model with AddQuizzer = Inert },cmd, externalMsg
     | RemoveQuizzer (Started (name, teamPosition)) ->
         let withinQuizCommand: RemoveQuizzer.Command =
             { Quiz = model.Code
@@ -498,7 +490,8 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
 
         result
         |> function
-            | Ok result -> result |> refreshModel, Cmd.none, None
+            | Ok (Running result) -> result |> refreshModel, Cmd.none, None
+            | Ok (Quiz.Completed _) | Ok (Official _) -> model, (fun _ -> navigate Page.Home) |> Cmd.ofSub, "Quiz is not running" |> ExternalMessage.Error |> Some
             | Result.Error (WorkflowError.Workflow SelectQuizzer.Error.QuizzerAlreadyCurrent) -> model, Cmd.none, None
             | Result.Error error ->
                 model,
@@ -539,13 +532,7 @@ let private updateLoaded (publishQuizEvent: PublishQuizEventTask) (getQuizAsync:
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
             | AnswerCorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString
 
-        match result with
-        | Ok quiz -> refreshModel quiz, Cmd.none, None
-        | Result.Error error ->
-            error
-            |> mapWorkflowErrors mapWorkflowSpecificErrors
-            |> fun errorString -> errorString |> updateResultWithExternalError
-
+        result |> refreshQuizOrError mapWorkflowSpecificErrors
 
     | AnswerIncorrectly (Started _) ->
         let mapEvent event =
@@ -666,41 +653,36 @@ let update
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
     (tryGetQuiz: TryGetQuiz)
+    navigate
     capabilityProvider
     msg
     model
     =
+
     match model, msg with
     | Loading (code, user), Message.InitializeQuizAndConnections (Finished result) ->
         match result with
-        | Ok quiz ->
+        | Ok ((Some (Running quiz))) ->
             let model =
                 quiz
-                |> Option.map (fun q -> Loaded(refreshModel (q, user)))
-                |> Option.defaultValue (NotYetStarted(code, user))
-
-            let externalMessage =
-                quiz
-                |> function
-                    | None -> Some(ExternalMessage.Error $"Quiz {code} not found")
-                    | Some _ -> None
-
-            model, Cmd.none, externalMessage
+                |> fun q ->Loaded(refreshModel (q, user))
+            let handleEventSub dispatch _ =
+                getQuizAsync code
+                |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
+                |> Async.Ignore
+            let connectCmd =
+                connectAndHandle handleEventSub (code, None)
+                |> Cmd.ofSub
+            model, connectCmd, None
+        | Ok (None) ->
+            model, (fun (_ : Dispatch<Message>) -> navigate Page.Home  ) |> Cmd.ofSub, "Quiz not found" |> ExternalMessage.Error |> Some
+        | Ok (Some (Quiz.Completed _)) | Ok (Some (Quiz.Official _)) -> model, (fun (_ : Dispatch<Message>) -> navigate Page.Home ) |> Cmd.ofSub, "Quiz is not running" |> ExternalMessage.Error |> Some
         | Result.Error error ->
             let externalMessage =
                 error |> mapDbErrorToString
 
             NotYetStarted(code, user), Cmd.none, ExternalMessage.Error externalMessage |> Some
     | NotYetStarted (code, user), Message.InitializeQuizAndConnections (Started previousQuizCode) ->
-        let handleEventSub dispatch _ =
-            getQuizAsync code
-            |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
-            |> Async.Ignore
-
-        let connectCmd =
-            connectAndHandle handleEventSub (code, previousQuizCode)
-            |> Cmd.ofSub
-
         let loadCmd =
             tryGetQuiz code
             |> Async.timeoutNone 3000
@@ -712,7 +694,7 @@ let update
                 |> (Message.InitializeQuizAndConnections << Finished))
             |> Cmd.OfAsync.result
 
-        Loading(code, user), Cmd.batch [ connectCmd; loadCmd ], None
+        Loading(code, user), loadCmd, None
     | _, Message.WorkflowError error ->
         let errorMessage =
             match error with
@@ -722,7 +704,7 @@ let update
         model, Cmd.none, errorMessage |> ExternalMessage.Error |> Some
     | Loaded loadedModel, _ ->
         let loaded, cmd, externalMsg =
-            updateLoaded publishQuizEvent getQuizAsync capabilityProvider msg loadedModel
+            updateLoaded publishQuizEvent getQuizAsync capabilityProvider navigate msg loadedModel
 
         Loaded loaded, cmd, externalMsg
     | Loading _, _

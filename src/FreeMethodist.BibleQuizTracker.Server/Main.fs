@@ -56,7 +56,14 @@ let getCodeFromModel model =
     | Loading (code, _) -> code
     | Loaded loaded -> loaded.Code
 
-let disconnectFromQuizCmd (hubConnection: HubConnection) quizCode =
+let previousQuizCode page =
+    match page with
+    | Page.QuizRun quizCode
+    | Page.QuizLiveScore (quizCode, _)
+    | Page.QuizSpectate quizCode -> quizCode |> Some
+    | Page.Home -> None
+
+let disconnectFromHub (hubConnection: HubConnection) quizCode =
     hubConnection.Remove((runQuizEventOccuredName))
 
     hubConnection.InvokeAsync(
@@ -66,16 +73,17 @@ let disconnectFromQuizCmd (hubConnection: HubConnection) quizCode =
         quizCode,
         CancellationToken.None
     )
-    |> Async.AwaitTask
-    |> Async.map (fun _ -> Message.ClearError)
-    |> Cmd.OfAsync.result
+    |> Async.awaitPlainTask
+
+let disconnectFromQuizCmd (hubConnection: HubConnection) quizCode =
+    fun (_ : Dispatch<Message>) -> disconnectFromHub hubConnection quizCode |> Async.StartImmediate
+    |> Cmd.ofSub
 
 let disconnectCmdForPreviousModel disconnectCommand (previousPage: Page) =
-    match previousPage with
-    | Page.QuizRun quizCode
-    | Page.QuizLiveScore (quizCode, _)
-    | Page.QuizSpectate quizCode -> quizCode |> disconnectCommand
-    | Page.Home -> Cmd.none
+    previousPage
+    |> previousQuizCode
+    |> Option.map disconnectCommand
+    |> Option.defaultValue Cmd.none
 
 let update
     connectToQuizEvents
@@ -86,10 +94,14 @@ let update
     tryGetQuiz
     spectateQuiz
     (hubConnection: HubConnection)
+    navigate
     capabilitiesProvider
     (message: Message)
     model
     : Model * Cmd<Message> =
+
+    let navigate = navigate model.page
+
     let disconnectPreviousPage page =
         disconnectCmdForPreviousModel (disconnectFromQuizCmd hubConnection) page
 
@@ -155,6 +167,7 @@ let update
                     publishQuizEvent
                     getQuizAsync
                     tryGetQuiz
+                    navigate
                     capabilitiesProvider
                     quizMsg
                     quizModel
@@ -184,7 +197,7 @@ let update
         let updateLiveScore message =
             match model.page with
             | QuizLiveScore (code, liveScoreModel) ->
-                
+
                 let newScoreModel, cmd =
                     LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz liveScoreModel.Model message
 
@@ -376,17 +389,17 @@ let runQuizCapabilities dependencies : RunQuizCapabilityProvider =
         originalCap
         |> Some
         |> onlyQuizmastersAndScorekeepers user
-    
+
     let completeQuizCap user =
         CompleteQuiz.Pipeline.completeQuiz dependencies.GetQuiz dependencies.SaveQuiz
         |> Some
         |> onlyQuizmastersAndScorekeepers user
-    
+
     let reopenQuizCap user =
         ReopenQuiz.Pipeline.reopenQuiz dependencies.GetQuiz dependencies.SaveQuiz
         |> Some
         |> onlyQuizmastersAndScorekeepers user
-      
+
     { AddQuizzer = addQuizzer
       RemoveQuizzer = removeQuizzer
       AnswerCorrectly = answerCorrectly
@@ -446,6 +459,24 @@ type MyApp() =
                 { SaveQuiz = this.SaveQuizAsync
                   GetQuiz = this.GetQuizAsync }
 
+        let navigate currentPage toPage =
+            let quizCodeOpt =
+                previousQuizCode currentPage
+
+            do
+                quizCodeOpt
+                |> Option.map (disconnectFromHub this.HubConnection)
+                |> Option.defaultValue (Async.retn ())
+                |> Async.map (fun _ ->
+                    if true then
+                        this.NavigationManager.NavigateTo
+                        <| router.Link toPage
+                    else
+                        ())
+                |> Async.StartImmediate
+
+
+
         let update =
             update
                 connectToQuizEvents
@@ -456,6 +487,7 @@ type MyApp() =
                 this.TryGetQuiz
                 spectateQUiz
                 hubConnection
+                navigate
                 availableCapabilities
 
         Program.mkProgram
