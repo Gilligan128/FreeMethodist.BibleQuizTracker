@@ -76,7 +76,9 @@ let disconnectFromHub (hubConnection: HubConnection) quizCode =
     |> Async.awaitPlainTask
 
 let disconnectFromQuizCmd (hubConnection: HubConnection) quizCode =
-    fun (_ : Dispatch<Message>) -> disconnectFromHub hubConnection quizCode |> Async.StartImmediate
+    fun (_: Dispatch<Message>) ->
+        disconnectFromHub hubConnection quizCode
+        |> Async.StartImmediate
     |> Cmd.ofSub
 
 let disconnectCmdForPreviousModel disconnectCommand (previousPage: Page) =
@@ -84,6 +86,8 @@ let disconnectCmdForPreviousModel disconnectCommand (previousPage: Page) =
     |> previousQuizCode
     |> Option.map disconnectCommand
     |> Option.defaultValue Cmd.none
+
+
 
 let update
     connectToQuizEvents
@@ -180,7 +184,7 @@ let update
                     | Error er -> { model with Error = Some er }
 
             { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
-        | None -> { model with Error = Some "A Quiz Message was dispatched, but there is no Quiz Model set" }, Cmd.none
+        | None -> model, Cmd.none
     | SetQuizCode code -> { model with QuizCode = Some code }, Cmd.none
     | JoinQuiz -> { model with Error = Some "Join Quiz not yet implemented" }, Cmd.none
     | CreateQuiz message ->
@@ -460,20 +464,11 @@ type MyApp() =
                   GetQuiz = this.GetQuizAsync }
 
         let navigate currentPage toPage =
-            let quizCodeOpt =
-                previousQuizCode currentPage
-
-            do
-                quizCodeOpt
-                |> Option.map (disconnectFromHub this.HubConnection)
-                |> Option.defaultValue (Async.retn ())
-                |> Async.map (fun _ ->
-                    if true then
-                        this.NavigationManager.NavigateTo
-                        <| router.Link toPage
-                    else
-                        ())
-                |> Async.StartImmediate
+            if true then
+                this.NavigationManager.NavigateTo
+                <| router.Link toPage
+            else
+                ()
 
 
 
