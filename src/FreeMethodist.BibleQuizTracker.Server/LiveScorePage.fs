@@ -7,6 +7,7 @@ open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
+open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 module LiveScorePage =

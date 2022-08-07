@@ -8,173 +8,187 @@ open Bolero.Html
 
 module ItemizedScore =
 
- type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
- let  render (model : ItemizedScoreModel) dispatch =
-    let answerScore answerState =
-        let score =
-            TeamScore.initial
-            |> (TeamScore.correctAnswer)
-            |> TeamScore.value
+    type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
 
-        match answerState with
-        | AnsweredCorrectly -> score
-        | AnsweredIncorrectly -> 0
-        | DidNotAnswer -> 0
+    let render (model: ItemizedScoreModel) dispatch =
+        let answerScore answerState =
+            let score =
+                TeamScore.initial
+                |> (TeamScore.correctAnswer)
+                |> TeamScore.value
 
-    let appealScore appealState =
-        let score =
-            TeamScore.initial
-            |> TeamScore.failAppeal
-            |> TeamScore.value
+            match answerState with
+            | AnsweredCorrectly -> score
+            | AnsweredIncorrectly -> 0
+            | DidNotAnswer -> 0
 
-        match appealState with
-        | NoFailure -> 0
-        | AppealFailure -> score
+        let appealScore appealState =
+            let score =
+                TeamScore.initial
+                |> TeamScore.failAppeal
+                |> TeamScore.value
 
-    let quizzerScore questionState =
-        questionState
-        |> Option.map (fun (answer, appeal) -> (answerScore answer), (appealScore appeal))
-        |> Option.defaultValue (0, 0)
+            match appealState with
+            | NoFailure -> 0
+            | AppealFailure -> score
 
-    let scoreList questions questionNumber quizzer =
-        (questions
-         |> List.take (questionNumber)
-         |> List.map (fun qs -> qs |> Map.tryFind (quizzer))
-         |> List.map quizzerScore)
+        let quizzerScore questionState =
+            questionState
+            |> Option.map (fun (answer, appeal) -> (answerScore answer), (appealScore appeal))
+            |> Option.defaultValue (0, 0)
 
-    let quizzerRunningScore questions questionNumber quizzer =
-        scoreList questions questionNumber quizzer
-        |> List.map fst //appeals only score at the team level
-        |> List.sum
+        let scoreList questions questionNumber quizzer =
+            (questions
+             |> List.take (questionNumber)
+             |> List.map (fun qs -> qs |> Map.tryFind (quizzer))
+             |> List.map quizzerScore)
 
-    let eventOccurred (answer, appeal) =
-        match answer, appeal with
-        | AnsweredCorrectly, _ -> true
-        | _, AppealFailure -> true
-        | AnsweredIncorrectly, NoFailure -> false
-        | DidNotAnswer, NoFailure -> false
+        let quizzerRunningScore questions questionNumber quizzer =
+            scoreList questions questionNumber quizzer
+            |> List.map fst //appeals only score at the team level
+            |> List.sum
 
-    let teamEventOccurred (team: TeamModel) question =
-        team.Quizzers
-        |> List.map (fun qz -> question |> Map.tryFind (qz.Name))
-        |> List.exists (fun q ->
-            q
-            |> (Option.defaultValue (AnsweredIncorrectly, NoFailure))
-            |> eventOccurred)
+        let eventOccurred (eventState: EventState) =
+            match eventState.AnswerState, eventState.AppealState with
+            | AnsweredCorrectly, _ -> true
+            | _, AppealFailure -> true
+            | AnsweredIncorrectly, NoFailure -> false
+            | DidNotAnswer, NoFailure -> false
 
-    let teamRunningScore questions questionNumber (team : TeamModel) =
-        team.Quizzers
-        |> List.fold
-            (fun state qz ->
-                let int32s =
-                    scoreList questions questionNumber qz.Name
-                    |> List.map (fun (f, s) -> f + s)
+        let teamEventOccurred (team: TeamModel) question =
+            team.Quizzers
+            |> List.map (fun qz -> question |> Map.tryFind (qz.Name))
+            |> List.exists (fun q ->
+                q
+                |> (Option.defaultValue { AnswerState = AnsweredIncorrectly;AppealState = NoFailure})
+                |> eventOccurred)
 
-                state
-                + (int32s //appeals are scored at team level
-                   |> List.sum))
-            0
+        let teamRunningScore questions questionNumber (team: TeamModel) =
+            team.Quizzers
+            |> List.fold
+                (fun state qz ->
+                    let int32s =
+                        scoreList questions questionNumber qz.Name
+                        |> List.map (fun (f, s) -> f + s)
 
-    let findQuestionQuizzerState question (quizzer: QuizzerModel) = question |> Map.tryFind quizzer.Name
+                    state
+                    + (int32s //appeals are scored at team level
+                       |> List.sum))
+                0
 
-    let formatScore score =
-        match score with
-        | 0 -> "-"
-        | number -> $"{number}"
+        let findQuestionQuizzerState question (quizzer: QuizzerModel) = question |> Map.tryFind quizzer.Name
 
-    let showAppeal questionQuizzerState =
-        match questionQuizzerState with
-        | None -> "is-hidden"
-        | Some (_, NoFailure) -> "is-hidden"
-        | Some (_, AppealFailure) -> ""
+        let formatScore score =
+            match score with
+            | 0 -> "-"
+            | number -> $"{number}"
 
-    let quizzerView question quizzer =
-        itemizedPage
-            .Quizzer()
-            .AppealVisible(
-                quizzer
-                |> findQuestionQuizzerState question
-                |> showAppeal
+        let showAppeal questionQuizzerState =
+            match questionQuizzerState with
+            | None -> "is-hidden"
+            | Some (_, NoFailure) -> "is-hidden"
+            | Some (_, AppealFailure) -> ""
+
+        let numberOfQuestions =
+            model.QuestionsBetter
+            |> List.map (fun q ->
+                let questionNumber, _ = q.Position
+                questionNumber |> PositiveNumber.value)
+            |> List.max
+
+        let quizzerView questionEvents quizzer =
+            itemizedPage
+                .Quizzer()
+                .AppealVisible(
+                    quizzer
+                    |> findQuestionQuizzerState questionEvents
+                    |> showAppeal
+                )
+                .Score(
+                    quizzer
+                    |> findQuestionQuizzerState questionEvents
+                    |> quizzerScore
+                    |> fst
+                    |> formatScore
+                )
+                .Elt()
+
+        itemizedPage()
+            .TeamOneName(model.TeamOne.Name)
+            .TeamOneColspan((model.TeamOne.Quizzers |> List.length) + 1)
+            .TeamOneHeading(
+                concat {
+                    for quizzer in model.TeamOne.Quizzers do
+                        th { quizzer.Name }
+                }
             )
-            .Score(
-                quizzer
-                |> findQuestionQuizzerState question
-                |> quizzerScore
-                |> fst
-                |> formatScore
+            .TeamTwoName(model.TeamTwo.Name)
+            .TeamTwoColspan((model.TeamTwo.Quizzers |> List.length) + 1)
+            .TeamTwoHeading(
+                concat {
+                    for quizzer in model.TeamTwo.Quizzers do
+                        th { quizzer.Name }
+                }
             )
+            .Questions(
+                concat {
+                    for questionNumber in 1..numberOfQuestions do
+                        let currentQuestionEvents =
+                            model.QuestionsBetter
+                            |> List.filter (fun q -> q.Position |> fst |> (PositiveNumber.value) = questionNumber)
+                            |> List.map (fun q -> (q.Position |> snd), q.State)
+                            |> Map.ofList
+                        let questionsAdapted = (currentQuestionEvents |> Map.map (fun k v -> v.AnswerState, v.AppealState))
+                        itemizedPage
+                            .Question()
+                            .Number(questionNumber |> string)
+                            .TeamOneScore(
+                                if teamEventOccurred model.TeamOne currentQuestionEvents then
+                                    teamRunningScore model.Questions questionNumber model.TeamOne
+                                    |> formatScore
+                                else
+                                    "-"
+                            )
+                            .TeamOneQuizzers(
+                                concat {
+                                    for quizzer in model.TeamOne.Quizzers do
+                                        quizzerView questionsAdapted quizzer
+                                }
+                            )
+                            .TeamTwoScore(
+                                if teamEventOccurred model.TeamTwo currentQuestionEvents then
+                                    teamRunningScore model.Questions questionNumber model.TeamTwo
+                                    |> formatScore
+                                else
+                                    "-"
+                            )
+                            .TeamTwoQuizzers(
+                                concat {
+                                    for quizzer in model.TeamTwo.Quizzers do
+                                        quizzerView questionsAdapted quizzer
+                                }
+                            )
+                            .Elt()
+                }
+            )
+            .TeamOneFooter(
+                concat {
+                    for quizzer in model.TeamOne.Quizzers do
+                        td {
+                            quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
+                            |> formatScore
+                        }
+                }
+            )
+            .TeamOneScore(model.TeamOne.Score |> string)
+            .TeamTwoFooter(
+                concat {
+                    for quizzer in model.TeamTwo.Quizzers do
+                        td {
+                            quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
+                            |> formatScore
+                        }
+                }
+            )
+            .TeamTwoScore(model.TeamTwo.Score |> string)
             .Elt()
-
-    itemizedPage()
-        .TeamOneName(model.TeamOne.Name)
-        .TeamOneColspan((model.TeamOne.Quizzers |> List.length) + 1)
-        .TeamOneHeading(
-            concat {
-                for quizzer in model.TeamOne.Quizzers do
-                    th { quizzer.Name }
-            }
-        )
-        .TeamTwoName(model.TeamTwo.Name)
-        .TeamTwoColspan((model.TeamTwo.Quizzers |> List.length) + 1)
-        .TeamTwoHeading(
-            concat {
-                for quizzer in model.TeamTwo.Quizzers do
-                    th { quizzer.Name }
-            }
-        )
-        .Questions(
-            concat {
-                for (number, question) in model.Questions |> List.indexed do
-                    itemizedPage
-                        .Question()
-                        .Number(number + 1 |> string)
-                        .TeamOneScore(
-                            if teamEventOccurred model.TeamOne question then
-                                teamRunningScore model.Questions (number + 1) model.TeamOne
-                                |> formatScore
-                            else
-                                "-"
-                        )
-                        .TeamOneQuizzers(
-                            concat {
-                                for quizzer in model.TeamOne.Quizzers do
-                                    quizzerView question quizzer
-                            }
-                        )
-                        .TeamTwoScore(
-                            if teamEventOccurred model.TeamTwo question then
-                                teamRunningScore model.Questions (number + 1) model.TeamTwo
-                                |> formatScore
-                            else
-                                "-"
-                        )
-                        .TeamTwoQuizzers(
-                            concat {
-                                for quizzer in model.TeamTwo.Quizzers do
-                                    quizzerView question quizzer
-                            }
-                        )
-                        .Elt()
-            }
-        )
-        .TeamOneFooter(
-            concat {
-                for quizzer in model.TeamOne.Quizzers do
-                    td {
-                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
-                        |> formatScore
-                    }
-            }
-        )
-        .TeamOneScore(model.TeamOne.Score |> string)
-        .TeamTwoFooter(
-            concat {
-                for quizzer in model.TeamTwo.Quizzers do
-                    td {
-                        quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
-                        |> formatScore
-                    }
-            }
-        )
-        .TeamTwoScore(model.TeamTwo.Score |> string)
-        .Elt()

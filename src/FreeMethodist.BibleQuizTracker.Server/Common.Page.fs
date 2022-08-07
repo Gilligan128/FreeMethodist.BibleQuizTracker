@@ -70,34 +70,6 @@ type ItemizedScoreModel =
       Questions: Map<Quizzer, AnswerState * AppealState> list }
 
 //Live Score model
-type LiveScoreQuizzer = { Score: TeamScore; Name: Quizzer }
-
-type LiveScoreTeam =
-    { Name: string
-      Score: TeamScore
-      Quizzers: LiveScoreQuizzer list }
-
-type LiveScoreCompetitionStyle =
-    | Individual of LiveScoreQuizzer list
-    | Team of LiveScoreTeam * LiveScoreTeam
-
-type LiveScoreQuestionState =
-    | Current of QuestionNumber
-    | Completed of int
-
-type LiveScores =
-    { LastUpdated: DateTimeOffset
-      QuestionState: LiveScoreQuestionState
-      CompetitionStyle: LiveScoreCompetitionStyle }
-
-type LoadingError =
-    | DbError of DbError
-    | QuizState of QuizStateError
-
-type LiveScoreModel =
-    { Code: QuizCode
-      Scores: Deferred<Result<LiveScores option, DbError>> }
-
 
 
 //Quiz Details
@@ -109,13 +81,7 @@ type QuizDetailsModel =
       Details: Deferred<Details> }
 
 
-/// Routing endpoints definition.
-type Page =
-    | [<EndPoint "/">] Home
-    | [<EndPoint "/quiz/{quizCode">] QuizDetails of quizCode: string * PageModel<QuizDetailsModel>
-    | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
-    | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
-    | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string * PageModel<LiveScoreModel>
+
 
 //Connecting to SignalR
 type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>

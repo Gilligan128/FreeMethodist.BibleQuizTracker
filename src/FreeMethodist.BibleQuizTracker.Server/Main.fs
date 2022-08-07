@@ -8,8 +8,10 @@ open Bolero.Remoting.Client
 open Bolero.Templating.Client
 open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
+open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
 open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
+open FreeMethodist.BibleQuizTracker.Server.Routing
 open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
