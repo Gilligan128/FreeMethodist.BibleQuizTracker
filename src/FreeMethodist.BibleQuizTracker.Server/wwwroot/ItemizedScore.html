@@ -1,52 +1,19 @@
-﻿
-<div>
+﻿<div>
     <p class="title">Running Score</p>
 </div>
 <div class="table-container">
     <table class="table is-bordered is-striped is-fullwidth">
         <thead>
-        <tr>
-            <th></th>
-            <th colspan="${TeamOneColspan}">Team ${TeamOneName}</th>
-            <th colspan="${TeamTwoColspan}">Team ${TeamTwoName}</th>
-        </tr>
-        <tr></tr>
-        <tr>
-            <th>Question</th>
-            ${TeamOneHeading}
-            <th>Running Total</th>
-            <th>Running Total</th>
-            ${TeamTwoHeading}
-        </tr>
+         ${Header}
         </thead>
         <tbody>
-        ${Questions}
+        ${Body}
         </tbody>
         <tfoot>
-        <tr>
-            <td class="has-text-weight-bold">TOTAL</td>
-            ${QuizzerFooter}
-            ${TeamOneFooter}
-            <td class="has-text-weight-bold">${TeamOneScore}</td>
-            <td  class="has-text-weight-bold">${TeamTwoScore}</td>
-            ${TeamTwoFooter}
-        </tr>
-
+        ${Footer}
         </tfoot>
     </table>
 </div>
-<template id="Question">
-    <tr>
-        <td>${Number}</td>
-        ${TeamOneQuizzers}
-        <td>${TeamOneScore}</td>
-        <td>${TeamTwoScore}</td>
-        ${TeamTwoQuizzers}
-    </tr>
-</template>
 <template id="Quizzer">
     <td>${Score}<span class="tag is-warning ${AppealVisible} ">A</span></td>
-</template>
-<template id="TeamHeading">
-
 </template>

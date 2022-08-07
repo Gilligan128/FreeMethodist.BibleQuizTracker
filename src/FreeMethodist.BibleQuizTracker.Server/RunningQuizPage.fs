@@ -851,6 +851,9 @@ let private teamView
         )
         .Elt()
 
+let private mapItemizedTeam (team: TeamModel) : ItemizedTeam =
+    { Name = team.Name; Quizzers =  team.Quizzers |> List.map (fun q ->  q.Name) }
+
 let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
     let isTeam model teamOneValue teamTwoValue =
         match model.AddQuizzer with
@@ -918,8 +921,7 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
             .ItemizedScore(
                 ItemizedScore.render
-                    { TeamOne = model.TeamOne
-                      TeamTwo = model.TeamTwo
+                    { CompetitionStyle = ItemizedCompetitionStyle.Team ((mapItemizedTeam model.TeamOne), (mapItemizedTeam model.TeamTwo))
                       NumberOfQuestions = model.NumberOfQuestions
                       QuestionsWithEvents = model.QuestionScores }
                     dispatch

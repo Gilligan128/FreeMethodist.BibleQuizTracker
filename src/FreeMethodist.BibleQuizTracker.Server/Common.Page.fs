@@ -4,6 +4,7 @@ open System
 open System.Net
 open Bolero
 open Elmish
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 type AsyncOperationStatus<'started, 'finished> =
@@ -63,13 +64,19 @@ type QuestionQuizzerEvent =
 
 type QuestionQuizzerEvents = QuestionQuizzerEvent list
 
-type ItemizedScoreModel =
-    { TeamOne: TeamModel
-      TeamTwo: TeamModel
-      NumberOfQuestions: PositiveNumber
-      QuestionsWithEvents: QuestionQuizzerEvents}
+type ItemizedTeam =
+    { Name: string
+      Quizzers: Quizzer list }
 
-//Live Score model
+type ItemizedCompetitionStyle =
+    | Individual of Quizzer list
+    | Team of ItemizedTeam * ItemizedTeam
+
+type ItemizedScoreModel =
+    {
+      CompetitionStyle: ItemizedCompetitionStyle
+      NumberOfQuestions: PositiveNumber
+      QuestionsWithEvents: QuestionQuizzerEvents }
 
 
 //Quiz Details
