@@ -220,7 +220,11 @@ let defaultModel =
     | QuizRun _ -> ()
     | QuizSpectate _ -> ()
     | Home -> ()
-    | QuizDetails (_, model) -> Router.definePageModel model { Code = ""; Details = Deferred.NotYetStarted } 
+    | QuizDetails (_, model) ->
+        Router.definePageModel
+            model
+            { Code = ""
+              Details = Deferred.NotYetStarted }
     | QuizLiveScore (_, pageModel) ->
         Router.definePageModel
             pageModel
@@ -232,6 +236,11 @@ let router =
 
 type Main = Template<"wwwroot/main.html">
 
+let mapString mapper opt =
+    match opt with
+    | None -> ""
+    | Some value -> mapper value
+
 let homePage model dispatch =
     Main
         .Home()
@@ -240,19 +249,17 @@ let homePage model dispatch =
             <| CreateQuizForm.Start)
         .ScorekeepUrl(
             model.QuizCode
-            |> Option.map (fun code -> router.Link(Page.QuizRun code))
-            |> Option.defaultValue ""
+            |> mapString (fun code -> router.Link(Page.QuizRun code))
         )
         .SpectateUrl(
             model.QuizCode
-            |> Option.map (fun code -> router.Link(Page.QuizSpectate code))
-            |> Option.defaultValue ""
+            |> mapString (fun code -> router.Link(Page.QuizSpectate code))
         )
         .LiveScoreUrl(
             model.QuizCode
-            |> Option.map (fun code -> router.Link(Page.QuizLiveScore(code, Router.noModel)))
-            |> Option.defaultValue ""
+            |> mapString (fun code -> router.Link(Page.QuizLiveScore(code, Router.noModel)))
         )
+        .DetailsUrl(model.QuizCode |> mapString (fun code -> router.Link(Page.QuizDetails(code, Router.noModel))))
         .QuizCode(model.QuizCode |> Option.defaultValue "", (fun code -> code |> Message.SetQuizCode |> dispatch))
         .CreateQuizModal(CreateQuizForm.view model.CreateQuizForm (dispatch << Message.CreateQuiz))
         .Elt()
@@ -285,7 +292,7 @@ let view model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | QuizDetails (code, model) -> QuizDetailsPage.render dispatch model
+                | QuizDetails (code, model) -> QuizDetailsPage.render dispatch model.Model
                 | QuizSpectate code
                 | QuizRun code ->
                     match model.Quiz with

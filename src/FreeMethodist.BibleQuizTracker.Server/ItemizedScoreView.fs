@@ -9,7 +9,7 @@ open Bolero.Html
 module ItemizedScore =
 
  type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
- let  itemizedScoreView (model : ItemizedScoreModel) dispatch =
+ let  render (model : ItemizedScoreModel) dispatch =
     let answerScore answerState =
         let score =
             TeamScore.initial

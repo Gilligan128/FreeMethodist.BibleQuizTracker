@@ -185,7 +185,7 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
         |> Seq.sortBy (fun k -> k |> PositiveNumber.value)
         |> Seq.map (fun k -> questionMap[k])
         |> Seq.toList
-   
+
     let stateMatchedModel =
         let currentQuestion =
             quiz.Questions.TryFind(quiz.CurrentQuestion)
@@ -278,7 +278,7 @@ let getCodeFromModel model =
     | Loading (code, user) -> code
     | Loaded loaded -> loaded.Code
 
-let  update
+let update
     connectAndHandle
     (publishQuizEvent: PublishQuizEventTask)
     (getQuizAsync: GetQuiz)
@@ -289,8 +289,8 @@ let  update
     (model: Model)
     : Model * Cmd<Message> * ExternalMessage option =
     let quizCode = getCodeFromModel model
-    let user = getUserFromModel model    
-        
+    let user = getUserFromModel model
+
     let refreshModel quiz =
         let user = getUserFromModel model
         refreshModel (quiz, user) |> Loaded
@@ -332,6 +332,7 @@ let  update
     let reloadQuizAsync asyncTask =
         asyncResult {
             do! asyncTask
+
             let! quiz =
                 quizCode
                 |> getQuizAsync
@@ -777,6 +778,7 @@ let  update
             | ReopenQuiz.QuizState quizStateError -> mapQuizStateErrorToString quizStateError
 
         result |> refreshQuizOrError mapErrors
+
 type private quizPage = Template<"wwwroot/Quiz.html">
 
 
@@ -845,6 +847,21 @@ let private teamView
         )
         .Elt()
 
+let questionsBetter (scores: Map<Quizzer, AnswerState * AppealState> list) =
+    scores
+    |> List.indexed
+    |> List.collect (fun (index, map) ->
+        map
+        |> Map.toList
+        |> List.map (fun (quizzer, (answerState, appealState)) ->
+            let questionNumber =
+                PositiveNumber.numberOrOne (index + 1)
+
+            { Position = (questionNumber, quizzer)
+              State =
+                { AppealState = appealState
+                  AnswerState = answerState } }))
+
 let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
     let isTeam model teamOneValue teamTwoValue =
         match model.AddQuizzer with
@@ -911,9 +928,10 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .FailAppeal(fun _ -> dispatch (FailAppeal(Started())))
             .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
             .ItemizedScore(
-                ItemizedScore.itemizedScoreView
+                ItemizedScore.render
                     { TeamOne = model.TeamOne
                       TeamTwo = model.TeamTwo
+                      QuestionsBetter = questionsBetter model.QuestionScores
                       Questions = model.QuestionScores }
                     dispatch
             )

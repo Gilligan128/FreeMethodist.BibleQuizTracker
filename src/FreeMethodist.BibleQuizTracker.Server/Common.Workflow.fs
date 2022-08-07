@@ -53,7 +53,12 @@ module PositiveNumber =
 
     let increment (PositiveNumber i) = PositiveNumber(i + 1)
     let decrement (PositiveNumber i) = PositiveNumber(Math.Max(i - 1, 1))
-
+    
+    let numberOrOne number =
+        create "" number
+        |> function
+        | Ok value -> value
+        | Error _ -> one
 type ParticipationState =
     | In
     | Out

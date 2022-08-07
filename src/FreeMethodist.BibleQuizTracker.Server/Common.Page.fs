@@ -50,9 +50,9 @@ let mapDbErrorToString error =
 
 let mapQuizStateErrorToString _ = "Wrong quiz state"
 
-//Scoring types
+//Itemized Score model
 type EventState =
-    { AnswerState: QuizAnswer
+    { AnswerState: AnswerState
       AppealState: AppealState }
 
 type EventPosition = QuestionNumber * Quizzer
@@ -63,7 +63,11 @@ type QuestionQuizzerEvent =
 
 type QuestionQuizzerEvents = QuestionQuizzerEvent list
 
-
+type ItemizedScoreModel =
+    { TeamOne: TeamModel
+      TeamTwo: TeamModel
+      QuestionsBetter: QuestionQuizzerEvents
+      Questions: Map<Quizzer, AnswerState * AppealState> list }
 
 //Live Score model
 type LiveScoreQuizzer = { Score: TeamScore; Name: Quizzer }
@@ -94,18 +98,13 @@ type LiveScoreModel =
     { Code: QuizCode
       Scores: Deferred<Result<LiveScores option, DbError>> }
 
-//Itemized Score
-type ItemizedScoreModel =
-    { TeamOne: TeamModel
-      TeamTwo: TeamModel
-      Questions: Map<Quizzer, AnswerState * AppealState> list }
 
 
 //Quiz Details
 type Details = { ItemizedScore: ItemizedScoreModel }
 
 
-type Model =
+type QuizDetailsModel =
     { Code: QuizCode
       Details: Deferred<Details> }
 
@@ -113,7 +112,7 @@ type Model =
 /// Routing endpoints definition.
 type Page =
     | [<EndPoint "/">] Home
-    | [<EndPoint "/quiz/{quizCode">] QuizDetails of quizCode: string * PageModel<Model>
+    | [<EndPoint "/quiz/{quizCode">] QuizDetails of quizCode: string * PageModel<QuizDetailsModel>
     | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string * PageModel<LiveScoreModel>
