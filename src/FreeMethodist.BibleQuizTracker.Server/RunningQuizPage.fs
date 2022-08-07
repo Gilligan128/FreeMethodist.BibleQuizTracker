@@ -932,8 +932,8 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                 ItemizedScore.render
                     { TeamOne = model.TeamOne
                       TeamTwo = model.TeamTwo
-                      QuestionsBetter = questionsBetter model.QuestionScores
-                      Questions = model.QuestionScores }
+                      Questions = questionsBetter model.QuestionScores
+                    }
                     dispatch
             )
             .CompleteQuiz(fun _ -> dispatch (CompleteQuiz(Started())))

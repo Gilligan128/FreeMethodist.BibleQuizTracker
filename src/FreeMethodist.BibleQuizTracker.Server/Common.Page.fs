@@ -66,8 +66,7 @@ type QuestionQuizzerEvents = QuestionQuizzerEvent list
 type ItemizedScoreModel =
     { TeamOne: TeamModel
       TeamTwo: TeamModel
-      QuestionsBetter: QuestionQuizzerEvents
-      Questions: Map<Quizzer, AnswerState * AppealState> list }
+      Questions: QuestionQuizzerEvents}
 
 //Live Score model
 

@@ -37,11 +37,13 @@ module ItemizedScore =
             |> Option.map (fun (answer, appeal) -> (answerScore answer), (appealScore appeal))
             |> Option.defaultValue (0, 0)
 
-        let scoreList questions questionNumber quizzer =
-            (questions
-             |> List.take (questionNumber)
-             |> List.map (fun qs -> qs |> Map.tryFind (quizzer))
-             |> List.map quizzerScore)
+        let scoreList (questions : QuestionQuizzerEvents) questionNumber quizzer =
+           questions
+                |> List.filter (fun q -> (q.Position |> fst) <= questionNumber )
+                |> List.filter (fun q -> (q.Position |> snd) = quizzer)
+                |> List.map (fun q -> Some (q.State.AnswerState, q.State.AppealState))
+                |> List.map quizzerScore
+       
 
         let quizzerRunningScore questions questionNumber quizzer =
             scoreList questions questionNumber quizzer
@@ -63,16 +65,16 @@ module ItemizedScore =
                 |> (Option.defaultValue { AnswerState = AnsweredIncorrectly;AppealState = NoFailure})
                 |> eventOccurred)
 
-        let teamRunningScore questions questionNumber (team: TeamModel) =
+        let teamRunningScore questions  questionNumber (team: TeamModel) =
             team.Quizzers
             |> List.fold
                 (fun state qz ->
-                    let int32s =
+                    let QuizzerRunnigScoreWithAppeals =
                         scoreList questions questionNumber qz.Name
                         |> List.map (fun (f, s) -> f + s)
 
                     state
-                    + (int32s //appeals are scored at team level
+                    + (QuizzerRunnigScoreWithAppeals
                        |> List.sum))
                 0
 
@@ -90,7 +92,7 @@ module ItemizedScore =
             | Some (_, AppealFailure) -> ""
 
         let numberOfQuestions =
-            model.QuestionsBetter
+            model.Questions
             |> List.map (fun q ->
                 let questionNumber, _ = q.Position
                 questionNumber |> PositiveNumber.value)
@@ -132,12 +134,14 @@ module ItemizedScore =
             )
             .Questions(
                 concat {
-                    for questionNumber in 1..numberOfQuestions do
+                    for questionInt in 1..numberOfQuestions do
+                        let questionNumber = questionInt |> PositiveNumber.numberOrOne
                         let currentQuestionEvents =
-                            model.QuestionsBetter
-                            |> List.filter (fun q -> q.Position |> fst |> (PositiveNumber.value) = questionNumber)
+                            model.Questions
+                            |> List.filter (fun q -> q.Position |> fst  = questionNumber)
                             |> List.map (fun q -> (q.Position |> snd), q.State)
                             |> Map.ofList
+                            
                         let questionsAdapted = (currentQuestionEvents |> Map.map (fun k v -> v.AnswerState, v.AppealState))
                         itemizedPage
                             .Question()
@@ -175,7 +179,7 @@ module ItemizedScore =
                 concat {
                     for quizzer in model.TeamOne.Quizzers do
                         td {
-                            quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
+                            quizzerRunningScore model.Questions (numberOfQuestions |> PositiveNumber.numberOrOne) quizzer.Name
                             |> formatScore
                         }
                 }
@@ -185,7 +189,7 @@ module ItemizedScore =
                 concat {
                     for quizzer in model.TeamTwo.Quizzers do
                         td {
-                            quizzerRunningScore model.Questions (model.Questions |> List.length) quizzer.Name
+                            quizzerRunningScore model.Questions (numberOfQuestions |> PositiveNumber.numberOrOne) quizzer.Name
                             |> formatScore
                         }
                 }
