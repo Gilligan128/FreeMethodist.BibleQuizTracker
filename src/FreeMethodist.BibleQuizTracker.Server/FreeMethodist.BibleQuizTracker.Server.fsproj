@@ -30,6 +30,7 @@
         <Compile Include="QuizHub.fs" />
         <Compile Include="JumpPipeline.fs" />
         <Compile Include="Common.Page.fs" />
+        <Compile Include="Deferred.fs" />
         <Compile Include="ItemizedScoreView.fs" />
         <Compile Include="RunningQuizPage.fs" />
         <Compile Include="CreateQuizForm.fs" />
