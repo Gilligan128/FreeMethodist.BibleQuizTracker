@@ -222,9 +222,9 @@ let defaultModel =
     | QuizRun _ -> ()
     | QuizSpectate _ -> ()
     | Home -> ()
-    | QuizDetails (_, model) ->
+    | QuizDetails (_, pageModel) ->
         Router.definePageModel
-            model
+            pageModel
             { Code = ""
               Details = Deferred.NotYetStarted }
     | QuizLiveScore (_, pageModel) ->

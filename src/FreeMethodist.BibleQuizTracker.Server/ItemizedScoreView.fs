@@ -91,12 +91,7 @@ module ItemizedScore =
             | Some (_, NoFailure) -> "is-hidden"
             | Some (_, AppealFailure) -> ""
 
-        let numberOfQuestions =
-            model.Questions
-            |> List.map (fun q ->
-                let questionNumber, _ = q.Position
-                questionNumber |> PositiveNumber.value)
-            |> List.max
+        let numberOfQuestions = model.NumberOfQuestions
 
         let quizzerView questionEvents quizzer =
             itemizedPage
@@ -134,10 +129,10 @@ module ItemizedScore =
             )
             .Questions(
                 concat {
-                    for questionInt in 1..numberOfQuestions do
+                    for questionInt in 1.. (numberOfQuestions |> PositiveNumber.value ) do
                         let questionNumber = questionInt |> PositiveNumber.numberOrOne
                         let currentQuestionEvents =
-                            model.Questions
+                            model.QuestionsWithEvents
                             |> List.filter (fun q -> q.Position |> fst  = questionNumber)
                             |> List.map (fun q -> (q.Position |> snd), q.State)
                             |> Map.ofList
@@ -145,10 +140,10 @@ module ItemizedScore =
                         let questionsAdapted = (currentQuestionEvents |> Map.map (fun k v -> v.AnswerState, v.AppealState))
                         itemizedPage
                             .Question()
-                            .Number(questionNumber |> string)
+                            .Number(questionNumber |> PositiveNumber.value |> string)
                             .TeamOneScore(
                                 if teamEventOccurred model.TeamOne currentQuestionEvents then
-                                    teamRunningScore model.Questions questionNumber model.TeamOne
+                                    teamRunningScore model.QuestionsWithEvents questionNumber model.TeamOne
                                     |> formatScore
                                 else
                                     "-"
@@ -161,7 +156,7 @@ module ItemizedScore =
                             )
                             .TeamTwoScore(
                                 if teamEventOccurred model.TeamTwo currentQuestionEvents then
-                                    teamRunningScore model.Questions questionNumber model.TeamTwo
+                                    teamRunningScore model.QuestionsWithEvents questionNumber model.TeamTwo
                                     |> formatScore
                                 else
                                     "-"
@@ -179,7 +174,7 @@ module ItemizedScore =
                 concat {
                     for quizzer in model.TeamOne.Quizzers do
                         td {
-                            quizzerRunningScore model.Questions (numberOfQuestions |> PositiveNumber.numberOrOne) quizzer.Name
+                            quizzerRunningScore model.QuestionsWithEvents (numberOfQuestions) quizzer.Name
                             |> formatScore
                         }
                 }
@@ -189,7 +184,7 @@ module ItemizedScore =
                 concat {
                     for quizzer in model.TeamTwo.Quizzers do
                         td {
-                            quizzerRunningScore model.Questions (numberOfQuestions |> PositiveNumber.numberOrOne) quizzer.Name
+                            quizzerRunningScore model.QuestionsWithEvents (numberOfQuestions) quizzer.Name
                             |> formatScore
                         }
                 }

@@ -38,6 +38,7 @@ type LoadedModel =
       JumpState: JumpState
       AddQuizzer: AddQuizzerModel
       CurrentQuizzer: Quizzer option
+      NumberOfQuestions : PositiveNumber
       QuestionScores: QuestionQuizzerEvents }
 
 
@@ -96,6 +97,7 @@ let public emptyModel =
       JumpState = Unlocked
       AddQuizzer = Inert
       CurrentQuizzer = None
+      NumberOfQuestions = PositiveNumber.one
       QuestionScores = [] }
 
 let tee sideEffect =
@@ -148,37 +150,7 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
             team.Quizzers
             |> List.map (refreshQuizzer currentQuestion) }
 
-    let refreshQuestionScore (question: QuestionState) =
-        let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
-
-        let toMap questionScores =
-            questionScores
-            |> List.fold (fun map (q, answerState) -> map |> Map.add q answerState) Map.empty
-
-        let insertAppealState answersWithNoAppealsYet =
-            match question.FailedAppeal with
-            | None -> answersWithNoAppealsYet
-            | Some q ->
-                answersWithNoAppealsYet
-                |> Map.change q (fun questionOption ->
-                    questionOption
-                    |> Option.defaultValue (DidNotAnswer, AppealFailure)
-                    |> fun (answer, _) -> Some(answer, AppealFailure))
-
-        let answers =
-            match question.AnswerState with
-            | Incomplete quizzers -> quizzers |> List.map incorrectAnswer |> toMap
-            | Complete (Answered question) ->
-                [ (question.Answerer, AnsweredCorrectly) ]
-                @ (question.IncorrectAnswerers
-                   |> List.map incorrectAnswer)
-                |> toMap
-            | Complete (Unanswered question) -> question |> List.map incorrectAnswer |> toMap
-
-        answers
-        |> Map.map (fun key answer -> answer, NoFailure)
-        |> insertAppealState
-
+    
     let refreshQuestionScoreBetter questionNumber (questionState: QuestionState) : QuestionQuizzerEvents =
         let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
 
@@ -186,7 +158,7 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
             match question.FailedAppeal with
             | None -> false
             | Some q -> q = quizzer
-
+        
         let answersWithoutAppeals =
             match questionState.AnswerState with
             | Incomplete quizzers -> quizzers |> List.map incorrectAnswer
@@ -195,9 +167,15 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
                 @ (question.IncorrectAnswerers
                    |> List.map incorrectAnswer)
             | Complete (Unanswered question) -> question |> List.map incorrectAnswer
-
+            
+        let answersWithAppealQuizzer =
+           match questionState.FailedAppeal with
+           | None -> answersWithoutAppeals
+           | Some quizzer when not (answersWithoutAppeals |> List.map fst |> List.exists (fun q -> q = quizzer)) -> answersWithoutAppeals @ [ (quizzer, DidNotAnswer) ]
+           | Some _ -> answersWithoutAppeals
+        
         let questionQuizzerEvents =
-            answersWithoutAppeals
+            answersWithAppealQuizzer
             |> List.map (fun (quizzer, answer) ->
                 { Position = (questionNumber, quizzer)
                   State =
@@ -209,14 +187,6 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
                              NoFailure) } })
 
         questionQuizzerEvents
-
-
-    let sortedList questionMap =
-        questionMap
-        |> Map.keys
-        |> Seq.sortBy (fun k -> k |> PositiveNumber.value)
-        |> Seq.map (fun k -> questionMap[k])
-        |> Seq.toList
 
     let stateMatchedModel =
         let currentQuestion =
@@ -233,6 +203,7 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
             JoiningQuizzer = ""
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked
+            NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
             QuestionScores =
                 quiz.Questions
                 |> Map.map refreshQuestionScoreBetter
@@ -949,7 +920,8 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                 ItemizedScore.render
                     { TeamOne = model.TeamOne
                       TeamTwo = model.TeamTwo
-                      Questions = model.QuestionScores }
+                      NumberOfQuestions = model.NumberOfQuestions
+                      QuestionsWithEvents = model.QuestionScores }
                     dispatch
             )
             .CompleteQuiz(fun _ -> dispatch (CompleteQuiz(Started())))
