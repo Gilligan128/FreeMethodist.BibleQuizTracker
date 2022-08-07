@@ -38,7 +38,7 @@ type LoadedModel =
       JumpState: JumpState
       AddQuizzer: AddQuizzerModel
       CurrentQuizzer: Quizzer option
-      QuestionScores: Map<Quizzer, AnswerState * AppealState> list }
+      QuestionScores: QuestionQuizzerEvents }
 
 
 type Model =
@@ -179,6 +179,37 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
         |> Map.map (fun key answer -> answer, NoFailure)
         |> insertAppealState
 
+    let refreshQuestionScoreBetter questionNumber (questionState: QuestionState) : QuestionQuizzerEvents =
+        let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
+
+        let quizzerFailedAppeal question quizzer =
+            match question.FailedAppeal with
+            | None -> false
+            | Some q -> q = quizzer
+
+        let answersWithoutAppeals =
+            match questionState.AnswerState with
+            | Incomplete quizzers -> quizzers |> List.map incorrectAnswer
+            | Complete (Answered question) ->
+                [ (question.Answerer, AnsweredCorrectly) ]
+                @ (question.IncorrectAnswerers
+                   |> List.map incorrectAnswer)
+            | Complete (Unanswered question) -> question |> List.map incorrectAnswer
+
+        let questionQuizzerEvents =
+            answersWithoutAppeals
+            |> List.map (fun (quizzer, answer) ->
+                { Position = (questionNumber, quizzer)
+                  State =
+                    { AnswerState = answer
+                      AppealState =
+                        (if quizzerFailedAppeal questionState quizzer then
+                             AppealFailure
+                         else
+                             NoFailure) } })
+
+        questionQuizzerEvents
+
 
     let sortedList questionMap =
         questionMap
@@ -204,8 +235,9 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
             JumpState = Unlocked
             QuestionScores =
                 quiz.Questions
-                |> sortedList
-                |> List.map refreshQuestionScore }
+                |> Map.map refreshQuestionScoreBetter
+                |> Map.toList
+                |> List.collect snd }
 
     { stateMatchedModel with CurrentUser = user }
 
@@ -848,21 +880,6 @@ let private teamView
         )
         .Elt()
 
-let questionsBetter (scores: Map<Quizzer, AnswerState * AppealState> list) =
-    scores
-    |> List.indexed
-    |> List.collect (fun (index, map) ->
-        map
-        |> Map.toList
-        |> List.map (fun (quizzer, (answerState, appealState)) ->
-            let questionNumber =
-                PositiveNumber.numberOrOne (index + 1)
-
-            { Position = (questionNumber, quizzer)
-              State =
-                { AppealState = appealState
-                  AnswerState = answerState } }))
-
 let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
     let isTeam model teamOneValue teamTwoValue =
         match model.AddQuizzer with
@@ -932,8 +949,7 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                 ItemizedScore.render
                     { TeamOne = model.TeamOne
                       TeamTwo = model.TeamTwo
-                      Questions = questionsBetter model.QuestionScores
-                    }
+                      Questions = model.QuestionScores }
                     dispatch
             )
             .CompleteQuiz(fun _ -> dispatch (CompleteQuiz(Started())))
