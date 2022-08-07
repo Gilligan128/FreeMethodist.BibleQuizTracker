@@ -166,6 +166,12 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
             return quiz
         }
 
+let private mapState quiz =
+    match quiz with
+    | Running _ -> nameof Running 
+    | Completed _ -> nameof Completed
+    | Official _ -> nameof Official
+
 let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : SaveQuiz =
     fun quiz ->
         asyncResult {
@@ -190,11 +196,16 @@ let saveQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializ
                 quizCode
                 |> getBlobName
                 |> blobContainerClient.GetBlobClient
-
+            
+            let uploadOptions =
+                BlobUploadOptions(
+                    Tags = ([ "State", mapState quiz ] |> Map.ofList)
+                )
+            
             do!
                 json
                 |> BinaryData.FromString
-                |> fun data -> blobClient.UploadAsync(data, overwrite = true)
+                |> fun data -> blobClient.UploadAsync(data, uploadOptions)
                 |> Async.AwaitTask
                 |> Async.map validateBlobOperation
                 |> AsyncResult.ignore
