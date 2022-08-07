@@ -8,13 +8,8 @@ open Bolero.Html
 
 module ItemizedScore =
 
- type ItemizedScoreModel =
-    { TeamOne: TeamModel
-      TeamTwo: TeamModel
-      Questions: Map<Quizzer, AnswerState * AppealState> list }
- 
  type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
- let  itemizedScoreView model dispatch =
+ let  itemizedScoreView (model : ItemizedScoreModel) dispatch =
     let answerScore answerState =
         let score =
             TeamScore.initial

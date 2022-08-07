@@ -35,6 +35,7 @@
         <Compile Include="RunningQuizPage.fs" />
         <Compile Include="CreateQuizForm.fs" />
         <Compile Include="LiveScorePage.fs" />
+        <Compile Include="QuizDetailsPage.fs" />
         <Compile Include="Main.fs" />
         <Compile Include="Index.fs" />
         <Compile Include="Startup.fs" />

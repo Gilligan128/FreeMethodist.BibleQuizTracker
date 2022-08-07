@@ -58,6 +58,7 @@ let getCodeFromModel model =
 
 let previousQuizCode page =
     match page with
+    | Page.QuizDetails (quizCode, _)
     | Page.QuizRun quizCode
     | Page.QuizLiveScore (quizCode, _)
     | Page.QuizSpectate quizCode -> quizCode |> Some
@@ -219,7 +220,8 @@ let defaultModel =
     | QuizRun _ -> ()
     | QuizSpectate _ -> ()
     | Home -> ()
-    | QuizLiveScore (quizCode, pageModel) ->
+    | QuizDetails (_, model) -> Router.definePageModel model { Code = ""; Details = Deferred.NotYetStarted } 
+    | QuizLiveScore (_, pageModel) ->
         Router.definePageModel
             pageModel
             { Code = ""
@@ -283,6 +285,7 @@ let view model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
+                | QuizDetails (code, model) -> QuizDetailsPage.render dispatch model
                 | QuizSpectate code
                 | QuizRun code ->
                     match model.Quiz with
