@@ -98,13 +98,11 @@ let update
     tryGetQuiz
     spectateQuiz
     (hubConnection: HubConnection)
-    navigate
+    (navigate: Page -> unit)
     capabilitiesProvider
     (message: Message)
     model
     : Model * Cmd<Message> =
-
-    let navigate = navigate model.page
 
     let disconnectPreviousPage page =
         disconnectCmdForPreviousModel (disconnectFromQuizCmd hubConnection) page
@@ -463,14 +461,9 @@ type MyApp() =
                 { SaveQuiz = this.SaveQuizAsync
                   GetQuiz = this.GetQuizAsync }
 
-        let navigate currentPage toPage =
-            if true then
-                this.NavigationManager.NavigateTo
-                <| router.Link toPage
-            else
-                ()
-
-
+        let navigate toPage =
+            this.NavigationManager.NavigateTo
+            <| router.Link toPage
 
         let update =
             update

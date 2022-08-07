@@ -37,3 +37,9 @@ let bind (transform: 'T -> Deferred<'U>) (deferred: Deferred<'T>) : Deferred<'U>
     | NotYetStarted -> NotYetStarted
     | InProgress -> InProgress
     | Resolved value -> transform value
+    
+let toOption deferred =
+    match deferred with
+    | NotYetStarted -> None
+    | InProgress -> None
+    | Resolved value -> Some value
