@@ -10,7 +10,7 @@ open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.QuizPage
+open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.AspNetCore.Components
@@ -23,7 +23,7 @@ open Microsoft.FSharp.Control
 type Model =
     { page: Page
       Error: string option
-      Quiz: QuizPage.Model option
+      Quiz: RunningQuizPage.Model option
       QuizCode: QuizCode option
       CreateQuizForm: CreateQuizForm.CreateQuizForm.Model }
 
@@ -38,7 +38,7 @@ let initModel =
 type Message =
     | SetPage of Page
     | ClearError
-    | QuizMessage of QuizPage.Message
+    | QuizMessage of RunningQuizPage.Message
     | SetQuizCode of string
     | JoinQuiz
     | CreateQuiz of CreateQuizForm.Message

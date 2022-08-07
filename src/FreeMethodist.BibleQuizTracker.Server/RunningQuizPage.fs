@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.QuizPage
+﻿module FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 
 open System
 open System.Linq.Expressions
