@@ -151,43 +151,6 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
             |> List.map (refreshQuizzer currentQuestion) }
 
     
-    let refreshQuestionScoreBetter questionNumber (questionState: QuestionState) : QuestionQuizzerEvents =
-        let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
-
-        let quizzerFailedAppeal question quizzer =
-            match question.FailedAppeal with
-            | None -> false
-            | Some q -> q = quizzer
-        
-        let answersWithoutAppeals =
-            match questionState.AnswerState with
-            | Incomplete quizzers -> quizzers |> List.map incorrectAnswer
-            | Complete (Answered question) ->
-                [ (question.Answerer, AnsweredCorrectly) ]
-                @ (question.IncorrectAnswerers
-                   |> List.map incorrectAnswer)
-            | Complete (Unanswered question) -> question |> List.map incorrectAnswer
-            
-        let answersWithAppealQuizzer =
-           match questionState.FailedAppeal with
-           | None -> answersWithoutAppeals
-           | Some quizzer when not (answersWithoutAppeals |> List.map fst |> List.exists (fun q -> q = quizzer)) -> answersWithoutAppeals @ [ (quizzer, DidNotAnswer) ]
-           | Some _ -> answersWithoutAppeals
-        
-        let questionQuizzerEvents =
-            answersWithAppealQuizzer
-            |> List.map (fun (quizzer, answer) ->
-                { Position = (questionNumber, quizzer)
-                  State =
-                    { AnswerState = answer
-                      AppealState =
-                        (if quizzerFailedAppeal questionState quizzer then
-                             AppealFailure
-                         else
-                             NoFailure) } })
-
-        questionQuizzerEvents
-
     let stateMatchedModel =
         let currentQuestion =
             quiz.Questions.TryFind(quiz.CurrentQuestion)
@@ -204,11 +167,7 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked
             NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
-            QuestionScores =
-                quiz.Questions
-                |> Map.map refreshQuestionScoreBetter
-                |> Map.toList
-                |> List.collect snd }
+            QuestionScores = quiz.Questions |> Map.map (fun _ v -> (v.AnswerState, v.FailedAppeal))|>  ItemizedScoreModel.refreshQuestionScores}
 
     { stateMatchedModel with CurrentUser = user }
 

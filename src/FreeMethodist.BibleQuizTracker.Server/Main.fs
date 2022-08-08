@@ -45,6 +45,7 @@ type Message =
     | JoinQuiz
     | CreateQuiz of CreateQuizForm.Message
     | LiveScoreMessage of LiveScorePage.Message
+    | QuizDetailsMessage of QuizDetailsPage.Message
 
 let clientStub =
     Unchecked.defaultof<QuizHub.Client>
@@ -146,7 +147,7 @@ let update
         let model, initCmd =
             initializeQuiz (QuizSpectate quizCode) Spectator quizCode None
 
-        { model with page = Page.QuizRun quizCode }, Cmd.batch [ disconnectCmd; initCmd ]
+        { model with page = Page.QuizSpectate quizCode }, Cmd.batch [ disconnectCmd; initCmd ]
     | SetPage (QuizLiveScore (quizCode, pageModel)) ->
         let disconnectCmd =
             disconnectPreviousPage model.page
@@ -157,6 +158,17 @@ let update
         { model with page = QuizLiveScore(quizCode, { Model = scoreModel }) },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map LiveScoreMessage ]
+
+    | SetPage (Page.QuizDetails (quizCode, pageModel)) ->
+        let disconnectCmd =
+            disconnectPreviousPage model.page
+
+        let detailsModel, initCmd =
+            QuizDetailsPage.init quizCode
+
+        { model with page = Page.QuizDetails(quizCode, { Model = detailsModel }) },
+        Cmd.batch [ disconnectCmd
+                    initCmd |> Cmd.map Message.QuizDetailsMessage ]
     | SetPage page ->
         let disconnectCmd =
             disconnectPreviousPage model.page
@@ -199,21 +211,21 @@ let update
 
         { model with CreateQuizForm = createQuizModel }, cmd |> Cmd.map Message.CreateQuiz
     | LiveScoreMessage message ->
-        let updateLiveScore message =
-            match model.page with
-            | QuizLiveScore (code, liveScoreModel) ->
+        match model.page with
+        | QuizLiveScore (code, liveScoreModel) ->
+            let newScoreModel, cmd =
+                LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz liveScoreModel.Model message
 
-                let newScoreModel, cmd =
-                    LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz liveScoreModel.Model message
+            { model with page = QuizLiveScore(code, { Model = newScoreModel }) }, (cmd |> Cmd.map LiveScoreMessage)
+        | _ -> model, Cmd.none
+    | QuizDetailsMessage message ->
+        match model.page with
+        | QuizDetails (quizCode, pageModel) ->
+            let newModel, cmd =
+                QuizDetailsPage.update tryGetQuiz navigate pageModel.Model message
 
-                let newModel =
-                    { model with page = QuizLiveScore(code, { Model = newScoreModel }) }
-
-                let newCmd = cmd |> Cmd.map LiveScoreMessage
-                newModel, newCmd
-            | _ -> model, Cmd.none
-
-        updateLiveScore message
+            { model with page = QuizDetails(quizCode, { Model = newModel }) }, cmd |> Cmd.map QuizDetailsMessage
+        | _ -> model, Cmd.none
 
 
 /// Connects the routing system to the Elmish application.
@@ -261,7 +273,10 @@ let homePage model dispatch =
             model.QuizCode
             |> mapString (fun code -> router.Link(Page.QuizLiveScore(code, Router.noModel)))
         )
-        .DetailsUrl(model.QuizCode |> mapString (fun code -> router.Link(Page.QuizDetails(code, Router.noModel))))
+        .DetailsUrl(
+            model.QuizCode
+            |> mapString (fun code -> router.Link(Page.QuizDetails(code, Router.noModel)))
+        )
         .QuizCode(model.QuizCode |> Option.defaultValue "", (fun code -> code |> Message.SetQuizCode |> dispatch))
         .CreateQuizModal(CreateQuizForm.view model.CreateQuizForm (dispatch << Message.CreateQuiz))
         .Elt()

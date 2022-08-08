@@ -6,6 +6,7 @@ open Bolero
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open Microsoft.FSharp.Core
 
 type AsyncOperationStatus<'started, 'finished> =
     | Started of 'started
@@ -73,14 +74,68 @@ type ItemizedCompetitionStyle =
     | Team of ItemizedTeam * ItemizedTeam
 
 type ItemizedScoreModel =
-    {
-      CompetitionStyle: ItemizedCompetitionStyle
+    { CompetitionStyle: ItemizedCompetitionStyle
       NumberOfQuestions: PositiveNumber
       QuestionsWithEvents: QuestionQuizzerEvents }
 
+[<RequireQualifiedAccess>]
+module ItemizedScoreModel =
+    let  refreshQuestionScore questionNumber (answerState,failedAppeal)  : QuestionQuizzerEvents =
+        let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
 
+        let quizzerFailedAppeal failedAppeal quizzer =
+            match failedAppeal with
+            | None -> false
+            | Some q -> q = quizzer
+
+        let answersWithoutAppeals =
+            match answerState with
+            | Incomplete quizzers -> quizzers |> List.map incorrectAnswer
+            | Complete (Answered question) ->
+                [ (question.Answerer, AnsweredCorrectly) ]
+                @ (question.IncorrectAnswerers
+                   |> List.map incorrectAnswer)
+            | Complete (Unanswered question) -> question |> List.map incorrectAnswer
+
+        let answersWithAppealQuizzer =
+            match failedAppeal with
+            | None -> answersWithoutAppeals
+            | Some quizzer when
+                not
+                    (
+                        answersWithoutAppeals
+                        |> List.map fst
+                        |> List.exists (fun q -> q = quizzer)
+                    )
+                ->
+                answersWithoutAppeals
+                @ [ (quizzer, DidNotAnswer) ]
+            | Some _ -> answersWithoutAppeals
+
+        let questionQuizzerEvents =
+            answersWithAppealQuizzer
+            |> List.map (fun (quizzer, answer) ->
+                { Position = (questionNumber, quizzer)
+                  State =
+                    { AnswerState = answer
+                      AppealState =
+                        (if quizzerFailedAppeal failedAppeal quizzer then
+                             AppealFailure
+                         else
+                             NoFailure) } })
+
+        questionQuizzerEvents
+
+    let refreshQuestionScores questions =
+        questions
+        |> Map.map refreshQuestionScore
+        |> Map.toList
+        |> List.collect snd
 //Quiz Details
-type Details = { ItemizedScore: ItemizedScoreModel }
+type Details = {
+    State : string
+    ItemizedScore: ItemizedScoreModel
+}
 
 
 type QuizDetailsModel =
