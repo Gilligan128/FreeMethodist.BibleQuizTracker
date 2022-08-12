@@ -9,9 +9,21 @@ open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView.ItemizedScore
 open FreeMethodist.BibleQuizTracker.Server.Routing
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
 
 type Message = Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
+
+type CompleteQuizCap = unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>
+type  ReopenQuizCap = unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>
+type NavigateCap = unit -> unit 
+
+type QuizControlCapabilityProvider = {
+   CompleteQuiz : Quiz -> CompleteQuizCap option
+   ReopenQuiz : Quiz -> ReopenQuizCap option
+   Spectate : Quiz -> NavigateCap option
+   LiveScore : Quiz -> NavigateCap option
+}
 
 let init quizCode =
     { Code = quizCode
@@ -56,7 +68,13 @@ let loadCompletedQuiz (quiz: CompletedQuiz) =
             |> List.map (fun q -> q.Name)
             |> ItemizedCompetitionStyle.Individual }
 
-let update tryGetQuiz navigate (model: QuizDetailsModel) message =
+let private availableCapabilities (provider : QuizControlCapabilityProvider) quiz : QuizControlCapabilities =
+    { CompleteQuiz = provider.CompleteQuiz quiz
+      ReopenQuiz = provider.ReopenQuiz quiz
+      Spectate = provider.Spectate quiz
+      LiveScore = provider.LiveScore quiz }
+
+let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvider) (model: QuizDetailsModel) message =
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
 
@@ -71,6 +89,7 @@ let update tryGetQuiz navigate (model: QuizDetailsModel) message =
 
         { model with Details = InProgress }, cmd
     | Initialize (Finished (Ok (Some quiz))) ->
+        let caps = availableCapabilities capabilityProvider quiz
         { model with
             Details =
                 Resolved(

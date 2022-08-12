@@ -83,7 +83,11 @@ module Quiz =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial }
             |> Ok
-
+    let getCode quiz =
+        match quiz with
+        | Running r -> r.Code
+        | Completed completedQuiz -> completedQuiz.Code
+        | Official officialTeamQuiz -> officialTeamQuiz.Code
 //Persistence
 type GetQuiz = QuizCode -> AsyncResult<Quiz, DbError>
 type SaveQuiz = Quiz -> AsyncResult<unit, DbError>

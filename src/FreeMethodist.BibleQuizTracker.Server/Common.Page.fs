@@ -4,8 +4,10 @@ open System
 open System.Net
 open Bolero
 open Elmish
+open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open Microsoft.FSharp.Core
 
 type AsyncOperationStatus<'started, 'finished> =
@@ -132,6 +134,12 @@ module ItemizedScoreModel =
         |> Map.toList
         |> List.collect snd
 //Quiz Details
+type QuizControlCapabilities = {
+   CompleteQuiz : (unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>) option
+   ReopenQuiz : (unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>) option
+   Spectate : (unit -> unit) option 
+   LiveScore : (unit -> unit) option
+}
 type Details = {
     State : string
     ItemizedScore: ItemizedScoreModel

@@ -11,6 +11,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
 open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
+open FreeMethodist.BibleQuizTracker.Server.QuizDetailsPage
 open FreeMethodist.BibleQuizTracker.Server.Routing
 open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
@@ -27,14 +28,14 @@ type Model =
       Error: string option
       Quiz: RunningQuizPage.Model option
       QuizCode: QuizCode option
-      CreateQuizForm: CreateQuizForm.CreateQuizForm.Model }
+      CreateQuizForm: CreateQuizForm.Model }
 
 let initModel =
     { page = Home
       Error = None
       Quiz = None
       QuizCode = None
-      CreateQuizForm = CreateQuizForm.CreateQuizForm.Model.Inert }
+      CreateQuizForm = CreateQuizForm.Model.Inert }
 
 /// The Elmish application's update messages.
 type Message =
@@ -104,6 +105,7 @@ let update
     (hubConnection: HubConnection)
     (navigate: Page -> unit)
     capabilitiesProvider
+    quizControlCapProvider
     (message: Message)
     model
     : Model * Cmd<Message> =
@@ -129,7 +131,7 @@ let update
         Cmd.map Message.QuizMessage cmd
 
     let connectToQuizFactory = //to avoid being locked into one message type
-        fun () -> (Common_Page.connectAndHandleQuizEvents connectToQuizEvents onQuizEvent)
+        fun () -> (connectAndHandleQuizEvents connectToQuizEvents onQuizEvent)
 
     match message with
     | SetPage (Page.QuizRun quizCode) ->
@@ -178,7 +180,7 @@ let update
     | QuizMessage quizMsg ->
         match model.Quiz with
         | Some quizModel ->
-            let (updatedModel, quizCommand, externalMessage) =
+            let updatedModel, quizCommand, externalMessage =
                 update
                     (connectToQuizFactory ())
                     publishQuizEvent
@@ -222,7 +224,7 @@ let update
         match model.page with
         | QuizDetails (quizCode, pageModel) ->
             let newModel, cmd =
-                QuizDetailsPage.update tryGetQuiz navigate pageModel.Model message
+                QuizDetailsPage.update tryGetQuiz navigate quizControlCapProvider pageModel.Model message
 
             { model with page = QuizDetails(quizCode, { Model = newModel }) }, cmd |> Cmd.map QuizDetailsMessage
         | _ -> model, Cmd.none
@@ -309,7 +311,7 @@ let view model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | QuizDetails (code, model) -> QuizDetailsPage.render dispatch model.Model
+                | QuizDetails (code, model) -> render dispatch model.Model
                 | QuizSpectate code
                 | QuizRun code ->
                     match model.Quiz with
@@ -439,6 +441,31 @@ let runQuizCapabilities dependencies : RunQuizCapabilityProvider =
       SelectQuizzer = selectQuizzerCap
       CompleteQuiz = completeQuizCap
       ReopenQuiz = reopenQuizCap }
+let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapabilityProvider=
+    let activeWhileRunning quiz capOpt =
+        capOpt |> Option.map (fun cap ->
+        match quiz with
+        | Running _->  cap
+        | Completed _ -> cap
+        | Official _ -> cap)
+    
+    let activeWhileComplete quiz capOpt =
+        capOpt |> Option.map (fun cap ->
+        match quiz with
+        | Running _->  cap
+        | Completed _ -> cap
+        | Official _ -> cap)
+    
+    let completeQuizCap quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> CompleteQuiz.Pipeline.completeQuiz getQuiz saveQuiz code) |> Some |> activeWhileRunning quiz  
+    let reopenQuizCap  quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> ReopenQuiz.Pipeline.reopenQuiz getQuiz saveQuiz code) |> Some |> activeWhileComplete quiz
+    let spectateQuiz  quiz = quiz |> Quiz.getCode |> fun code ->  (fun () -> navigate (Page.QuizSpectate code)) |> Some |> activeWhileRunning quiz 
+    let liveScoreQuiz  quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> navigate (Page.QuizLiveScore (code, Router.noModel))) |> Some 
+    {
+        CompleteQuiz = completeQuizCap
+        ReopenQuiz = reopenQuizCap
+        Spectate = spectateQuiz
+        LiveScore = liveScoreQuiz
+    }
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
@@ -491,7 +518,9 @@ type MyApp() =
         let navigate toPage =
             this.NavigationManager.NavigateTo
             <| router.Link toPage
-
+            
+        let availableQuizControlCapabilities = avilableQuizControlCapabilities this.GetQuizAsync this.SaveQuizAsync navigate 
+        
         let update =
             update
                 connectToQuizEvents
@@ -504,6 +533,7 @@ type MyApp() =
                 hubConnection
                 navigate
                 availableCapabilities
+                availableQuizControlCapabilities
 
         Program.mkProgram
             (fun _ ->
