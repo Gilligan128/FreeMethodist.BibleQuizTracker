@@ -46,7 +46,7 @@ type Message =
     | JoinQuiz
     | CreateQuiz of CreateQuizForm.Message
     | LiveScoreMessage of LiveScorePage.Message
-    | QuizDetailsMessage of QuizDetailsPage.Message
+    | QuizDetailsMessage of Common_Page.QuizDetailsMessage
 
 let clientStub =
     Unchecked.defaultof<QuizHub.Client>
@@ -458,8 +458,8 @@ let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapab
     
     let completeQuizCap quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> CompleteQuiz.Pipeline.completeQuiz getQuiz saveQuiz code) |> Some |> activeWhileRunning quiz  
     let reopenQuizCap  quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> ReopenQuiz.Pipeline.reopenQuiz getQuiz saveQuiz code) |> Some |> activeWhileComplete quiz
-    let spectateQuiz  quiz = quiz |> Quiz.getCode |> fun code ->  (fun () -> navigate (Page.QuizSpectate code)) |> Some |> activeWhileRunning quiz 
-    let liveScoreQuiz  quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> navigate (Page.QuizLiveScore (code, Router.noModel))) |> Some 
+    let spectateQuiz  quiz = quiz |> Quiz.getCode |> fun code ->  (router.Link (Page.QuizSpectate code)) |> Some |> activeWhileRunning quiz 
+    let liveScoreQuiz  quiz = quiz |> Quiz.getCode |> fun code -> ( router.Link (Page.QuizLiveScore (code, Router.noModel))) |> Some 
     {
         CompleteQuiz = completeQuizCap
         ReopenQuiz = reopenQuizCap

@@ -241,6 +241,14 @@ let getCodeFromModel model =
     | Loading (code, user) -> code
     | Loaded loaded -> loaded.Code
 
+let mapWorkflowErrors mapWorkflowSpecificError error =
+        match error with
+        | WorkflowError.DbError error -> error |> mapDbErrorToString
+        | WorkflowError.Workflow workflowError -> workflowError |> mapWorkflowSpecificError
+let mapToAsyncOperationCmd asyncOperation resultAsync =
+        resultAsync
+        |> Async.map (fun result -> asyncOperation (Finished result))
+        |> Cmd.OfAsync.result
 let update
     connectAndHandle
     (publishQuizEvent: PublishQuizEventTask)
@@ -260,11 +268,6 @@ let update
 
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.Error error |> Some
-
-    let mapWorkflowErrors mapWorkflowSpecificError error =
-        match error with
-        | WorkflowError.DbError error -> error |> mapDbErrorToString
-        | WorkflowError.Workflow workflowError -> workflowError |> mapWorkflowSpecificError
 
     let publishRunQuizEvent quiz (event: RunQuizEvent) =
         publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event

@@ -11,18 +11,11 @@ open FreeMethodist.BibleQuizTracker.Server.Routing
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
-
-type Message = Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
-
-type CompleteQuizCap = unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>
-type  ReopenQuizCap = unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>
-type NavigateCap = unit -> unit 
-
 type QuizControlCapabilityProvider = {
    CompleteQuiz : Quiz -> CompleteQuizCap option
    ReopenQuiz : Quiz -> ReopenQuizCap option
-   Spectate : Quiz -> NavigateCap option
-   LiveScore : Quiz -> NavigateCap option
+   Spectate : Quiz -> Link option
+   LiveScore : Quiz -> Link option
 }
 
 let init quizCode =
@@ -30,13 +23,13 @@ let init quizCode =
       Details = NotYetStarted },
     Cmd.ofMsg (Initialize(Started()))
 
-let subOfFunc arg (func: 'a -> unit) : Sub<Message> = fun _ -> func arg
+let subOfFunc arg (func: 'a -> unit) : Sub<QuizDetailsMessage> = fun _ -> func arg
 
 let loadRunningTeam (team: QuizTeamState) : ItemizedTeam =
     { Name = team.Name
       Quizzers = team.Quizzers |> List.map (fun q -> q.Name) }
 
-let loadRunningQuiz quiz =
+let private loadRunningQuiz quiz =
     { NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
       QuestionsWithEvents =
         quiz.Questions
@@ -44,11 +37,11 @@ let loadRunningQuiz quiz =
         |> ItemizedScoreModel.refreshQuestionScores
       CompetitionStyle = ItemizedCompetitionStyle.Team(quiz.TeamOne |> loadRunningTeam, quiz.TeamTwo |> loadRunningTeam) }
 
-let loadCompletedTeam (team: CompletedTeam) : ItemizedTeam =
+let private loadCompletedTeam (team: CompletedTeam) : ItemizedTeam =
     { Name = team.Name
       Quizzers = team.Quizzers |> List.map (fun q -> q.Name) }
 
-let loadCompletedQuiz (quiz: CompletedQuiz) =
+let private loadCompletedQuiz (quiz: CompletedQuiz) =
     { NumberOfQuestions =
         quiz.CompletedQuestions.Length
         |> PositiveNumber.numberOrOne
@@ -73,6 +66,9 @@ let private availableCapabilities (provider : QuizControlCapabilityProvider) qui
       ReopenQuiz = provider.ReopenQuiz quiz
       Spectate = provider.Spectate quiz
       LiveScore = provider.LiveScore quiz }
+    
+let private availableMessages (capabiliies :QuizControlCapabilities) =
+   capabiliies.ReopenQuiz |> Option.map (fun cap -> QuizDetailsMessage.ReopenQuiz (Started ()))
 
 let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvider) (model: QuizDetailsModel) message =
     let navigateHomeCmd =
@@ -89,7 +85,7 @@ let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvide
 
         { model with Details = InProgress }, cmd
     | Initialize (Finished (Ok (Some quiz))) ->
-        let caps = availableCapabilities capabilityProvider quiz
+        let caps = availableCapabilities capabilityProvider quiz |> availableMessages
         { model with
             Details =
                 Resolved(
@@ -107,6 +103,7 @@ let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvide
         Cmd.none
     | Initialize (Finished (Ok None)) -> { model with Details = NotYetStarted }, navigateHomeCmd
     | Initialize (Finished (Error error)) -> model, navigateHomeCmd
+
 
 
 let render dispatch (model: QuizDetailsModel) : Node =
