@@ -4,6 +4,14 @@ open Html
 
 [<RequireQualifiedAccess>]
 module Html =
+    
+    let disabledIfNone opt =
+         attr.disabled (
+                match opt with
+                | Some _ -> null
+                | None -> "disabled"
+            )
+    
     let capabilityButton dispatch colorOpt buttonText capOpt =
         button {
             attr.``class`` (
@@ -13,11 +21,7 @@ module Html =
                   | None -> ""
             )
 
-            attr.disabled (
-                match capOpt with
-                | Some _ -> null
-                | None -> "disabled"
-            )
+            capOpt |> disabledIfNone 
 
             on.click (fun _ -> capOpt |> Option.iter dispatch)
 
@@ -33,14 +37,11 @@ module Html =
                   | None -> ""
             )
 
-            attr.disabled (
-                match capOpt with
-                | Some _ -> null
-                | None -> "disabled"
-            )
+            capOpt |> disabledIfNone
 
             attr.href (capOpt |> Option.defaultValue null)
 
             text linkText
         }
 
+    

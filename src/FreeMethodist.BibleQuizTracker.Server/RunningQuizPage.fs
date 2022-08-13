@@ -771,12 +771,8 @@ let private teamView
                         .RemoveButton(
                             button {
                                 attr.``class`` "button is-info is-light"
-
-                                attr.disabled (
-                                    match removeCap with
-                                    | Some cap -> "disabled"
-                                    | None -> null
-                                )
+                                
+                                removeCap |> Html.disabledIfNone
 
                                 on.click (fun _ ->
                                     removeCap
@@ -789,9 +785,6 @@ let private teamView
                                 }
                             }
                         )
-                        .Remove(fun _ ->
-                            removeCap
-                            |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
                         .Select(fun _ -> dispatch (SelectQuizzer(Started quizzer.Name)))
                         .BackgroundColor(
                             currentQuizzer
