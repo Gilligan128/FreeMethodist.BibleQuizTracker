@@ -8,6 +8,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView.ItemizedScore
 open FreeMethodist.BibleQuizTracker.Server.Routing
+open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
@@ -18,9 +19,14 @@ type QuizControlCapabilityProvider = {
    LiveScore : Quiz -> Link option
 }
 
+type QuizDetailsMessage =
+    | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
+    | CompleteQuiz of AsyncOperationStatus<CompleteQuizCap, Result<Quiz, WorkflowError<CompleteQuiz.Error>>>
+    
+
 let init quizCode =
     { Code = quizCode
-      Details = NotYetStarted },
+      Details = Deferred.NotYetStarted },
     Cmd.ofMsg (Initialize(Started()))
 
 let subOfFunc arg (func: 'a -> unit) : Sub<QuizDetailsMessage> = fun _ -> func arg
@@ -61,19 +67,53 @@ let private loadCompletedQuiz (quiz: CompletedQuiz) =
             |> List.map (fun q -> q.Name)
             |> ItemizedCompetitionStyle.Individual }
 
-let private availableCapabilities (provider : QuizControlCapabilityProvider) quiz : QuizControlCapabilities =
-    { CompleteQuiz = provider.CompleteQuiz quiz
-      ReopenQuiz = provider.ReopenQuiz quiz
-      Spectate = provider.Spectate quiz
-      LiveScore = provider.LiveScore quiz }
-    
-let private availableMessages (capabiliies :QuizControlCapabilities) =
-   capabiliies.ReopenQuiz |> Option.map (fun cap -> QuizDetailsMessage.ReopenQuiz (Started ()))
+let private availableCapabilities (provider : QuizControlCapabilityProvider) quiz =
+    let completeQuiz = provider.CompleteQuiz quiz
+    let reopenQuiz = provider.ReopenQuiz quiz
+    let spectateQuiz = provider.Spectate quiz
+    let liveScoreQuiz = provider.LiveScore quiz
+    completeQuiz, reopenQuiz, spectateQuiz, liveScoreQuiz
+  
 
-let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvider) (model: QuizDetailsModel) message =
+let private reloadModel capabilityProvider model quiz = 
+  let unitFuncOption, funcOption, stringOption, option = availableCapabilities capabilityProvider quiz
+  { model with
+        Details =
+            Resolved(
+                match quiz with
+                | Running running ->
+                    { State = nameof Running
+                      ItemizedScore = running |> loadRunningQuiz }
+                | Completed completedQuiz ->
+                    { State = nameof Completed
+                      ItemizedScore = completedQuiz |> loadCompletedQuiz }
+                | Official _ ->
+                    { State = nameof Official
+                      ItemizedScore = Unchecked.defaultof<ItemizedScoreModel> }
+            ) }
+  
+let private startWorkflow (getQuiz : GetQuiz) (model : QuizDetailsModel) finishedMessage workflowCap  =
+        workflowCap
+        |> AsyncResult.mapError WorkflowError.Workflow
+        |> AsyncResult.bind (fun _ -> model.Code |> getQuiz |> (AsyncResult.mapError WorkflowError.DbError ))
+        |> Async.map Finished
+        |> Async.map finishedMessage
+        |> fun async -> model, Cmd.OfAsync.result async
+     
+
+let private finishWorkflow reloadModel capabilityProvider navigateHomeCmd model   result =
+    match result with
+    | Ok quiz ->
+        quiz |> reloadModel capabilityProvider model, Cmd.none
+    | Result.Error error -> model, navigateHomeCmd
+
+let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvider) getQuiz (model: QuizDetailsModel) message =
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
-
+    
+    let startWorkflow = startWorkflow getQuiz model
+    let finishWorkflow = finishWorkflow reloadModel capabilityProvider navigateHomeCmd model
+    
     match message with
     | Initialize (Started _) ->
         let cmd =
@@ -85,30 +125,19 @@ let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvide
 
         { model with Details = InProgress }, cmd
     | Initialize (Finished (Ok (Some quiz))) ->
-        let caps = availableCapabilities capabilityProvider quiz |> availableMessages
-        { model with
-            Details =
-                Resolved(
-                    match quiz with
-                    | Running running ->
-                        { State = nameof Running
-                          ItemizedScore = running |> loadRunningQuiz }
-                    | Completed completedQuiz ->
-                        { State = nameof Completed
-                          ItemizedScore = completedQuiz |> loadCompletedQuiz }
-                    | Official _ ->
-                        { State = nameof Official
-                          ItemizedScore = Unchecked.defaultof<ItemizedScoreModel> }
-                ) },
+        reloadModel capabilityProvider model quiz,
         Cmd.none
-    | Initialize (Finished (Ok None)) -> { model with Details = NotYetStarted }, navigateHomeCmd
-    | Initialize (Finished (Error error)) -> model, navigateHomeCmd
-
+    | Initialize (Finished (Ok None)) -> { model with Details = Deferred.NotYetStarted }, navigateHomeCmd
+    | Initialize (Finished (Result.Error error)) -> model, navigateHomeCmd
+    | CompleteQuiz (Started cap) ->
+        cap () |>  startWorkflow QuizDetailsMessage.CompleteQuiz
+    | CompleteQuiz (Finished result) ->
+        result |> finishWorkflow
 
 
 let render dispatch (model: QuizDetailsModel) : Node =
     match model.Details with
-    | NotYetStarted ->
+    | Deferred.NotYetStarted ->
         p {
             attr.``class`` "title"
             $"Quiz {model.Code} is not yet loaded"

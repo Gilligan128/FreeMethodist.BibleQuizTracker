@@ -46,7 +46,7 @@ type Message =
     | JoinQuiz
     | CreateQuiz of CreateQuizForm.Message
     | LiveScoreMessage of LiveScorePage.Message
-    | QuizDetailsMessage of Common_Page.QuizDetailsMessage
+    | QuizDetailsMessage of QuizDetailsMessage
 
 let clientStub =
     Unchecked.defaultof<QuizHub.Client>
@@ -218,15 +218,15 @@ let update
             let newScoreModel, cmd =
                 LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz liveScoreModel.Model message
 
-            { model with page = QuizLiveScore(code, { Model = newScoreModel }) }, (cmd |> Cmd.map LiveScoreMessage)
+            { model with page = QuizLiveScore(code, { Model = newScoreModel }); Error = None }, (cmd |> Cmd.map LiveScoreMessage)
         | _ -> model, Cmd.none
     | QuizDetailsMessage message ->
         match model.page with
         | QuizDetails (quizCode, pageModel) ->
             let newModel, cmd =
-                QuizDetailsPage.update tryGetQuiz navigate quizControlCapProvider pageModel.Model message
+                QuizDetailsPage.update tryGetQuiz navigate quizControlCapProvider getQuizAsync pageModel.Model message
 
-            { model with page = QuizDetails(quizCode, { Model = newModel }) }, cmd |> Cmd.map QuizDetailsMessage
+            { model with page = QuizDetails(quizCode, { Model = newModel }); Error = None }, cmd |> Cmd.map QuizDetailsMessage
         | _ -> model, Cmd.none
 
 
@@ -283,11 +283,24 @@ let homePage model dispatch =
         .CreateQuizModal(CreateQuizForm.view model.CreateQuizForm (dispatch << Message.CreateQuiz))
         .Elt()
 
+let private pagesAreSame page1 page2 =
+    match page1,page2 with
+    | Page.Home, Page.Home -> true
+    | Page.QuizDetails(quizCode1, _), Page.QuizDetails(quizCode2, _)
+    | Page.QuizLiveScore(quizCode1, _), Page.QuizLiveScore(quizCode2, _) -> quizCode1 = quizCode2
+    | Page.QuizRun one, Page.QuizRun two -> one = two
+    | Page.QuizSpectate one, Page.QuizSpectate two -> one = two
+    | Page.Home, _
+    | Page.QuizDetails _, _ 
+    | Page.QuizRun _, _ 
+    | Page.QuizSpectate _, _
+    | Page.QuizLiveScore _, _ -> false
+
 let menuItem (model: Model) (page: Page) (text: string) =
     Main
         .MenuItem()
         .Active(
-            if model.page = page then
+            if pagesAreSame model.page page then
                 "is-active"
             else
                 ""
@@ -456,8 +469,8 @@ let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapab
         | Completed _ -> cap
         | Official _ -> cap)
     
-    let completeQuizCap quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> CompleteQuiz.Pipeline.completeQuiz getQuiz saveQuiz code) |> Some |> activeWhileRunning quiz  
-    let reopenQuizCap  quiz = quiz |> Quiz.getCode |> fun code -> (fun () -> ReopenQuiz.Pipeline.reopenQuiz getQuiz saveQuiz code) |> Some |> activeWhileComplete quiz
+    let completeQuizCap quiz = quiz |> Quiz.getCode |> fun code -> (fun _ -> CompleteQuiz.Pipeline.completeQuiz getQuiz saveQuiz code) |> Some |> activeWhileRunning quiz  
+    let reopenQuizCap  quiz = quiz |> Quiz.getCode |>  (fun _ -> Started () : AsyncOperationStatus<unit, Result<Quiz, RunQuiz.Workflows.ReopenQuiz.Error>>) |> Some |> activeWhileComplete quiz
     let spectateQuiz  quiz = quiz |> Quiz.getCode |> fun code ->  (router.Link (Page.QuizSpectate code)) |> Some |> activeWhileRunning quiz 
     let liveScoreQuiz  quiz = quiz |> Quiz.getCode |> fun code -> ( router.Link (Page.QuizLiveScore (code, Router.noModel))) |> Some 
     {

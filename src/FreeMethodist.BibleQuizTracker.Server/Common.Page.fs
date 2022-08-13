@@ -133,25 +133,11 @@ module ItemizedScoreModel =
         |> Map.map refreshQuestionScore
         |> Map.toList
         |> List.collect snd
+
 //Quiz Details
 type CompleteQuizCap = unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>
-type ReopenQuizCap = unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>
+type ReopenQuizCap =  AsyncOperationStatus<unit,Result<Quiz, ReopenQuiz.Error>>
 type Link = string
-
-type QuizControlCapabilities =
-    { CompleteQuiz: (unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>) option
-      ReopenQuiz: (unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>) option
-      Spectate: Link option
-      LiveScore: Link option }
-
-type QuizDetailsMessage =
-    | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
-    | ReopenQuiz of AsyncOperationStatus<unit, Result<Quiz option, ReopenQuiz.Error>>
-    | CompleteQuiz of AsyncOperationStatus<unit, Result<Quiz option, CompleteQuiz.Error>>
-
-type PageAction =
-    | Message of QuizDetailsMessage
-    | Link of string
 
 type Details =
     { State: string
@@ -159,10 +145,8 @@ type Details =
 
 type QuizDetailsModel =
     { Code: QuizCode
-      Details: Deferred<Details> }
-
-
-
+      Details: Deferred<Details>
+    } 
 
 //Connecting to SignalR
 type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
