@@ -81,8 +81,11 @@ let private reloadModel capabilityProvider model quiz =
     let completeQuiz, reopenQuiz, spectateCap, liveScoreCap =
         availableCapabilities capabilityProvider quiz
 
-    let capabilities : QuizControlCapabilities =
-        { CompleteQuiz = completeQuiz; ReopenQuiz = reopenQuiz; Spectate = spectateCap; LiveScore = liveScoreCap }
+    let capabilities: QuizControlCapabilities =
+        { CompleteQuiz = completeQuiz
+          ReopenQuiz = reopenQuiz
+          Spectate = spectateCap
+          LiveScore = liveScoreCap }
 
     let details =
         match quiz with
@@ -131,8 +134,7 @@ let update
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
 
-    let startWorkflow cap =
-        startWorkflow getQuiz model cap
+    let startWorkflow cap = startWorkflow getQuiz model cap
 
     let finishWorkflow message =
         finishWorkflow reloadModel capabilityProvider navigateHomeCmd model message
@@ -159,8 +161,47 @@ let update
         |> startWorkflow QuizDetailsMessage.ReopenQuiz
     | ReopenQuiz (Finished result) -> result |> finishWorkflow
 
+let private capabilityButton colorOpt buttonText capOpt =
+    button {
+        attr.``class`` (
+            "button "
+            + match colorOpt with
+              | Some color -> $"is-{color}"
+              | None -> ""
+        )
 
-let render dispatch (model: QuizDetailsModel) : Node =
+        attr.disabled (
+            match capOpt with
+            | Some _ -> null
+            | None -> "disabled"
+        )
+
+        on.click (fun _ -> capOpt |> Option.iter (fun cap -> cap ()))
+        
+        text buttonText
+    }
+
+let private capabilityLink colorOpt linkText capOpt =
+    a {
+        attr.``class`` (
+            "button "
+            + match colorOpt with
+              | Some color -> $"is-{color}"
+              | None -> ""
+        )
+        attr.disabled (
+            match capOpt with
+            | Some _ -> null
+            | None -> "disabled"
+        )
+        attr.href (capOpt |> Option.defaultValue null)
+        
+        text linkText
+    }
+
+let private dispatchedMessage dispatch cap = fun () -> dispatch cap
+
+let render (dispatch: Dispatch<QuizDetailsMessage>) (model: QuizDetailsModel) : Node =
     match model.Details with
     | Deferred.NotYetStarted ->
         p {
@@ -200,6 +241,26 @@ let render dispatch (model: QuizDetailsModel) : Node =
                         loadedModel.State
                     }
                 }
+            }
+
+            div {
+                attr.``class`` "buttons"
+
+                loadedModel.Capabilities.CompleteQuiz
+                |> Option.map (Started >> QuizDetailsMessage.CompleteQuiz)
+                |> Option.map (dispatchedMessage dispatch)
+                |> capabilityButton (Some "primary") "Complete"
+
+                loadedModel.Capabilities.ReopenQuiz
+                |> Option.map (Started >> QuizDetailsMessage.ReopenQuiz)
+                |> Option.map (dispatchedMessage dispatch)
+                |> capabilityButton (Some "primary") "Reopen"
+                
+                loadedModel.Capabilities.Spectate
+                |> capabilityLink (Some "info") (nameof loadedModel.Capabilities.Spectate)
+                loadedModel.Capabilities.LiveScore
+                |> capabilityLink (Some "info") "Live Score"  
+
             }
 
             render loadedModel.ItemizedScore dispatch

@@ -218,7 +218,10 @@ let update
             let newScoreModel, cmd =
                 LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz liveScoreModel.Model message
 
-            { model with page = QuizLiveScore(code, { Model = newScoreModel }); Error = None }, (cmd |> Cmd.map LiveScoreMessage)
+            { model with
+                page = QuizLiveScore(code, { Model = newScoreModel })
+                Error = None },
+            (cmd |> Cmd.map LiveScoreMessage)
         | _ -> model, Cmd.none
     | QuizDetailsMessage message ->
         match model.page with
@@ -226,7 +229,10 @@ let update
             let newModel, cmd =
                 QuizDetailsPage.update tryGetQuiz navigate quizControlCapProvider getQuizAsync pageModel.Model message
 
-            { model with page = QuizDetails(quizCode, { Model = newModel }); Error = None }, cmd |> Cmd.map QuizDetailsMessage
+            { model with
+                page = QuizDetails(quizCode, { Model = newModel })
+                Error = None },
+            cmd |> Cmd.map QuizDetailsMessage
         | _ -> model, Cmd.none
 
 
@@ -284,15 +290,15 @@ let homePage model dispatch =
         .Elt()
 
 let private pagesAreSame page1 page2 =
-    match page1,page2 with
+    match page1, page2 with
     | Page.Home, Page.Home -> true
-    | Page.QuizDetails(quizCode1, _), Page.QuizDetails(quizCode2, _)
-    | Page.QuizLiveScore(quizCode1, _), Page.QuizLiveScore(quizCode2, _) -> quizCode1 = quizCode2
+    | Page.QuizDetails (quizCode1, _), Page.QuizDetails (quizCode2, _)
+    | Page.QuizLiveScore (quizCode1, _), Page.QuizLiveScore (quizCode2, _) -> quizCode1 = quizCode2
     | Page.QuizRun one, Page.QuizRun two
     | Page.QuizSpectate one, Page.QuizSpectate two -> one = two
     | Page.Home, _
-    | Page.QuizDetails _, _ 
-    | Page.QuizRun _, _ 
+    | Page.QuizDetails _, _
+    | Page.QuizRun _, _
     | Page.QuizSpectate _, _
     | Page.QuizLiveScore _, _ -> false
 
@@ -324,7 +330,7 @@ let view model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | QuizDetails (code, model) -> render dispatch model.Model
+                | QuizDetails (code, model) -> render (fun msg -> msg |> QuizDetailsMessage |> dispatch) model.Model
                 | QuizSpectate code
                 | QuizRun code ->
                     match model.Quiz with
@@ -454,31 +460,59 @@ let runQuizCapabilities dependencies : RunQuizCapabilityProvider =
       SelectQuizzer = selectQuizzerCap
       CompleteQuiz = completeQuizCap
       ReopenQuiz = reopenQuizCap }
-let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapabilityProvider=
+
+let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapabilityProvider =
     let activeWhileRunning quiz capOpt =
-        capOpt |> Option.map (fun cap ->
-        match quiz with
-        | Running _->  cap
-        | Completed _ -> cap
-        | Official _ -> cap)
-    
+        capOpt
+        |> Option.bind (fun cap ->
+            match quiz with
+            | Running _ -> Some cap
+            | Completed _ -> None
+            | Official _ -> None)
+
     let activeWhileComplete quiz capOpt =
-        capOpt |> Option.map (fun cap ->
-        match quiz with
-        | Running _->  cap
-        | Completed _ -> cap
-        | Official _ -> cap)
-    
-    let completeQuizCap quiz = quiz |> Quiz.getCode |> fun code -> (fun _ -> CompleteQuiz.Pipeline.completeQuiz getQuiz saveQuiz code) |> Some |> activeWhileRunning quiz  
-    let reopenQuizCap  quiz = quiz |> Quiz.getCode |> fun code -> (fun _ -> ReopenQuiz.Pipeline.reopenQuiz getQuiz saveQuiz code) |> Some |> activeWhileComplete quiz
-    let spectateQuiz  quiz = quiz |> Quiz.getCode |> fun code ->  (router.Link (Page.QuizSpectate code)) |> Some |> activeWhileRunning quiz 
-    let liveScoreQuiz  quiz = quiz |> Quiz.getCode |> fun code -> ( router.Link (Page.QuizLiveScore (code, Router.noModel))) |> Some 
-    {
-        CompleteQuiz = completeQuizCap
-        ReopenQuiz = reopenQuizCap
-        Spectate = spectateQuiz
-        LiveScore = liveScoreQuiz
-    }
+        capOpt
+        |> Option.bind (fun cap ->
+            match quiz with
+            | Running _ -> None
+            | Completed _ -> Some cap
+            | Official _ -> Some cap)
+
+    let completeQuizCap quiz =
+        quiz
+        |> Quiz.getCode
+        |> fun code ->
+            (fun _ -> CompleteQuiz.Pipeline.completeQuiz getQuiz saveQuiz code)
+            |> Some
+            |> activeWhileRunning quiz
+
+    let reopenQuizCap quiz =
+        quiz
+        |> Quiz.getCode
+        |> fun code ->
+            (fun _ -> ReopenQuiz.Pipeline.reopenQuiz getQuiz saveQuiz code)
+            |> Some
+            |> activeWhileComplete quiz
+
+    let spectateQuiz quiz =
+        quiz
+        |> Quiz.getCode
+        |> fun code ->
+            (router.Link(Page.QuizSpectate code))
+            |> Some
+        |> activeWhileRunning quiz
+
+    let liveScoreQuiz quiz =
+        quiz
+        |> Quiz.getCode
+        |> fun code ->
+            (router.Link(Page.QuizLiveScore(code, Router.noModel)))
+            |> Some
+
+    { CompleteQuiz = completeQuizCap
+      ReopenQuiz = reopenQuizCap
+      Spectate = spectateQuiz
+      LiveScore = liveScoreQuiz }
 
 type MyApp() =
     inherit ProgramComponent<Model, Message>()
@@ -531,9 +565,10 @@ type MyApp() =
         let navigate toPage =
             this.NavigationManager.NavigateTo
             <| router.Link toPage
-            
-        let availableQuizControlCapabilities = avilableQuizControlCapabilities this.GetQuizAsync this.SaveQuizAsync navigate 
-        
+
+        let availableQuizControlCapabilities =
+            avilableQuizControlCapabilities this.GetQuizAsync this.SaveQuizAsync navigate
+
         let update =
             update
                 connectToQuizEvents
