@@ -46,12 +46,6 @@ type Model =
     | NotYetStarted of QuizCode * User
     | Loading of QuizCode * User
     | Loaded of LoadedModel
-
-type PublishEventError =
-    | FormError of string
-    | RemoteError of exn
-
-
 type WorkflowResult<'a> = Result<Quiz, WorkflowError<'a>>
 
 type AddQuizzerMessage =
@@ -67,9 +61,8 @@ type ChangeQuestionError =
 
 type Message =
     | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz option, DbError>>
-    | OnQuizEvent of AsyncOperationStatus<unit, Quiz>
+    | OnQuizEvent of AsyncOperationStatus<unit, Result<Quiz, DbError>>
     | ChangeCurrentQuestion of AsyncOperationStatus<int, WorkflowResult<ChangeQuestionError>>
-    | WorkflowError of PublishEventError
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of AsyncOperationStatus<Quizzer * TeamPosition, WorkflowResult<RemoveQuizzer.Error>>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
@@ -178,9 +171,6 @@ let init user quizCode previousQuizCode =
 
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
-
-let private workflowFormError =
-    PublishEventError.FormError >> WorkflowError
 
 let private getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) user currentQuizzerOpt =
     let addQuizzer =
@@ -357,14 +347,12 @@ let update
             let model = quiz |> refreshModel
 
             let handleEventSub dispatch _ =
-                getQuizAsync quizCode
-                |> AsyncResult.map (fun quiz -> dispatch (Message.OnQuizEvent(Finished quiz)))
-                |> Async.Ignore
-
+                dispatch (Message.OnQuizEvent(Started ()))
+                |> Async.retn
+               
             let connectCmd =
                 connectAndHandle handleEventSub (quizCode, None)
                 |> Cmd.ofSub
-
             model, connectCmd, NoMessage
         | Ok (None) -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, notFoundMessage quizCode
         | Ok (Some (Quiz.Completed _))
@@ -392,15 +380,12 @@ let update
 
         Loading(quizCode, user), loadCmd, noMessage
     | OnQuizEvent (Started _) ->
-        let getQuizToRefresh =
+        let getQuizToRefreshCmd =
             getQuizAsync quizCode
-            |> Async.map (fun result ->
-                match result with
-                | Ok quiz -> quiz |> (Finished >> OnQuizEvent)
-                | Result.Error error -> error |> mapDbErrorToString |> workflowFormError)
-
-        model, Cmd.OfAsync.result getQuizToRefresh, noMessage
-    | OnQuizEvent (Finished quiz) ->
+            |> Async.map (Finished >> OnQuizEvent)
+            |> Cmd.OfAsync.result
+        model, getQuizToRefreshCmd, noMessage
+    | OnQuizEvent (Finished (Ok quiz)) ->
         match quiz with
         | Quiz.Running quiz -> refreshModel quiz, Cmd.none, noMessage
         | Quiz.Completed _
@@ -409,13 +394,9 @@ let update
             Cmd.none,
             "Quiz is not running"
             |> ExternalMessage.ErrorMessage
-    | Message.WorkflowError error ->
-        let errorMessage =
-            match error with
-            | PublishEventError.FormError er -> er
-            | RemoteError exn -> exn.Message
-
-        model, Cmd.none, errorMessage |> ExternalMessage.ErrorMessage
+    | OnQuizEvent (Finished (Error error)) ->
+        let externalMessage = error |> mapDbErrorToString |> ExternalMessage.ErrorMessage
+        model, Cmd.none, externalMessage
     | ChangeCurrentQuestion (Started questionNumber) ->
         let mapToQuizEvent event =
             event |> RunQuizEvent.CurrentQuestionChanged
