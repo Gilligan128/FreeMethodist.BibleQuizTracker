@@ -4,6 +4,7 @@ open Bolero
 open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
+open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
@@ -128,9 +129,13 @@ let private startWorkflow (getQuiz: GetQuiz) model getCode finishedMessage workf
 let private finishWorkflow reloadModel capabilityProvider mapWorkflowErrors model result =
     match result with
     | Ok quiz -> quiz |> reloadModel capabilityProvider model, Cmd.none, NoMessage
-    | Result.Error error -> model, Cmd.none, (match error with
-                                             | WorkflowError.Workflow er -> er |> mapWorkflowErrors
-                                             | WorkflowError.DbError dbError -> dbError |> mapDbErrorToString) |> ErrorMessage
+    | Result.Error error ->
+        model,
+        Cmd.none,
+        (match error with
+         | WorkflowError.Workflow er -> er |> mapWorkflowErrors
+         | WorkflowError.DbError dbError -> dbError |> mapDbErrorToString)
+        |> ErrorMessage
 
 let update
     tryGetQuiz
@@ -143,9 +148,10 @@ let update
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
 
-    let startWorkflow finishedMessage cap = startWorkflow getQuiz model (fun model -> model.Code) finishedMessage cap
+    let startWorkflow finishedMessage cap =
+        startWorkflow getQuiz model (fun model -> model.Code) finishedMessage cap
 
-    let finishWorkflow mapWorkflowErrors result  =
+    let finishWorkflow mapWorkflowErrors result =
         finishWorkflow reloadModel capabilityProvider mapWorkflowErrors model result
 
     match message with
@@ -159,16 +165,18 @@ let update
 
         { model with Details = InProgress }, cmd, NoMessage
     | Initialize (Finished (Ok (Some quiz))) -> reloadModel capabilityProvider model quiz, Cmd.none, NoMessage
-    | Initialize (Finished (Ok None)) -> { model with Details = Deferred.NotYetStarted }, navigateHomeCmd, $"Quiz {model.Code} not found" |> ErrorMessage
+    | Initialize (Finished (Ok None)) ->
+        { model with Details = Deferred.NotYetStarted }, navigateHomeCmd, $"Quiz {model.Code} not found" |> ErrorMessage
     | Initialize (Finished (Result.Error error)) -> model, navigateHomeCmd, error |> mapDbErrorToString |> ErrorMessage
     | CompleteQuiz (Started cap) ->
         cap ()
-        |> startWorkflow QuizDetailsMessage.CompleteQuiz 
+        |> startWorkflow QuizDetailsMessage.CompleteQuiz
     | CompleteQuiz (Finished result) ->
         let mapError error =
-             match error with
-              | CompleteQuiz.Error.DbError dbError -> dbError |> mapDbErrorToString
-              | CompleteQuiz.QuizState _ -> "Wrong quiz state"
+            match error with
+            | CompleteQuiz.Error.DbError dbError -> dbError |> mapDbErrorToString
+            | CompleteQuiz.QuizState _ -> "Wrong quiz state"
+
         result |> finishWorkflow mapError
     | ReopenQuiz (Started cap) ->
         cap ()
@@ -178,47 +186,8 @@ let update
             match error with
             | ReopenQuiz.DbError dbError -> dbError |> mapDbErrorToString
             | ReopenQuiz.QuizState _ -> "Wrong quiz state"
+
         result |> finishWorkflow mapError
-
-let private capabilityButton colorOpt buttonText capOpt =
-    button {
-        attr.``class`` (
-            "button "
-            + match colorOpt with
-              | Some color -> $"is-{color}"
-              | None -> ""
-        )
-
-        attr.disabled (
-            match capOpt with
-            | Some _ -> null
-            | None -> "disabled"
-        )
-
-        on.click (fun _ -> capOpt |> Option.iter (fun cap -> cap ()))
-
-        text buttonText
-    }
-
-let private capabilityLink colorOpt linkText capOpt =
-    a {
-        attr.``class`` (
-            "button "
-            + match colorOpt with
-              | Some color -> $"is-{color}"
-              | None -> ""
-        )
-
-        attr.disabled (
-            match capOpt with
-            | Some _ -> null
-            | None -> "disabled"
-        )
-
-        attr.href (capOpt |> Option.defaultValue null)
-
-        text linkText
-    }
 
 let private dispatchedMessage dispatch cap = fun () -> dispatch cap
 
@@ -269,25 +238,23 @@ let render (dispatch: Dispatch<QuizDetailsMessage>) (model: QuizDetailsModel) : 
 
                 loadedModel.Capabilities.CompleteQuiz
                 |> Option.map (Started >> QuizDetailsMessage.CompleteQuiz)
-                |> Option.map (dispatchedMessage dispatch)
-                |> capabilityButton (Some "primary") "Complete"
+                |> Html.capabilityButton dispatch (Some "primary") "Complete"
 
                 loadedModel.Capabilities.ReopenQuiz
                 |> Option.map (Started >> QuizDetailsMessage.ReopenQuiz)
-                |> Option.map (dispatchedMessage dispatch)
-                |> capabilityButton (Some "primary") "Reopen"
+                |> Html.capabilityButton dispatch (Some "primary") "Reopen"
 
                 loadedModel.Capabilities.Run
-                |> capabilityLink (Some "link") "Run"
+                |> Html.capabilityLink (Some "link") "Run"
 
                 loadedModel.Capabilities.Spectate
-                |> capabilityLink (Some "info") (nameof loadedModel.Capabilities.Spectate)
+                |> Html.capabilityLink (Some "info") (nameof loadedModel.Capabilities.Spectate)
 
                 loadedModel.Capabilities.LiveScore
-                |> capabilityLink (Some "info") "Live Score"
+                |> Html.capabilityLink (Some "info") "Live Score"
 
             }
 
-            render loadedModel.ItemizedScore dispatch
+            ItemizedScore.render loadedModel.ItemizedScore dispatch
 
         }

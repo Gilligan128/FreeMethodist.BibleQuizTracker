@@ -140,8 +140,7 @@ module ItemizedScoreModel =
         |> List.collect snd
 
 //Quiz Details
-type CompleteQuizCap = unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>
-type ReopenQuizCap =  unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>
+
 type Link = string
 
 type QuizControlCapabilities = {

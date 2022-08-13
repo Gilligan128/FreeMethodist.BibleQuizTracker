@@ -4,6 +4,8 @@ open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
+type CompleteQuizCap = unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>
+type ReopenQuizCap =  unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>
 module Capabilities =
     type RunQuizCapabilityProvider = {
         AddQuizzer : User -> AddQuizzer.Workflow option

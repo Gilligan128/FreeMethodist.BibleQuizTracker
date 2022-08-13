@@ -302,7 +302,7 @@ let menuItem (model: Model) (page: Page) (text: string) =
 let linkToQuizPage (router: Router<Page, Model, Message>) =
     fun quizCode -> router.Link <| Page.QuizSpectate quizCode
 
-let view model dispatch =
+let view capabilityProvider model dispatch =
     Main()
         .Menu(
             concat {
@@ -314,13 +314,13 @@ let view model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | QuizDetails (code, model) -> render (fun msg -> msg |> QuizDetailsMessage |> dispatch) model.Model
+                | QuizDetails (code, model) -> QuizDetailsPage.render (fun msg -> msg |> QuizDetailsMessage |> dispatch) model.Model
                 | QuizSpectate code
                 | QuizRun code ->
                     match model.Quiz with
                     | None -> Node.Empty()
                     | Some quizModel ->
-                        page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
+                        RunningQuizPage.render (linkToQuizPage router) capabilityProvider quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
                 | QuizLiveScore (quizCode, pageModel) ->
                     let model = { pageModel.Model with Code = quizCode }
 
@@ -571,7 +571,10 @@ type MyApp() =
                 navigate
                 availableCapabilities
                 availableQuizControlCapabilities
-
+        
+        let view model dispatch =
+            view availableCapabilities model dispatch
+        
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore

@@ -62,7 +62,8 @@ type Message =
     | OnQuizEvent of AsyncOperationStatus<unit, Result<Quiz, DbError>>
     | ChangeCurrentQuestion of AsyncOperationStatus<int, WorkflowResult<ChangeQuestionError>>
     | AddQuizzer of AddQuizzerMessage
-    | RemoveQuizzer of AsyncOperationStatus<Quizzer * TeamPosition, WorkflowResult<RemoveQuizzer.Error>>
+    | RemoveQuizzer of
+        AsyncOperationStatus<(unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>), WorkflowResult<RemoveQuizzer.Error>>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
     | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
@@ -157,6 +158,7 @@ let private refreshModel (quiz: RunningTeamQuiz) =
                 quiz.Questions
                 |> Map.map (fun _ v -> (v.AnswerState, v.FailedAppeal))
                 |> ItemizedScoreModel.refreshQuestionScores }
+
     stateMatchedModel
 
 let init user quizCode previousQuizCode =
@@ -243,8 +245,7 @@ let update
     let quizCode = getCodeFromModel model
     let user = getUserFromModel model
 
-    let refreshModel quiz =
-        refreshModel quiz |> Resolved
+    let refreshModel quiz = refreshModel quiz |> Resolved
 
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.ErrorMessage error
@@ -354,7 +355,7 @@ let update
             let externalMessage =
                 error |> mapDbErrorToString
 
-            { model with Info = NotYetStarted}, Cmd.none, ExternalMessage.ErrorMessage externalMessage
+            { model with Info = NotYetStarted }, Cmd.none, ExternalMessage.ErrorMessage externalMessage
     | Message.InitializeQuizAndConnections (Started _) ->
         let loadCmd =
             tryGetQuiz quizCode
@@ -514,10 +515,7 @@ let update
                 |> mapLoaded (fun loaded -> { loaded with AddQuizzer = Inert }) },
         cmd,
         externalMsg
-    | RemoveQuizzer (Started (name, teamPosition)) ->
-        let withinQuizCommand: RemoveQuizzer.Command =
-            { Quiz = quizCode
-              Data = { Quizzer = name; Team = teamPosition } }
+    | RemoveQuizzer (Started cap) ->
 
         let transformToRunQuizEvent event =
             match event with
@@ -526,7 +524,7 @@ let update
 
         removeQuizzer
         |> Option.map (fun workflow ->
-            workflow withinQuizCommand
+            cap ()
             |> AsyncResult.map (List.map transformToRunQuizEvent)
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
@@ -731,6 +729,7 @@ type private quizPage = Template<"wwwroot/Quiz.html">
 
 
 let private teamView
+    removeQuizzerCap
     position
     ((teamModel, jumpOrder, currentQuizzer): TeamModel * string list * Option<Quizzer>)
     (dispatch: Dispatch<Message>)
@@ -765,7 +764,10 @@ let private teamView
                             | 0 -> "is-invisible"
                             | _ -> ""
                         )
-                        .Remove(fun _ -> dispatch (RemoveQuizzer(Started(quizzer.Name, position))))
+                        .Remove(fun _ ->
+                            removeQuizzerCap
+                            |> fun cap -> cap (quizzer.Name, position)
+                            |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
                         .Select(fun _ -> dispatch (SelectQuizzer(Started quizzer.Name)))
                         .BackgroundColor(
                             currentQuizzer
@@ -799,7 +801,8 @@ let private mapItemizedTeam (team: TeamModel) : ItemizedTeam =
     { Name = team.Name
       Quizzers = team.Quizzers |> List.map (fun q -> q.Name) }
 
-let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
+let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Message>) =
+
     let isTeam model teamOneValue teamTwoValue =
         match model.AddQuizzer with
         | Inert -> false
@@ -810,6 +813,26 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
     | Deferred.NotYetStarted -> p { $"Quiz {model.Code} has not yet been loaded" }
     | InProgress -> p { $"Quiz {model.Code} is loading..." }
     | Resolved resolved ->
+        let (addQuizzer,
+             removeQuizzer,
+             answerCorrectly,
+             answerIncorrectly,
+             failAppeal,
+             clearAppeal,
+             selectQuizzer,
+             changeCurrentQuestion,
+             completeQuiz,
+             reopenQuiz) =
+            getAvailableCapabilities capabilityProvider model.User resolved.CurrentQuizzer
+
+        let removeQuizzerCap (quizzer, team) =
+            removeQuizzer
+            |> Option.map (fun remove ->
+                fun () ->
+                    remove
+                        { Quiz = model.Code
+                          Data = { Quizzer = quizzer; Team = team } })
+
         quizPage()
             .QuizCode(model.Code)
             .QuizUrl(linkToQuiz <| model.Code)
@@ -820,8 +843,20 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                 | Quizzer name -> name
                 | Scorekeeper -> "Scorekeeper"
             )
-            .TeamOne(teamView TeamPosition.TeamOne (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer) dispatch)
-            .TeamTwo(teamView TeamPosition.TeamTwo (resolved.TeamTwo, resolved.JumpOrder, resolved.CurrentQuizzer) dispatch)
+            .TeamOne(
+                teamView
+                    removeQuizzerCap
+                    TeamPosition.TeamOne
+                    (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
+                    dispatch
+            )
+            .TeamTwo(
+                teamView
+                    removeQuizzerCap
+                    TeamPosition.TeamTwo
+                    (resolved.TeamTwo, resolved.JumpOrder, resolved.CurrentQuizzer)
+                    dispatch
+            )
             .CurrentQuestion(string resolved.CurrentQuestion)
             .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(resolved.CurrentQuestion + 1))))
             .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(Math.Max(resolved.CurrentQuestion - 1, 1)))))
@@ -867,7 +902,10 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .ItemizedScore(
                 ItemizedScore.render
                     { CompetitionStyle =
-                        ItemizedCompetitionStyle.Team((mapItemizedTeam resolved.TeamOne), (mapItemizedTeam resolved.TeamTwo))
+                        ItemizedCompetitionStyle.Team(
+                            (mapItemizedTeam resolved.TeamOne),
+                            (mapItemizedTeam resolved.TeamTwo)
+                        )
                       NumberOfQuestions = resolved.NumberOfQuestions
                       QuestionsWithEvents = resolved.QuestionScores }
                     dispatch
