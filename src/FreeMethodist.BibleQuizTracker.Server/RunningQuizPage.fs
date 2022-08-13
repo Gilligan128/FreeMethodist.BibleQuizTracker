@@ -330,7 +330,7 @@ let update
     match msg with
     | Message.InitializeQuizAndConnections (Finished result) ->
         match result with
-        | Ok ((Some (Running quiz))) ->
+        | Ok (Some (Running quiz)) ->
             let model =
                 { model with Info = quiz |> refreshModel }
 
@@ -343,7 +343,7 @@ let update
                 |> Cmd.ofSub
 
             model, connectCmd, NoMessage
-        | Ok (None) -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, notFoundMessage quizCode
+        | Ok None -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, notFoundMessage quizCode
         | Ok (Some (Quiz.Completed _))
         | Ok (Some (Quiz.Official _)) ->
             model,
@@ -559,7 +559,7 @@ let update
     | SelectQuizzer (Finished result) ->
         let mapSelectError error =
             match error with
-            | SelectQuizzer.Error.QuizState quizStateError -> "Quiz is not running"
+            | SelectQuizzer.Error.QuizState _ -> "Quiz is not running"
             | SelectQuizzer.Error.QuizzerAlreadyCurrent -> ""
             | SelectQuizzer.Error.DbError dbError -> dbError |> mapDbErrorToString
             | SelectQuizzer.Error.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is not participating"
@@ -697,7 +697,7 @@ let update
             |> AsyncResult.map (List.map mapQuizEvent)
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
-            |> mapToAsyncOperationCmd (CompleteQuiz))
+            |> mapToAsyncOperationCmd CompleteQuiz)
         |> matchOptionalCommand
     | CompleteQuiz (Finished result) ->
         let mapErrors error =
@@ -717,7 +717,7 @@ let update
             |> AsyncResult.map (List.map mapQuizEvent)
             |> publishWorkflowEventsAsync
             |> reloadQuizAsync
-            |> mapToAsyncOperationCmd (ReopenQuiz))
+            |> mapToAsyncOperationCmd ReopenQuiz)
         |> matchOptionalCommand
     | ReopenQuiz (Finished result) ->
         let mapErrors error =
