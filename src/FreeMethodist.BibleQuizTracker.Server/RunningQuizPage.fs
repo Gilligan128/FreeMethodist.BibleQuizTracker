@@ -754,6 +754,10 @@ let private teamView
                             | Some v -> v
                             | None -> 0
 
+                    let removeCap =
+                        removeQuizzerCap
+                        |> fun cap -> cap (quizzer.Name, position)
+
                     quizPage
                         .Quizzer()
                         .Name(quizzer.Name)
@@ -764,9 +768,29 @@ let private teamView
                             | 0 -> "is-invisible"
                             | _ -> ""
                         )
+                        .RemoveButton(
+                            button {
+                                attr.``class`` "button is-info is-light"
+
+                                attr.disabled (
+                                    match removeCap with
+                                    | Some cap -> "disabled"
+                                    | None -> null
+                                )
+
+                                on.click (fun _ ->
+                                    removeCap
+                                    |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
+                                span {
+                                    attr.``class`` "icon"
+                                    i {
+                                        attr.``class`` "fas fa-times-circle"
+                                    }
+                                }
+                            }
+                        )
                         .Remove(fun _ ->
-                            removeQuizzerCap
-                            |> fun cap -> cap (quizzer.Name, position)
+                            removeCap
                             |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
                         .Select(fun _ -> dispatch (SelectQuizzer(Started quizzer.Name)))
                         .BackgroundColor(
