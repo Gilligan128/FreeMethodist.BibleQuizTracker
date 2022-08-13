@@ -323,7 +323,7 @@ let view model dispatch =
         .Menu(
             concat {
                 menuItem model Home "Home"
-                menuItem model (QuizRun "Example") "Quiz Example"
+                menuItem model (QuizDetails ("Example",Router.noModel)) "Quiz Example"
             }
         )
         .Body(

@@ -240,7 +240,7 @@ let saveNewQuizToBlob (blobServiceClient: BlobServiceClient) (options: JsonSeria
             let uploadOptions =
                 BlobUploadOptions(
                     Conditions = BlobRequestConditions(IfNoneMatch = ETag("*")),
-                    Tags = ([ "Code", quizCode ] |> Map.ofList)
+                    Tags = ([ "Code", quizCode; "State", mapState quiz ] |> Map.ofList)
                 )
 
             do!
