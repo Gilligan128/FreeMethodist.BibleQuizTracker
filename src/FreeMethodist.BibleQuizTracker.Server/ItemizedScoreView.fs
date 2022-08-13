@@ -208,7 +208,7 @@ module ItemizedScore =
             questionQuizEvents
             |> List.map (fun q -> q.Position)
             |> List.map fst
-            |> List.max
+            |> fun (list) -> if list.IsEmpty then PositiveNumber.one else List.max list
 
         let teamScoreNode team : Node =
             td {

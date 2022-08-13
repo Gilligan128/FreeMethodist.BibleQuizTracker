@@ -205,15 +205,21 @@ module CreateQuizForm =
                     div {
                         attr.``class`` "field"
 
-                        label {
-                            attr.``class`` "label"
-                            "Code:"
+                        div {
+                            attr.``class`` "control"
+
+                            label {
+                               attr.``class`` "label"
+                               "Code:"
+                            }
+
+                            input {
+                                attr.``class`` "input"
+                                
+                                bind.input.string formData.Code (fun code -> dispatch <| SetCode code)
+                            }
                         }
 
-                        p {
-                            attr.``class`` "title is-4"
-                            formData.Code
-                        }
                     }
 
                     div {
