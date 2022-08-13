@@ -43,3 +43,4 @@ let ``Save Blob`` () =
     let result = saveQuiz (Running RunningTeamQuiz.identity) |> Async.RunSynchronously
     
     Assert.Equal(Ok (), result)
+    

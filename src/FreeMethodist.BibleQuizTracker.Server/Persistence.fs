@@ -341,3 +341,14 @@ let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
             getFromLocal quizCode
         else
             getFromBlob quizCode
+
+let getCompletedQuizzes (blobServiceClient: BlobServiceClient) (serialize) =
+      asyncResult {
+            let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
+            let expression = ""
+            if blobContainerClient.Exists().Value then
+                let results = blobContainerClient.FindBlobsByTagsAsync(expression).AsPages() 
+                return []
+            else
+                return []
+      }
