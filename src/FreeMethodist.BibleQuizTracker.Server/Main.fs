@@ -470,7 +470,7 @@ let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapab
         | Official _ -> cap)
     
     let completeQuizCap quiz = quiz |> Quiz.getCode |> fun code -> (fun _ -> CompleteQuiz.Pipeline.completeQuiz getQuiz saveQuiz code) |> Some |> activeWhileRunning quiz  
-    let reopenQuizCap  quiz = quiz |> Quiz.getCode |>  (fun _ -> Started () : AsyncOperationStatus<unit, Result<Quiz, RunQuiz.Workflows.ReopenQuiz.Error>>) |> Some |> activeWhileComplete quiz
+    let reopenQuizCap  quiz = quiz |> Quiz.getCode |> fun code -> (fun _ -> ReopenQuiz.Pipeline.reopenQuiz getQuiz saveQuiz code) |> Some |> activeWhileComplete quiz
     let spectateQuiz  quiz = quiz |> Quiz.getCode |> fun code ->  (router.Link (Page.QuizSpectate code)) |> Some |> activeWhileRunning quiz 
     let liveScoreQuiz  quiz = quiz |> Quiz.getCode |> fun code -> ( router.Link (Page.QuizLiveScore (code, Router.noModel))) |> Some 
     {

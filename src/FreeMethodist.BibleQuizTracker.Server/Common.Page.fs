@@ -136,15 +136,18 @@ module ItemizedScoreModel =
 
 //Quiz Details
 type CompleteQuizCap = unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>
-type ReopenQuizCap =  AsyncOperationStatus<unit,Result<Quiz, ReopenQuiz.Error>>
+type ReopenQuizCap =  unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>
 type Link = string
 
-type Capabilities = {
+type QuizControlCapabilities = {
     CompleteQuiz : CompleteQuizCap option
+    ReopenQuiz : ReopenQuizCap option
+    Spectate : Link option
+    LiveScore : Link option 
 }
 type Details =
     { State: string
-      Capabilities: Capabilities
+      Capabilities: QuizControlCapabilities
       ItemizedScore: ItemizedScoreModel }
 
 type QuizDetailsModel =

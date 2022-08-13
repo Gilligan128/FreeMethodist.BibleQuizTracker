@@ -21,6 +21,7 @@ type QuizControlCapabilityProvider =
 type QuizDetailsMessage =
     | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
     | CompleteQuiz of AsyncOperationStatus<CompleteQuizCap, Result<Quiz, WorkflowError<CompleteQuiz.Error>>>
+    | ReopenQuiz of AsyncOperationStatus<ReopenQuizCap, Result<Quiz, WorkflowError<ReopenQuiz.Error>>>
 
 
 let init quizCode =
@@ -77,11 +78,11 @@ let private availableCapabilities (provider: QuizControlCapabilityProvider) quiz
 
 
 let private reloadModel capabilityProvider model quiz =
-    let completeQuiz, funcOption, stringOption, option =
+    let completeQuiz, reopenQuiz, spectateCap, liveScoreCap =
         availableCapabilities capabilityProvider quiz
 
-    let capabilities =
-        { CompleteQuiz = completeQuiz }
+    let capabilities : QuizControlCapabilities =
+        { CompleteQuiz = completeQuiz; ReopenQuiz = reopenQuiz; Spectate = spectateCap; LiveScore = liveScoreCap }
 
     let details =
         match quiz with
@@ -130,11 +131,11 @@ let update
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
 
-    let startWorkflow =
-        startWorkflow getQuiz model
+    let startWorkflow cap =
+        startWorkflow getQuiz model cap
 
-    let finishWorkflow =
-        finishWorkflow reloadModel capabilityProvider navigateHomeCmd model
+    let finishWorkflow message =
+        finishWorkflow reloadModel capabilityProvider navigateHomeCmd model message
 
     match message with
     | Initialize (Started _) ->
@@ -153,6 +154,10 @@ let update
         cap ()
         |> startWorkflow QuizDetailsMessage.CompleteQuiz
     | CompleteQuiz (Finished result) -> result |> finishWorkflow
+    | ReopenQuiz (Started cap) ->
+        cap ()
+        |> startWorkflow QuizDetailsMessage.ReopenQuiz
+    | ReopenQuiz (Finished result) -> result |> finishWorkflow
 
 
 let render dispatch (model: QuizDetailsModel) : Node =
