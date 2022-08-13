@@ -12,17 +12,16 @@ open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
-type QuizControlCapabilityProvider = {
-   CompleteQuiz : Quiz -> CompleteQuizCap option
-   ReopenQuiz : Quiz -> ReopenQuizCap option
-   Spectate : Quiz -> Link option
-   LiveScore : Quiz -> Link option
-}
+type QuizControlCapabilityProvider =
+    { CompleteQuiz: Quiz -> CompleteQuizCap option
+      ReopenQuiz: Quiz -> ReopenQuizCap option
+      Spectate: Quiz -> Link option
+      LiveScore: Quiz -> Link option }
 
 type QuizDetailsMessage =
     | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
     | CompleteQuiz of AsyncOperationStatus<CompleteQuizCap, Result<Quiz, WorkflowError<CompleteQuiz.Error>>>
-    
+
 
 let init quizCode =
     { Code = quizCode
@@ -67,53 +66,76 @@ let private loadCompletedQuiz (quiz: CompletedQuiz) =
             |> List.map (fun q -> q.Name)
             |> ItemizedCompetitionStyle.Individual }
 
-let private availableCapabilities (provider : QuizControlCapabilityProvider) quiz =
-    let completeQuiz = provider.CompleteQuiz quiz
+let private availableCapabilities (provider: QuizControlCapabilityProvider) quiz =
+    let completeQuiz =
+        provider.CompleteQuiz quiz
+
     let reopenQuiz = provider.ReopenQuiz quiz
     let spectateQuiz = provider.Spectate quiz
     let liveScoreQuiz = provider.LiveScore quiz
     completeQuiz, reopenQuiz, spectateQuiz, liveScoreQuiz
-  
 
-let private reloadModel capabilityProvider model quiz = 
-  let unitFuncOption, funcOption, stringOption, option = availableCapabilities capabilityProvider quiz
-  { model with
-        Details =
-            Resolved(
-                match quiz with
-                | Running running ->
-                    { State = nameof Running
-                      ItemizedScore = running |> loadRunningQuiz }
-                | Completed completedQuiz ->
-                    { State = nameof Completed
-                      ItemizedScore = completedQuiz |> loadCompletedQuiz }
-                | Official _ ->
-                    { State = nameof Official
-                      ItemizedScore = Unchecked.defaultof<ItemizedScoreModel> }
-            ) }
-  
-let private startWorkflow (getQuiz : GetQuiz) (model : QuizDetailsModel) finishedMessage workflowCap  =
-        workflowCap
-        |> AsyncResult.mapError WorkflowError.Workflow
-        |> AsyncResult.bind (fun _ -> model.Code |> getQuiz |> (AsyncResult.mapError WorkflowError.DbError ))
-        |> Async.map Finished
-        |> Async.map finishedMessage
-        |> fun async -> model, Cmd.OfAsync.result async
-     
 
-let private finishWorkflow reloadModel capabilityProvider navigateHomeCmd model   result =
+let private reloadModel capabilityProvider model quiz =
+    let completeQuiz, funcOption, stringOption, option =
+        availableCapabilities capabilityProvider quiz
+
+    let capabilities =
+        { CompleteQuiz = completeQuiz }
+
+    let details =
+        match quiz with
+        | Running running ->
+            { State = nameof Running
+              Capabilities = capabilities
+              ItemizedScore = running |> loadRunningQuiz }
+        | Completed completedQuiz ->
+            { State = nameof Completed
+              Capabilities = capabilities
+              ItemizedScore = completedQuiz |> loadCompletedQuiz }
+        | Official _ ->
+            { State = nameof Official
+              Capabilities = capabilities
+              ItemizedScore = Unchecked.defaultof<ItemizedScoreModel> }
+        |> Resolved
+
+    { model with Details = details }
+
+
+let private startWorkflow (getQuiz: GetQuiz) (model: QuizDetailsModel) finishedMessage workflowCap =
+    workflowCap
+    |> AsyncResult.mapError WorkflowError.Workflow
+    |> AsyncResult.bind (fun _ ->
+        model.Code
+        |> getQuiz
+        |> (AsyncResult.mapError WorkflowError.DbError))
+    |> Async.map Finished
+    |> Async.map finishedMessage
+    |> fun async -> model, Cmd.OfAsync.result async
+
+
+let private finishWorkflow reloadModel capabilityProvider navigateHomeCmd model result =
     match result with
-    | Ok quiz ->
-        quiz |> reloadModel capabilityProvider model, Cmd.none
+    | Ok quiz -> quiz |> reloadModel capabilityProvider model, Cmd.none
     | Result.Error error -> model, navigateHomeCmd
 
-let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvider) getQuiz (model: QuizDetailsModel) message =
+let update
+    tryGetQuiz
+    navigate
+    (capabilityProvider: QuizControlCapabilityProvider)
+    getQuiz
+    (model: QuizDetailsModel)
+    message
+    =
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
-    
-    let startWorkflow = startWorkflow getQuiz model
-    let finishWorkflow = finishWorkflow reloadModel capabilityProvider navigateHomeCmd model
-    
+
+    let startWorkflow =
+        startWorkflow getQuiz model
+
+    let finishWorkflow =
+        finishWorkflow reloadModel capabilityProvider navigateHomeCmd model
+
     match message with
     | Initialize (Started _) ->
         let cmd =
@@ -124,15 +146,13 @@ let update tryGetQuiz navigate (capabilityProvider: QuizControlCapabilityProvide
             |> Cmd.OfAsync.result
 
         { model with Details = InProgress }, cmd
-    | Initialize (Finished (Ok (Some quiz))) ->
-        reloadModel capabilityProvider model quiz,
-        Cmd.none
+    | Initialize (Finished (Ok (Some quiz))) -> reloadModel capabilityProvider model quiz, Cmd.none
     | Initialize (Finished (Ok None)) -> { model with Details = Deferred.NotYetStarted }, navigateHomeCmd
     | Initialize (Finished (Result.Error error)) -> model, navigateHomeCmd
     | CompleteQuiz (Started cap) ->
-        cap () |>  startWorkflow QuizDetailsMessage.CompleteQuiz
-    | CompleteQuiz (Finished result) ->
-        result |> finishWorkflow
+        cap ()
+        |> startWorkflow QuizDetailsMessage.CompleteQuiz
+    | CompleteQuiz (Finished result) -> result |> finishWorkflow
 
 
 let render dispatch (model: QuizDetailsModel) : Node =
@@ -153,6 +173,7 @@ let render dispatch (model: QuizDetailsModel) : Node =
     | Resolved loadedModel ->
         div {
             attr.``class`` "column is-two-thirds"
+
             div {
                 attr.``class`` "columns "
 

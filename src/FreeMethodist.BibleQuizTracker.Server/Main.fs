@@ -288,7 +288,7 @@ let private pagesAreSame page1 page2 =
     | Page.Home, Page.Home -> true
     | Page.QuizDetails(quizCode1, _), Page.QuizDetails(quizCode2, _)
     | Page.QuizLiveScore(quizCode1, _), Page.QuizLiveScore(quizCode2, _) -> quizCode1 = quizCode2
-    | Page.QuizRun one, Page.QuizRun two -> one = two
+    | Page.QuizRun one, Page.QuizRun two
     | Page.QuizSpectate one, Page.QuizSpectate two -> one = two
     | Page.Home, _
     | Page.QuizDetails _, _ 

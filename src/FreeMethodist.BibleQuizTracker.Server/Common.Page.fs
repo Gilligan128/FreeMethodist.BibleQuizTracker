@@ -139,8 +139,12 @@ type CompleteQuizCap = unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz
 type ReopenQuizCap =  AsyncOperationStatus<unit,Result<Quiz, ReopenQuiz.Error>>
 type Link = string
 
+type Capabilities = {
+    CompleteQuiz : CompleteQuizCap option
+}
 type Details =
     { State: string
+      Capabilities: Capabilities
       ItemizedScore: ItemizedScoreModel }
 
 type QuizDetailsModel =
