@@ -142,6 +142,7 @@ type Link = string
 type QuizControlCapabilities = {
     CompleteQuiz : CompleteQuizCap option
     ReopenQuiz : ReopenQuizCap option
+    Run: Link option
     Spectate : Link option
     LiveScore : Link option 
 }

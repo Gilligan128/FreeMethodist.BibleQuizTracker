@@ -497,9 +497,7 @@ let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapab
     let spectateQuiz quiz =
         quiz
         |> Quiz.getCode
-        |> fun code ->
-            (router.Link(Page.QuizSpectate code))
-            |> Some
+        |> fun code -> (router.Link(Page.QuizSpectate code)) |> Some
         |> activeWhileRunning quiz
 
     let liveScoreQuiz quiz =
@@ -509,8 +507,17 @@ let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapab
             (router.Link(Page.QuizLiveScore(code, Router.noModel)))
             |> Some
 
+    let runQuiz quiz =
+        quiz
+        |> Quiz.getCode
+        |> fun code ->
+            router.Link(Page.QuizRun code)
+            |> Some
+            |> activeWhileRunning quiz
+
     { CompleteQuiz = completeQuizCap
       ReopenQuiz = reopenQuizCap
+      RunQuiz = runQuiz
       Spectate = spectateQuiz
       LiveScore = liveScoreQuiz }
 

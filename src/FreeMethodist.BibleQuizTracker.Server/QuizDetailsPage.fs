@@ -15,6 +15,7 @@ open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 type QuizControlCapabilityProvider =
     { CompleteQuiz: Quiz -> CompleteQuizCap option
       ReopenQuiz: Quiz -> ReopenQuizCap option
+      RunQuiz: Quiz -> Link option
       Spectate: Quiz -> Link option
       LiveScore: Quiz -> Link option }
 
@@ -74,16 +75,18 @@ let private availableCapabilities (provider: QuizControlCapabilityProvider) quiz
     let reopenQuiz = provider.ReopenQuiz quiz
     let spectateQuiz = provider.Spectate quiz
     let liveScoreQuiz = provider.LiveScore quiz
-    completeQuiz, reopenQuiz, spectateQuiz, liveScoreQuiz
+    let runQuiz = provider.RunQuiz quiz
+    completeQuiz, reopenQuiz, runQuiz, spectateQuiz, liveScoreQuiz
 
 
 let private reloadModel capabilityProvider model quiz =
-    let completeQuiz, reopenQuiz, spectateCap, liveScoreCap =
+    let completeQuiz, reopenQuiz, runQuiz, spectateCap, liveScoreCap =
         availableCapabilities capabilityProvider quiz
 
     let capabilities: QuizControlCapabilities =
         { CompleteQuiz = completeQuiz
           ReopenQuiz = reopenQuiz
+          Run = runQuiz
           Spectate = spectateCap
           LiveScore = liveScoreCap }
 
@@ -177,7 +180,7 @@ let private capabilityButton colorOpt buttonText capOpt =
         )
 
         on.click (fun _ -> capOpt |> Option.iter (fun cap -> cap ()))
-        
+
         text buttonText
     }
 
@@ -189,13 +192,15 @@ let private capabilityLink colorOpt linkText capOpt =
               | Some color -> $"is-{color}"
               | None -> ""
         )
+
         attr.disabled (
             match capOpt with
             | Some _ -> null
             | None -> "disabled"
         )
+
         attr.href (capOpt |> Option.defaultValue null)
-        
+
         text linkText
     }
 
@@ -255,11 +260,15 @@ let render (dispatch: Dispatch<QuizDetailsMessage>) (model: QuizDetailsModel) : 
                 |> Option.map (Started >> QuizDetailsMessage.ReopenQuiz)
                 |> Option.map (dispatchedMessage dispatch)
                 |> capabilityButton (Some "primary") "Reopen"
-                
+
+                loadedModel.Capabilities.Run
+                |> capabilityLink (Some "link") "Run"
+
                 loadedModel.Capabilities.Spectate
                 |> capabilityLink (Some "info") (nameof loadedModel.Capabilities.Spectate)
+
                 loadedModel.Capabilities.LiveScore
-                |> capabilityLink (Some "info") "Live Score"  
+                |> capabilityLink (Some "info") "Live Score"
 
             }
 
