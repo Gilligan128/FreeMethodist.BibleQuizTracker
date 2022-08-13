@@ -224,8 +224,11 @@ let render (dispatch: Dispatch<QuizDetailsMessage>) (model: QuizDetailsModel) : 
                 }
 
                 div {
-                    attr.``class`` "column "
-
+                    attr.``class`` "column tags has-addons"
+                    span {
+                        attr.``class`` "tag is-large"
+                        "Status"
+                    }
                     span {
                         attr.``class`` "tag is-success is-large"
                         loadedModel.State

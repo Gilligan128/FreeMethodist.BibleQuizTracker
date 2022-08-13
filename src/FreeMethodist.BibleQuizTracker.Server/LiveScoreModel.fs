@@ -30,5 +30,5 @@ type LoadingError =
 
 type LiveScoreModel =
     { Code: QuizCode
-      Scores: Deferred<Result<LiveScores option, DbError>> }
+      Scores: Deferred<LiveScores> }
 

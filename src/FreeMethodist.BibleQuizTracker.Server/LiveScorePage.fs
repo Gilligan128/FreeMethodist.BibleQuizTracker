@@ -8,6 +8,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
+open FreeMethodist.BibleQuizTracker.Server.Routing
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 module LiveScorePage =
@@ -15,7 +16,10 @@ module LiveScorePage =
     type Message =
         | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
         | OnQuizEvent of AsyncOperationStatus<RunQuizEvent, Result<Quiz option, DbError>>
-
+    
+    type ExternalMessage = | ErrorMessage of string
+                           | NoMessage
+    
     let init quizCode =
         { Code = quizCode
           Scores = NotYetStarted },
@@ -75,7 +79,7 @@ module LiveScorePage =
                 ) }
 
 
-    let update connectToQuizEvents tryGetQuiz (model: LiveScoreModel) message =
+    let update connectToQuizEvents tryGetQuiz navigate (model: LiveScoreModel) message =
         match message with
         | Initialize (Started _) ->
             let handleQuizEvent dispatch event =
@@ -92,15 +96,17 @@ module LiveScorePage =
                 |> Async.map (Initialize << Finished)
                 |> Cmd.OfAsync.result
 
-            { model with Scores = InProgress }, Cmd.batch [ cmd; loadQuizCmd ]
+            { model with Scores = InProgress }, Cmd.batch [ cmd; loadQuizCmd ], NoMessage
 
-        | Initialize (Finished quizResult) ->
+        | Initialize (Finished (Ok (Some quiz))) ->
             let loaded =
-                quizResult
-                |> Result.map (Option.map loadFromQuiz)
+                quiz
+                |> loadFromQuiz
                 |> Resolved
 
-            { model with Scores = loaded }, Cmd.none
+            { model with Scores = loaded }, Cmd.none, NoMessage
+        | Initialize (Finished (Ok None)) -> model, ( Page.Home |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub) , $"Quiz {model.Code} not found" |> ErrorMessage
+        | Initialize (Finished (Error error)) -> model, (Page.Home |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub), error |> mapDbErrorToString |> ErrorMessage
         | OnQuizEvent (Started _) ->
             let loadedModelResultCmd =
                 model.Code
@@ -108,16 +114,16 @@ module LiveScorePage =
                 |> Async.map (OnQuizEvent << Finished)
                 |> Cmd.OfAsync.result
 
-            model, loadedModelResultCmd
+            model, loadedModelResultCmd, NoMessage
         | OnQuizEvent (Finished (Ok (Some quiz))) ->
             match model.Scores with
-            | NotYetStarted -> model, Cmd.none
-            | InProgress -> model, Cmd.none
+            | NotYetStarted -> model, Cmd.none, NoMessage
+            | InProgress -> model, Cmd.none, NoMessage
             | Resolved _ ->
                 let newScores = quiz |> loadFromQuiz
-                { model with Scores = newScores |> Some |> Ok |> Resolved }, Cmd.none
+                { model with Scores = newScores |> Resolved }, Cmd.none, NoMessage
         | OnQuizEvent (Finished (Ok None))
-        | OnQuizEvent (Finished (Error _)) -> model, Cmd.none //silently fail for now
+        | OnQuizEvent (Finished (Error _)) -> model, Cmd.none, NoMessage
 
     let quizzerScoreView (model: LiveScoreQuizzer) : Node =
         div {
@@ -179,9 +185,7 @@ module LiveScorePage =
         match model.Scores with
         | NotYetStarted -> h1 { "Not yet loaded" }
         | InProgress -> h1 { "Loading..." }
-        | Resolved (Error error) -> h1 { $"There was an error while loading: {error}" }
-        | Resolved (Ok (None)) -> h1 { $"Quiz {model.Code} was not found" }
-        | Resolved (Ok (Some loaded)) ->
+        | Resolved (loaded) ->
             concat {
                 div {
                     attr.``class`` "content"

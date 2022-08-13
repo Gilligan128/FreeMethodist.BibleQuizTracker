@@ -197,12 +197,15 @@ let update
     | LiveScoreMessage message ->
         match model.page with
         | QuizLiveScore (code, liveScoreModel) ->
-            let newScoreModel, cmd =
-                LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz liveScoreModel.Model message
+            let newScoreModel, cmd, externalMsg =
+                LiveScorePage.update (connectToQuizFactory ()) tryGetQuiz navigate liveScoreModel.Model message
 
             { model with
                 page = QuizLiveScore(code, { Model = newScoreModel })
-                Error = None },
+                Error =
+                    match externalMsg with
+                    | LiveScorePage.ExternalMessage.NoMessage -> None
+                    | LiveScorePage.ExternalMessage.ErrorMessage error -> Some error },
             (cmd |> Cmd.map LiveScoreMessage)
         | _ -> model, Cmd.none
     | QuizDetailsMessage message ->
