@@ -6,7 +6,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
-open FreeMethodist.BibleQuizTracker.Server.Capabilities
+open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open Xunit
 
 let publishQuiz _ _ _ = Async.retn ()
@@ -40,9 +40,9 @@ let sut =
 
 let mapToLoaded model =
     match model.Info with
-    | NotYetStarted _ -> failwith "not yet loaded"
-    | Loading _ -> failwith "loading"
-    | Loaded loadedModel -> loadedModel
+    | NotYetStarted -> failwith "not yet loaded"
+    | InProgress -> failwith "loading"
+    | Resolved loadedModel -> loadedModel
 
 [<Fact>]
 let ``When Cancelled then AddQuizzer is Inert`` () =
@@ -50,7 +50,7 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
     let initialModel =
         { Code = ""
           User = Scorekeeper
-          Info = Loaded { emptyModel with AddQuizzer = AddQuizzerModel.Active("", TeamOne) } }
+          Info = Resolved { emptyModel with AddQuizzer = AddQuizzerModel.Active("", TeamOne) } }
 
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Cancel) initialModel
@@ -66,7 +66,7 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
 let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
 
     let initialModel =
-       {Code =""; User = Scorekeeper; Info = Loaded { emptyModel with AddQuizzer = Inert }}
+       {Code =""; User = Scorekeeper; Info = Resolved { emptyModel with AddQuizzer = Inert }}
 
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Start) initialModel
@@ -84,7 +84,7 @@ let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with ori
         AddQuizzerModel.Active("test", TeamTwo)
 
     let initialModel =
-        {Code =""; User = Scorekeeper; Info = Loaded { emptyModel with AddQuizzer = activeState }}
+        {Code =""; User = Scorekeeper; Info = Resolved { emptyModel with AddQuizzer = activeState }}
 
     let resultingModel, cmd, externalMsg =
         sut (AddQuizzer Start) initialModel

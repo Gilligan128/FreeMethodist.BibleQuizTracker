@@ -41,15 +41,10 @@ type LoadedModel =
       NumberOfQuestions: PositiveNumber
       QuestionScores: QuestionQuizzerEvents }
 
-type Info =
-    | NotYetStarted of QuizCode * User
-    | Loading of QuizCode * User
-    | Loaded of LoadedModel
-
 type Model =
     { Code: QuizCode
       User: User
-      Info: Info }
+      Info: Deferred<LoadedModel> }
 
 type WorkflowResult<'a> = Result<Quiz, WorkflowError<'a>>
 
@@ -106,8 +101,8 @@ let tee sideEffect =
 let mapLoaded mapper model =
     match model with
     | NotYetStarted _ -> model
-    | Loading _ -> model
-    | Loaded loaded -> Loaded(mapper loaded)
+    | InProgress _ -> model
+    | Resolved loaded -> Resolved(mapper loaded)
 
 let private refreshModel (quiz: RunningTeamQuiz, user: User) =
     let getAnswerState quizAnswer (quizzerState: QuizzerState) =
@@ -174,7 +169,7 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
 let init user quizCode previousQuizCode =
     { Code = quizCode
       User = user
-      Info = NotYetStarted(quizCode, user) },
+      Info = NotYetStarted },
     Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
 
 let private hubStub =
@@ -228,17 +223,9 @@ let notFoundMessage quizCode =
     $"Quiz {quizCode} not found"
     |> ExternalMessage.ErrorMessage
 
-let getUserFromModel model =
-    match model with
-    | NotYetStarted (code, user) -> user
-    | Loading (code, user) -> user
-    | Loaded loaded -> loaded.CurrentUser
+let getUserFromModel model = model.User
 
-let getCodeFromModel model =
-    match model with
-    | NotYetStarted (code, user) -> code
-    | Loading (code, user) -> code
-    | Loaded loaded -> loaded.Code
+let getCodeFromModel model = model.Code
 
 let mapWorkflowErrors mapWorkflowSpecificError error =
     match error with
@@ -260,12 +247,12 @@ let update
     msg
     (model: Model)
     : Model * Cmd<Message> * ExternalMessage =
-    let quizCode = getCodeFromModel model.Info
-    let user = getUserFromModel model.Info
+    let quizCode = getCodeFromModel model
+    let user = getUserFromModel model
 
     let refreshModel quiz =
-        let user = getUserFromModel model.Info
-        refreshModel (quiz, user) |> Loaded
+        let user = getUserFromModel model
+        refreshModel (quiz, user) |> Resolved
 
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.ErrorMessage error
@@ -333,8 +320,8 @@ let update
         (model.Info
          |> function
              | NotYetStarted _ -> None
-             | Loading _ -> None
-             | Loaded loaded -> loaded.CurrentQuizzer)
+             | InProgress _ -> None
+             | Resolved loaded -> loaded.CurrentQuizzer)
 
     let (addQuizzer,
          removeQuizzer,
@@ -375,7 +362,7 @@ let update
             let externalMessage =
                 error |> mapDbErrorToString
 
-            { model with Info = NotYetStarted(quizCode, user) }, Cmd.none, ExternalMessage.ErrorMessage externalMessage
+            { model with Info = NotYetStarted}, Cmd.none, ExternalMessage.ErrorMessage externalMessage
     | Message.InitializeQuizAndConnections (Started _) ->
         let loadCmd =
             tryGetQuiz quizCode
@@ -388,7 +375,7 @@ let update
                 |> (Message.InitializeQuizAndConnections << Finished))
             |> Cmd.OfAsync.result
 
-        { model with Info = Loading(quizCode, user) }, loadCmd, noMessage
+        { model with Info = InProgress }, loadCmd, noMessage
     | OnQuizEvent (Started _) ->
         let getQuizToRefreshCmd =
             getQuizAsync quizCode
@@ -497,8 +484,8 @@ let update
         let addQuizzerState model =
             match model with
             | NotYetStarted _ -> Inert
-            | Loading _ -> Inert
-            | Loaded loaded -> loaded.AddQuizzer
+            | InProgress _ -> Inert
+            | Resolved loaded -> loaded.AddQuizzer
 
         match addQuizzerState model.Info with
         | AddQuizzerModel.Active (name, team) ->
@@ -828,9 +815,9 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
         | Active (_, TeamTwo) -> teamTwoValue
 
     match model.Info with
-    | NotYetStarted (code, _) -> p { $"Quiz {code} has not yet been loaded" }
-    | Loading (code, _) -> p { $"Quiz {code} is loading..." }
-    | Loaded model ->
+    | Deferred.NotYetStarted -> p { $"Quiz {model.Code} has not yet been loaded" }
+    | InProgress -> p { $"Quiz {model.Code} is loading..." }
+    | Resolved model ->
         quizPage()
             .QuizCode(model.Code)
             .QuizUrl(linkToQuiz <| model.Code)

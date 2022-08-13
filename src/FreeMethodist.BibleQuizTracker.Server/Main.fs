@@ -55,10 +55,7 @@ let runQuizEventOccuredName =
     nameof clientStub.RunQuizEventOccurred
 
 let getCodeFromModel model =
-    match model with
-    | NotYetStarted (code, _) -> code
-    | Loading (code, _) -> code
-    | Loaded loaded -> loaded.Code
+    model.Code
 
 let previousQuizCode page =
     match page with
@@ -119,8 +116,8 @@ let update
              |> Option.bind (fun q ->
                  match q with
                  | NotYetStarted _ -> None
-                 | Loading _ -> None
-                 | Loaded loaded -> Some loaded.Code))
+                 | InProgress _ -> None
+                 | Resolved loaded -> Some loaded.Code))
 
         let quizModel, cmd =
             init user quizCode oldCodeOpt
