@@ -41,11 +41,16 @@ type LoadedModel =
       NumberOfQuestions: PositiveNumber
       QuestionScores: QuestionQuizzerEvents }
 
-
-type Model =
+type Info =
     | NotYetStarted of QuizCode * User
     | Loading of QuizCode * User
     | Loaded of LoadedModel
+
+type Model =
+    { Code: QuizCode
+      User: User
+      Info: Info }
+
 type WorkflowResult<'a> = Result<Quiz, WorkflowError<'a>>
 
 type AddQuizzerMessage =
@@ -167,7 +172,10 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
     { stateMatchedModel with CurrentUser = user }
 
 let init user quizCode previousQuizCode =
-    NotYetStarted(quizCode, user), Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
+    { Code = quizCode
+      User = user
+      Info = NotYetStarted(quizCode, user) },
+    Cmd.ofMsg (InitializeQuizAndConnections(Started previousQuizCode))
 
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
@@ -252,11 +260,11 @@ let update
     msg
     (model: Model)
     : Model * Cmd<Message> * ExternalMessage =
-    let quizCode = getCodeFromModel model
-    let user = getUserFromModel model
+    let quizCode = getCodeFromModel model.Info
+    let user = getUserFromModel model.Info
 
     let refreshModel quiz =
-        let user = getUserFromModel model
+        let user = getUserFromModel model.Info
         refreshModel (quiz, user) |> Loaded
 
     let updateResultWithExternalError error =
@@ -309,7 +317,7 @@ let update
 
     let refreshQuizOrError mapWorkflowSpecificErrors result =
         match result with
-        | Ok (Running quiz) -> refreshModel quiz, Cmd.none, noMessage
+        | Ok (Running quiz) -> { model with Info = refreshModel quiz }, Cmd.none, noMessage
         | Ok (Quiz.Completed _)
         | Ok (Official _) ->
             model,
@@ -322,7 +330,7 @@ let update
             |> fun errorString -> errorString |> updateResultWithExternalError
 
     let currentQuizzerOpt =
-        (model
+        (model.Info
          |> function
              | NotYetStarted _ -> None
              | Loading _ -> None
@@ -344,15 +352,17 @@ let update
     | Message.InitializeQuizAndConnections (Finished result) ->
         match result with
         | Ok ((Some (Running quiz))) ->
-            let model = quiz |> refreshModel
+            let model =
+                { model with Info = quiz |> refreshModel }
 
             let handleEventSub dispatch _ =
-                dispatch (Message.OnQuizEvent(Started ()))
+                dispatch (Message.OnQuizEvent(Started()))
                 |> Async.retn
-               
+
             let connectCmd =
                 connectAndHandle handleEventSub (quizCode, None)
                 |> Cmd.ofSub
+
             model, connectCmd, NoMessage
         | Ok (None) -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, notFoundMessage quizCode
         | Ok (Some (Quiz.Completed _))
@@ -365,7 +375,7 @@ let update
             let externalMessage =
                 error |> mapDbErrorToString
 
-            NotYetStarted(quizCode, user), Cmd.none, ExternalMessage.ErrorMessage externalMessage
+            { model with Info = NotYetStarted(quizCode, user) }, Cmd.none, ExternalMessage.ErrorMessage externalMessage
     | Message.InitializeQuizAndConnections (Started _) ->
         let loadCmd =
             tryGetQuiz quizCode
@@ -378,16 +388,17 @@ let update
                 |> (Message.InitializeQuizAndConnections << Finished))
             |> Cmd.OfAsync.result
 
-        Loading(quizCode, user), loadCmd, noMessage
+        { model with Info = Loading(quizCode, user) }, loadCmd, noMessage
     | OnQuizEvent (Started _) ->
         let getQuizToRefreshCmd =
             getQuizAsync quizCode
             |> Async.map (Finished >> OnQuizEvent)
             |> Cmd.OfAsync.result
+
         model, getQuizToRefreshCmd, noMessage
     | OnQuizEvent (Finished (Ok quiz)) ->
         match quiz with
-        | Quiz.Running quiz -> refreshModel quiz, Cmd.none, noMessage
+        | Quiz.Running quiz -> { model with Info = refreshModel quiz }, Cmd.none, noMessage
         | Quiz.Completed _
         | Official _ ->
             model,
@@ -395,7 +406,11 @@ let update
             "Quiz is not running"
             |> ExternalMessage.ErrorMessage
     | OnQuizEvent (Finished (Error error)) ->
-        let externalMessage = error |> mapDbErrorToString |> ExternalMessage.ErrorMessage
+        let externalMessage =
+            error
+            |> mapDbErrorToString
+            |> ExternalMessage.ErrorMessage
+
         model, Cmd.none, externalMessage
     | ChangeCurrentQuestion (Started questionNumber) ->
         let mapToQuizEvent event =
@@ -436,39 +451,46 @@ let update
         result
         |> refreshQuizOrError mapChangeQuestionError
     | Message.AddQuizzer Cancel ->
-        model
-        |> mapLoaded (fun loaded -> { loaded with AddQuizzer = Inert }),
+        { model with
+            Info =
+                model.Info
+                |> mapLoaded (fun loaded -> { loaded with AddQuizzer = Inert }) },
         Cmd.none,
         noMessage
     | Message.AddQuizzer Start ->
-        model
-        |> mapLoaded (fun loaded ->
-            { loaded with
-                AddQuizzer =
-                    match loaded.AddQuizzer with
-                    | Inert -> Active("", TeamOne)
-                    | Active (name, team) -> Active(name, team) }),
+        { model with
+            Info =
+                model.Info
+                |> mapLoaded (fun loaded ->
+                    { loaded with
+                        AddQuizzer =
+                            match loaded.AddQuizzer with
+                            | Inert -> Active("", TeamOne)
+                            | Active (name, team) -> Active(name, team) }) },
         Cmd.none,
         noMessage
     | AddQuizzer (SetName name) ->
-        model
-        |> mapLoaded (fun loaded ->
-            { loaded with
-                AddQuizzer =
-                    match loaded.AddQuizzer with
-                    | Inert -> Inert
-                    | Active (_, team) -> Active(name, team) }),
+        { model with
+            Info =
+                model.Info
+                |> mapLoaded (fun loaded ->
+                    { loaded with
+                        AddQuizzer =
+                            match loaded.AddQuizzer with
+                            | Inert -> Inert
+                            | Active (_, team) -> Active(name, team) }) },
         Cmd.none,
         noMessage
     | AddQuizzer (SetTeam teamPosition) ->
-
-        model
-        |> mapLoaded (fun loaded ->
-            { loaded with
-                AddQuizzer =
-                    match loaded.AddQuizzer with
-                    | Inert -> Inert
-                    | Active (name, _) -> Active(name, teamPosition) }),
+        { model with
+            Info =
+                model.Info
+                |> mapLoaded (fun loaded ->
+                    { loaded with
+                        AddQuizzer =
+                            match loaded.AddQuizzer with
+                            | Inert -> Inert
+                            | Active (name, _) -> Active(name, teamPosition) }) },
         Cmd.none,
         noMessage
     | AddQuizzer (Submit (Started _)) ->
@@ -478,7 +500,7 @@ let update
             | Loading _ -> Inert
             | Loaded loaded -> loaded.AddQuizzer
 
-        match addQuizzerState model with
+        match addQuizzerState model.Info with
         | AddQuizzerModel.Active (name, team) ->
             let mapQuizEvent event = event |> QuizzerParticipating
 
@@ -496,9 +518,7 @@ let update
                 |> mapToAsyncOperationCmd (AddQuizzerMessage.Submit >> Message.AddQuizzer))
             |> matchOptionalCommand
         | AddQuizzerModel.Inert ->
-            model,
-            Cmd.none,
-            ExternalMessage.ErrorMessage "How are you even submitting from an inert AddQuizzer state?"
+            model, Cmd.none, ExternalMessage.ErrorMessage "How are you even submitting from an inert AddQuizzer state?"
     | AddQuizzer (Submit (Finished result)) ->
         let mapAddQuizzerError error =
             match error with
@@ -509,8 +529,10 @@ let update
         let model, cmd, externalMsg =
             result |> refreshQuizOrError mapAddQuizzerError
 
-        model
-        |> mapLoaded (fun loaded -> { loaded with AddQuizzer = Inert }),
+        { model with
+            Info =
+                model.Info
+                |> mapLoaded (fun loaded -> { loaded with AddQuizzer = Inert }) },
         cmd,
         externalMsg
     | RemoveQuizzer (Started (name, teamPosition)) ->
@@ -565,7 +587,7 @@ let update
 
         result
         |> function
-            | Ok (Running result) -> result |> refreshModel, Cmd.none, NoMessage
+            | Ok (Running result) -> { model with Info = result |> refreshModel }, Cmd.none, NoMessage
             | Ok (Quiz.Completed _)
             | Ok (Official _) ->
                 model,
@@ -805,7 +827,7 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
         | Active (_, TeamOne) -> teamOneValue
         | Active (_, TeamTwo) -> teamTwoValue
 
-    match model with
+    match model.Info with
     | NotYetStarted (code, _) -> p { $"Quiz {code} has not yet been loaded" }
     | Loading (code, _) -> p { $"Quiz {code} is loading..." }
     | Loaded model ->
