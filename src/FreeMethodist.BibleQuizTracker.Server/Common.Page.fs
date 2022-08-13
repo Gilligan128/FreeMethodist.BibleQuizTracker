@@ -54,6 +54,11 @@ let mapDbErrorToString error =
 
 let mapQuizStateErrorToString _ = "Wrong quiz state"
 
+type WorkflowError<'a> =
+    | Workflow of 'a
+    | DbError of DbError
+
+
 //Itemized Score model
 type EventState =
     { AnswerState: AnswerState

@@ -49,7 +49,7 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
 
     Assert.Equal(Inert, resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
-    Assert.Equal(None, externalMsg)
+    Assert.Equal(NoMessage, externalMsg)
 
 [<Fact>]
 let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
@@ -63,7 +63,7 @@ let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
     
     Assert.Equal(AddQuizzerModel.Active("", TeamOne), resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
-    Assert.Equal(None, externalMsg)
+    Assert.Equal(NoMessage, externalMsg)
 
 [<Fact>]
 let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with original data`` () =
@@ -79,4 +79,4 @@ let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with ori
     
     Assert.Equal(activeState, resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
-    Assert.Equal(None, externalMsg)
+    Assert.Equal(NoMessage, externalMsg)

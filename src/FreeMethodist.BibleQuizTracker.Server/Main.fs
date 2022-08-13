@@ -193,10 +193,8 @@ let update
 
             let newModel =
                 match externalMessage with
-                | None -> { model with Error = None }
-                | Some message ->
-                    match message with
-                    | Error er -> { model with Error = Some er }
+                | NoMessage -> {model with Error = None}
+                | ErrorMessage er -> { model with Error = Some er }
 
             { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
         | None -> model, Cmd.none
