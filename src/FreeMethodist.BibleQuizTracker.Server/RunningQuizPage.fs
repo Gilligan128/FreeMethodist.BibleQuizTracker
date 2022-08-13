@@ -29,12 +29,10 @@ type AddQuizzerModel =
 
 type LoadedModel =
     { JoiningQuizzer: string
-      Code: QuizCode
       TeamOne: TeamModel
       TeamTwo: TeamModel
       JumpOrder: string list
       CurrentQuestion: int
-      CurrentUser: User
       JumpState: JumpState
       AddQuizzer: AddQuizzerModel
       CurrentQuizzer: Quizzer option
@@ -80,12 +78,10 @@ type ExternalMessage =
 
 let public emptyModel =
     { JoiningQuizzer = ""
-      Code = ""
       TeamOne = { Name = ""; Score = 0; Quizzers = [] }
       TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
       JumpOrder = []
       CurrentQuestion = 1
-      CurrentUser = User.Quizmaster
       JumpState = Unlocked
       AddQuizzer = Inert
       CurrentQuizzer = None
@@ -104,7 +100,7 @@ let mapLoaded mapper model =
     | InProgress _ -> model
     | Resolved loaded -> Resolved(mapper loaded)
 
-let private refreshModel (quiz: RunningTeamQuiz, user: User) =
+let private refreshModel (quiz: RunningTeamQuiz) =
     let getAnswerState quizAnswer (quizzerState: QuizzerState) =
         let quizzerWasIncorrect =
             List.contains quizzerState.Name
@@ -149,12 +145,10 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
             |> Option.defaultValue QuestionState.initial
 
         { emptyModel with
-            Code = quiz.Code
             TeamOne = quiz.TeamOne |> refreshTeam currentQuestion
             TeamTwo = quiz.TeamTwo |> refreshTeam currentQuestion
             CurrentQuestion = PositiveNumber.value quiz.CurrentQuestion
             CurrentQuizzer = quiz.CurrentQuizzer
-            CurrentUser = Quizmaster
             JoiningQuizzer = ""
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked
@@ -163,8 +157,7 @@ let private refreshModel (quiz: RunningTeamQuiz, user: User) =
                 quiz.Questions
                 |> Map.map (fun _ v -> (v.AnswerState, v.FailedAppeal))
                 |> ItemizedScoreModel.refreshQuestionScores }
-
-    { stateMatchedModel with CurrentUser = user }
+    stateMatchedModel
 
 let init user quizCode previousQuizCode =
     { Code = quizCode
@@ -251,8 +244,7 @@ let update
     let user = getUserFromModel model
 
     let refreshModel quiz =
-        let user = getUserFromModel model
-        refreshModel (quiz, user) |> Resolved
+        refreshModel quiz |> Resolved
 
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.ErrorMessage error
@@ -817,38 +809,38 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
     match model.Info with
     | Deferred.NotYetStarted -> p { $"Quiz {model.Code} has not yet been loaded" }
     | InProgress -> p { $"Quiz {model.Code} is loading..." }
-    | Resolved model ->
+    | Resolved resolved ->
         quizPage()
             .QuizCode(model.Code)
             .QuizUrl(linkToQuiz <| model.Code)
             .CurrentUser(
-                match model.CurrentUser with
+                match model.User with
                 | Quizmaster -> "Quizmaster"
                 | Spectator -> "Spectator"
                 | Quizzer name -> name
                 | Scorekeeper -> "Scorekeeper"
             )
-            .TeamOne(teamView TeamPosition.TeamOne (model.TeamOne, model.JumpOrder, model.CurrentQuizzer) dispatch)
-            .TeamTwo(teamView TeamPosition.TeamTwo (model.TeamTwo, model.JumpOrder, model.CurrentQuizzer) dispatch)
-            .CurrentQuestion(string model.CurrentQuestion)
-            .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(model.CurrentQuestion + 1))))
-            .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(Math.Max(model.CurrentQuestion - 1, 1)))))
+            .TeamOne(teamView TeamPosition.TeamOne (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer) dispatch)
+            .TeamTwo(teamView TeamPosition.TeamTwo (resolved.TeamTwo, resolved.JumpOrder, resolved.CurrentQuizzer) dispatch)
+            .CurrentQuestion(string resolved.CurrentQuestion)
+            .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(resolved.CurrentQuestion + 1))))
+            .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(Math.Max(resolved.CurrentQuestion - 1, 1)))))
             .CurrentQuizzer(
-                match model.CurrentQuizzer with
+                match resolved.CurrentQuizzer with
                 | Some q -> $"{q}'s Turn"
                 | None -> ""
             )
             .JumpLockToggleAction(
-                match model.JumpState with
+                match resolved.JumpState with
                 | Locked -> "Unlock"
                 | Unlocked -> "Lock"
             )
-            .TeamOneName(model.TeamOne.Name)
-            .TeamTwoName(model.TeamTwo.Name)
-            .AddQuizzerIsTeamOne(isTeam model true false)
-            .AddQuizzerIsTeamTwo(isTeam model false true)
+            .TeamOneName(resolved.TeamOne.Name)
+            .TeamTwoName(resolved.TeamTwo.Name)
+            .AddQuizzerIsTeamOne(isTeam resolved true false)
+            .AddQuizzerIsTeamTwo(isTeam resolved false true)
             .AddQuizzerName(
-                (match model.AddQuizzer with
+                (match resolved.AddQuizzer with
                  | Active (name, _) -> name
                  | Inert -> ""),
                 (fun name ->
@@ -860,7 +852,7 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .AddQuizzerStart(fun _ -> dispatch (AddQuizzer Start))
             .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
             .AddQuizzerActive(
-                if model.AddQuizzer = Inert then
+                if resolved.AddQuizzer = Inert then
                     ""
                 else
                     "is-active"
@@ -875,9 +867,9 @@ let page linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .ItemizedScore(
                 ItemizedScore.render
                     { CompetitionStyle =
-                        ItemizedCompetitionStyle.Team((mapItemizedTeam model.TeamOne), (mapItemizedTeam model.TeamTwo))
-                      NumberOfQuestions = model.NumberOfQuestions
-                      QuestionsWithEvents = model.QuestionScores }
+                        ItemizedCompetitionStyle.Team((mapItemizedTeam resolved.TeamOne), (mapItemizedTeam resolved.TeamTwo))
+                      NumberOfQuestions = resolved.NumberOfQuestions
+                      QuestionsWithEvents = resolved.QuestionScores }
                     dispatch
             )
             .CompleteQuiz(fun _ -> dispatch (CompleteQuiz(Started())))
