@@ -48,14 +48,11 @@ type Message =
     | LiveScoreMessage of LiveScorePage.Message
     | QuizDetailsMessage of QuizDetailsMessage
 
-let clientStub =
-    Unchecked.defaultof<QuizHub.Client>
+let clientStub = Unchecked.defaultof<QuizHub.Client>
 
-let runQuizEventOccuredName =
-    nameof clientStub.RunQuizEventOccurred
+let runQuizEventOccuredName = nameof clientStub.RunQuizEventOccurred
 
-let getCodeFromModel model =
-    model.Code
+let getCodeFromModel model = model.Code
 
 let previousQuizCode page =
     match page with
@@ -119,8 +116,7 @@ let update
                  | InProgress _ -> None
                  | Resolved loaded -> Some loaded.Code))
 
-        let quizModel, cmd =
-            init user quizCode oldCodeOpt
+        let quizModel, cmd = init user quizCode oldCodeOpt
 
         { model with
             page = page
@@ -132,45 +128,36 @@ let update
 
     match message with
     | SetPage (Page.QuizRun quizCode) ->
-        let disconnectCmd =
-            disconnectPreviousPage model.page
+        let disconnectCmd = disconnectPreviousPage model.page
 
-        let model, initCmd =
-            initializeQuiz (QuizRun quizCode) Scorekeeper quizCode None
+        let model, initCmd = initializeQuiz (QuizRun quizCode) Scorekeeper quizCode None
 
         model, Cmd.batch [ disconnectCmd; initCmd ]
     | SetPage (QuizSpectate quizCode) ->
-        let disconnectCmd =
-            disconnectPreviousPage model.page
+        let disconnectCmd = disconnectPreviousPage model.page
 
-        let model, initCmd =
-            initializeQuiz (QuizSpectate quizCode) Spectator quizCode None
+        let model, initCmd = initializeQuiz (QuizSpectate quizCode) Spectator quizCode None
 
         { model with page = Page.QuizSpectate quizCode }, Cmd.batch [ disconnectCmd; initCmd ]
     | SetPage (QuizLiveScore (quizCode, pageModel)) ->
-        let disconnectCmd =
-            disconnectPreviousPage model.page
+        let disconnectCmd = disconnectPreviousPage model.page
 
-        let scoreModel, initCmd =
-            LiveScorePage.init quizCode
+        let scoreModel, initCmd = LiveScorePage.init quizCode
 
         { model with page = QuizLiveScore(quizCode, { Model = scoreModel }) },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map LiveScoreMessage ]
 
     | SetPage (Page.QuizDetails (quizCode, pageModel)) ->
-        let disconnectCmd =
-            disconnectPreviousPage model.page
+        let disconnectCmd = disconnectPreviousPage model.page
 
-        let detailsModel, initCmd =
-            QuizDetailsPage.init quizCode
+        let detailsModel, initCmd = QuizDetailsPage.init quizCode
 
         { model with page = Page.QuizDetails(quizCode, { Model = detailsModel }) },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map Message.QuizDetailsMessage ]
     | SetPage page ->
-        let disconnectCmd =
-            disconnectPreviousPage model.page
+        let disconnectCmd = disconnectPreviousPage model.page
 
         { model with page = page; Quiz = None }, disconnectCmd
     | ClearError -> { model with Error = None }, Cmd.none
@@ -190,7 +177,7 @@ let update
 
             let newModel =
                 match externalMessage with
-                | NoMessage -> {model with Error = None}
+                | NoMessage -> { model with Error = None }
                 | ErrorMessage er -> { model with Error = Some er }
 
             { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
@@ -221,12 +208,15 @@ let update
     | QuizDetailsMessage message ->
         match model.page with
         | QuizDetails (quizCode, pageModel) ->
-            let newModel, cmd =
+            let newModel, cmd, externalMsg =
                 QuizDetailsPage.update tryGetQuiz navigate quizControlCapProvider getQuizAsync pageModel.Model message
 
             { model with
                 page = QuizDetails(quizCode, { Model = newModel })
-                Error = None },
+                Error =
+                    match externalMsg with
+                    | QuizDetailsPage.ExternalMessage.NoMessage -> None
+                    | QuizDetailsPage.ExternalMessage.ErrorMessage error -> Some error },
             cmd |> Cmd.map QuizDetailsMessage
         | _ -> model, Cmd.none
 
@@ -248,8 +238,7 @@ let defaultModel =
             { Code = ""
               Scores = Deferred.NotYetStarted }
 
-let router =
-    Router.inferWithModel SetPage (fun model -> model.page) defaultModel
+let router = Router.inferWithModel SetPage (fun model -> model.page) defaultModel
 
 type Main = Template<"wwwroot/main.html">
 
@@ -318,7 +307,7 @@ let view model dispatch =
         .Menu(
             concat {
                 menuItem model Home "Home"
-                menuItem model (QuizDetails ("Example",Router.noModel)) "Quiz Example"
+                menuItem model (QuizDetails("Example", Router.noModel)) "Quiz Example"
             }
         )
         .Body(
@@ -333,8 +322,7 @@ let view model dispatch =
                     | Some quizModel ->
                         page (linkToQuizPage router) quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
                 | QuizLiveScore (quizCode, pageModel) ->
-                    let model =
-                        { pageModel.Model with Code = quizCode }
+                    let model = { pageModel.Model with Code = quizCode }
 
                     LiveScorePage.page model
         )
@@ -543,8 +531,7 @@ type MyApp() =
 
         let onQuizEvent =
             fun handler ->
-                let handlerTask =
-                    fun event -> handler event |> Async.startAsPlainTask
+                let handlerTask = fun event -> handler event |> Async.startAsPlainTask
 
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handlerTask)
                 |> ignore

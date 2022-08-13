@@ -3,6 +3,7 @@
 open Bolero
 open Bolero.Html
 open Elmish
+open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
@@ -24,6 +25,9 @@ type QuizDetailsMessage =
     | CompleteQuiz of AsyncOperationStatus<CompleteQuizCap, Result<Quiz, WorkflowError<CompleteQuiz.Error>>>
     | ReopenQuiz of AsyncOperationStatus<ReopenQuizCap, Result<Quiz, WorkflowError<ReopenQuiz.Error>>>
 
+type ExternalMessage =
+    | ErrorMessage of string
+    | NoMessage
 
 let init quizCode =
     { Code = quizCode
@@ -108,23 +112,25 @@ let private reloadModel capabilityProvider model quiz =
 
     { model with Details = details }
 
-
-let private startWorkflow (getQuiz: GetQuiz) (model: QuizDetailsModel) finishedMessage workflowCap =
+let private startWorkflow (getQuiz: GetQuiz) model getCode finishedMessage workflowCap =
     workflowCap
     |> AsyncResult.mapError WorkflowError.Workflow
     |> AsyncResult.bind (fun _ ->
-        model.Code
+        model
+        |> getCode
         |> getQuiz
         |> (AsyncResult.mapError WorkflowError.DbError))
     |> Async.map Finished
     |> Async.map finishedMessage
-    |> fun async -> model, Cmd.OfAsync.result async
+    |> fun async -> model, Cmd.OfAsync.result async, NoMessage
 
 
-let private finishWorkflow reloadModel capabilityProvider navigateHomeCmd model result =
+let private finishWorkflow reloadModel capabilityProvider mapWorkflowErrors model result =
     match result with
-    | Ok quiz -> quiz |> reloadModel capabilityProvider model, Cmd.none
-    | Result.Error error -> model, navigateHomeCmd
+    | Ok quiz -> quiz |> reloadModel capabilityProvider model, Cmd.none, NoMessage
+    | Result.Error error -> model, Cmd.none, (match error with
+                                             | WorkflowError.Workflow er -> er |> mapWorkflowErrors
+                                             | WorkflowError.DbError dbError -> dbError |> mapDbErrorToString) |> ErrorMessage
 
 let update
     tryGetQuiz
@@ -137,10 +143,10 @@ let update
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
 
-    let startWorkflow cap = startWorkflow getQuiz model cap
+    let startWorkflow finishedMessage cap = startWorkflow getQuiz model (fun model -> model.Code) finishedMessage cap
 
-    let finishWorkflow message =
-        finishWorkflow reloadModel capabilityProvider navigateHomeCmd model message
+    let finishWorkflow mapWorkflowErrors result  =
+        finishWorkflow reloadModel capabilityProvider mapWorkflowErrors model result
 
     match message with
     | Initialize (Started _) ->
@@ -151,18 +157,28 @@ let update
             |> Async.map Initialize
             |> Cmd.OfAsync.result
 
-        { model with Details = InProgress }, cmd
-    | Initialize (Finished (Ok (Some quiz))) -> reloadModel capabilityProvider model quiz, Cmd.none
-    | Initialize (Finished (Ok None)) -> { model with Details = Deferred.NotYetStarted }, navigateHomeCmd
-    | Initialize (Finished (Result.Error error)) -> model, navigateHomeCmd
+        { model with Details = InProgress }, cmd, NoMessage
+    | Initialize (Finished (Ok (Some quiz))) -> reloadModel capabilityProvider model quiz, Cmd.none, NoMessage
+    | Initialize (Finished (Ok None)) -> { model with Details = Deferred.NotYetStarted }, navigateHomeCmd, $"Quiz {model.Code} not found" |> ErrorMessage
+    | Initialize (Finished (Result.Error error)) -> model, navigateHomeCmd, error |> mapDbErrorToString |> ErrorMessage
     | CompleteQuiz (Started cap) ->
         cap ()
-        |> startWorkflow QuizDetailsMessage.CompleteQuiz
-    | CompleteQuiz (Finished result) -> result |> finishWorkflow
+        |> startWorkflow QuizDetailsMessage.CompleteQuiz 
+    | CompleteQuiz (Finished result) ->
+        let mapError error =
+             match error with
+              | CompleteQuiz.Error.DbError dbError -> dbError |> mapDbErrorToString
+              | CompleteQuiz.QuizState _ -> "Wrong quiz state"
+        result |> finishWorkflow mapError
     | ReopenQuiz (Started cap) ->
         cap ()
         |> startWorkflow QuizDetailsMessage.ReopenQuiz
-    | ReopenQuiz (Finished result) -> result |> finishWorkflow
+    | ReopenQuiz (Finished result) ->
+        let mapError error =
+            match error with
+            | ReopenQuiz.DbError dbError -> dbError |> mapDbErrorToString
+            | ReopenQuiz.QuizState _ -> "Wrong quiz state"
+        result |> finishWorkflow mapError
 
 let private capabilityButton colorOpt buttonText capOpt =
     button {
