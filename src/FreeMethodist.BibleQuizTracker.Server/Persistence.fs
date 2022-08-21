@@ -9,6 +9,7 @@ open Azure.Storage.Blobs.Models
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+open Microsoft.FSharp.Control
 
 
 let initExample quizCode =
@@ -342,13 +343,18 @@ let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
         else
             getFromBlob quizCode
 
-let getCompletedQuizzes (blobServiceClient: BlobServiceClient) (serialize) =
+let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) (deserialize)  =
       asyncResult {
             let blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName)
-            let expression = ""
+            let state = nameof Quiz.Completed
+            let expression = $"\"State\" = '{state}'"
             if blobContainerClient.Exists().Value then
-                let results = blobContainerClient.FindBlobsByTagsAsync(expression).AsPages() 
-                return []
+
+                let results =  blobContainerClient.FindBlobsByTags(expression)
+                                |> Seq.take 10
+                                |> Seq.map (fun item -> item.BlobName )
+                                |> Seq.toList
+                return results
             else
                 return []
       }
