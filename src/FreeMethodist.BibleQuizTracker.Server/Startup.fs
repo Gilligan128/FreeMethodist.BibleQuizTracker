@@ -18,9 +18,18 @@ open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Bolero.Server
 open Bolero.Templating.Server
+open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 
+
 type Startup() =
+
+    let getTenantName machineName (environment: IHostEnvironment) =
+        if environment.EnvironmentName = Environments.Development then
+            machineName
+        else
+            environment.EnvironmentName
+
 
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -70,8 +79,12 @@ type Startup() =
             let saveToLocal =
                 Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
 
+            let tenantName =
+                provider.GetRequiredService<IHostEnvironment>()
+                |> getTenantName Environment.MachineName
+
             let saveToBlob =
-                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions
+                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName
 
             Persistence.saveQuizToLocalOrBlob saveToLocal saveToBlob
 
@@ -80,10 +93,16 @@ type Startup() =
             .AddScoped<SaveQuiz>(Func<IServiceProvider, SaveQuiz>(saveQuiz))
             .AddScoped<SaveNewQuiz>(
                 Func<IServiceProvider, SaveNewQuiz> (fun provider ->
+                    let environment =
+                        provider.GetRequiredService<IHostEnvironment>()
+
+                    let tenantName =
+                        getTenantName Environment.MachineName environment
+
                     let blobServiceClient =
                         provider.GetRequiredService<BlobServiceClient>()
 
-                    Persistence.saveNewQuizToBlob blobServiceClient fsharpJsonOptions)
+                    Persistence.saveNewQuizToBlob blobServiceClient fsharpJsonOptions tenantName)
             )
             .AddScoped<TryGetQuiz>(
                 Func<IServiceProvider, TryGetQuiz> (fun provider ->
@@ -99,8 +118,12 @@ type Startup() =
                     let deserialize (json: string) =
                         JsonSerializer.Deserialize(json, fsharpJsonOptions)
 
+                    let tenantName =
+                        provider.GetRequiredService<IHostEnvironment>()
+                        |> getTenantName Environment.MachineName
+
                     let tryGetBlob =
-                        Persistence.tryGetQuizFromBlob blobServiceClient deserialize
+                        Persistence.tryGetQuizFromBlob blobServiceClient deserialize tenantName
 
                     Persistence.tryGetQuizFromLocalOrBlob tryGetLocal tryGetBlob)
             )

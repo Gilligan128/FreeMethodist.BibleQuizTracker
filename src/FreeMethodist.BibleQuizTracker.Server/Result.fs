@@ -322,6 +322,14 @@ module Async =
         task.ContinueWith continuation |> Async.AwaitTask
 
     let inline startAsPlainTask (work : Async<unit>) = Task.Factory.StartNew(fun () -> work |> Async.RunSynchronously)
+    
+    let inline catchExceptionsAsErrors mapError asyncTask =
+        asyncTask
+        |> Async.Catch
+        |> map (fun result ->
+            match result with
+            | Choice1Of2 value -> Ok value
+            | Choice2Of2 ex -> mapError ex |> Error)
 //==============================================
 // AsyncResult
 //==============================================

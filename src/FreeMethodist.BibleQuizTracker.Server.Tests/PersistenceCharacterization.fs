@@ -1,5 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.PersistenceCharacterization
 
+open System
 open System.Text.Json
 open System.Text.Json.Serialization
 open Azure
@@ -41,7 +42,7 @@ let ``Save Blob`` () =
     ignore404 () (fun () -> blobServiceClient.DeleteBlobContainer("quizzes") |> ignore)
   
     let saveQuiz =
-        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions
+        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions $"{Environment.MachineName}test"
 
     let result = saveQuiz (Running RunningTeamQuiz.identity) |> Async.RunSynchronously
     
@@ -69,11 +70,11 @@ let ``Get Completed`` () =
         containerClient.DeleteBlob("completed"))
     
     let saveQuiz =
-        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions
+        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions $"{Environment.MachineName}test"
     asyncResult {
         let completedQuiz = Completed { Code = "completed"; CompletedQuestions = []; CompetitionStyle = CompletedCompetitionStyle.Individual [] }
         
-        do! saveQuiz completedQuiz
+        do! saveQuiz completedQuiz 
     
         let! result = Persistence.getRecentCompletedQuizzes blobServiceClient (fun (json :string) -> JsonSerializer.Deserialize<Quiz>(json, fsharpJsonOptions))
       
