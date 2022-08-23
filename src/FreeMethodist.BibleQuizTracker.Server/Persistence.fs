@@ -138,7 +138,7 @@ let checkIfNotFound (exn: exn) =
 let quizBlobName quizCode =
     $"quizzes/{getBlobName quizCode}"
 
-let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) tenantName : GetQuiz =
+let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) (tenantName : string) : GetQuiz =
     let mapChoiceToResult choice =
         match choice with
         | Choice1Of2 one -> Ok one
@@ -153,10 +153,12 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSeriali
         asyncResult {
 
             let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(containerNameOld)
+                blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
 
             let blobClient =
-                blobContainerClient.GetBlobClient($"quiz-{quizCode}")
+                quizCode
+                |> quizBlobName
+                |> blobContainerClient.GetBlobClient
 
             let! response =
                 blobClient.DownloadContentAsync()
@@ -352,13 +354,13 @@ let private mapChoiceToResult choice =
                 |> DbError.Exception
                 |> Error
 
-let tryGetQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize tenantName : TryGetQuiz =
+let tryGetQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize (tenantName : string) : TryGetQuiz =
 
     fun quizCode ->
         asyncResult {
 
             let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(tenantName)
+                blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
 
             let blobClient =
                 quizCode
