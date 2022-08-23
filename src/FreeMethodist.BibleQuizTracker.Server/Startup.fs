@@ -30,6 +30,9 @@ type Startup() =
         else
             environment.EnvironmentName
 
+    let resolveTenantName (provider: IServiceProvider) =
+        provider.GetRequiredService<IHostEnvironment>()
+        |> getTenantName Environment.MachineName
 
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -64,8 +67,11 @@ type Startup() =
             let getFromLocal =
                 Persistence.getQuizFromLocalStorage localStorage fsharpJsonOptions
 
+            let tenantName = resolveTenantName provider
+
             let getFromBlob =
-                Persistence.getQuizFromBlob blobServiceClient fsharpJsonOptions
+                Persistence.getQuizFromBlob blobServiceClient fsharpJsonOptions tenantName
+
 
             Persistence.getQuizFromLocalOrBlob getFromLocal getFromBlob
 
@@ -79,9 +85,7 @@ type Startup() =
             let saveToLocal =
                 Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
 
-            let tenantName =
-                provider.GetRequiredService<IHostEnvironment>()
-                |> getTenantName Environment.MachineName
+            let tenantName = resolveTenantName provider
 
             let saveToBlob =
                 Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName
@@ -118,9 +122,7 @@ type Startup() =
                     let deserialize (json: string) =
                         JsonSerializer.Deserialize(json, fsharpJsonOptions)
 
-                    let tenantName =
-                        provider.GetRequiredService<IHostEnvironment>()
-                        |> getTenantName Environment.MachineName
+                    let tenantName = resolveTenantName provider
 
                     let tryGetBlob =
                         Persistence.tryGetQuizFromBlob blobServiceClient deserialize tenantName

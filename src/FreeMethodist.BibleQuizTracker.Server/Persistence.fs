@@ -138,7 +138,7 @@ let checkIfNotFound (exn: exn) =
 let quizBlobName quizCode =
     $"quizzes/{getBlobName quizCode}"
 
-let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) : GetQuiz =
+let getQuizFromBlob (blobServiceClient: BlobServiceClient) (options: JsonSerializerOptions) tenantName : GetQuiz =
     let mapChoiceToResult choice =
         match choice with
         | Choice1Of2 one -> Ok one
@@ -358,17 +358,18 @@ let tryGetQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize tenant
         asyncResult {
 
             let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(containerNameOld)
+                blobServiceClient.GetBlobContainerClient(tenantName)
 
             let blobClient =
-                blobContainerClient.GetBlobClient($"quiz-{quizCode}")
+                quizCode
+                |> quizBlobName
+                |> blobContainerClient.GetBlobClient
 
             let! response =
                 blobClient.DownloadContentAsync()
                 |> Async.AwaitTask
                 |> Async.Catch
                 |> Async.map mapChoiceToResult
-
 
             let! responseOpt =
                 response
