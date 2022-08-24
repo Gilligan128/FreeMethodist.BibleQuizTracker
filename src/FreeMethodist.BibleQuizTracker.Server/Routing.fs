@@ -3,6 +3,7 @@
 open Bolero
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
+open FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
 
 /// Routing endpoints definition.
 type Page =
@@ -11,3 +12,4 @@ type Page =
     | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string * PageModel<LiveScoreModel>
+    | [<EndPoint "/quiz/completed">] QuizzesCompleted of PageModel<CompletedQuizzesModel.Model>

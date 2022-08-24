@@ -48,9 +48,11 @@ type Message =
     | LiveScoreMessage of LiveScorePage.Message
     | QuizDetailsMessage of QuizDetailsMessage
 
-let clientStub = Unchecked.defaultof<QuizHub.Client>
+let clientStub =
+    Unchecked.defaultof<QuizHub.Client>
 
-let runQuizEventOccuredName = nameof clientStub.RunQuizEventOccurred
+let runQuizEventOccuredName =
+    nameof clientStub.RunQuizEventOccurred
 
 let getCodeFromModel model = model.Code
 
@@ -60,6 +62,7 @@ let previousQuizCode page =
     | Page.QuizRun quizCode
     | Page.QuizLiveScore (quizCode, _)
     | Page.QuizSpectate quizCode -> quizCode |> Some
+    | Page.QuizzesCompleted _
     | Page.Home -> None
 
 let disconnectFromHub (hubConnection: HubConnection) quizCode =
@@ -116,7 +119,8 @@ let update
                  | InProgress _ -> None
                  | Resolved loaded -> Some loaded.Code))
 
-        let quizModel, cmd = init user quizCode oldCodeOpt
+        let quizModel, cmd =
+            init user quizCode oldCodeOpt
 
         { model with
             page = page
@@ -128,36 +132,45 @@ let update
 
     match message with
     | SetPage (Page.QuizRun quizCode) ->
-        let disconnectCmd = disconnectPreviousPage model.page
+        let disconnectCmd =
+            disconnectPreviousPage model.page
 
-        let model, initCmd = initializeQuiz (QuizRun quizCode) Scorekeeper quizCode None
+        let model, initCmd =
+            initializeQuiz (QuizRun quizCode) Scorekeeper quizCode None
 
         model, Cmd.batch [ disconnectCmd; initCmd ]
     | SetPage (QuizSpectate quizCode) ->
-        let disconnectCmd = disconnectPreviousPage model.page
+        let disconnectCmd =
+            disconnectPreviousPage model.page
 
-        let model, initCmd = initializeQuiz (QuizSpectate quizCode) Spectator quizCode None
+        let model, initCmd =
+            initializeQuiz (QuizSpectate quizCode) Spectator quizCode None
 
         { model with page = Page.QuizSpectate quizCode }, Cmd.batch [ disconnectCmd; initCmd ]
     | SetPage (QuizLiveScore (quizCode, pageModel)) ->
-        let disconnectCmd = disconnectPreviousPage model.page
+        let disconnectCmd =
+            disconnectPreviousPage model.page
 
-        let scoreModel, initCmd = LiveScorePage.init quizCode
+        let scoreModel, initCmd =
+            LiveScorePage.init quizCode
 
         { model with page = QuizLiveScore(quizCode, { Model = scoreModel }) },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map LiveScoreMessage ]
 
     | SetPage (Page.QuizDetails (quizCode, pageModel)) ->
-        let disconnectCmd = disconnectPreviousPage model.page
+        let disconnectCmd =
+            disconnectPreviousPage model.page
 
-        let detailsModel, initCmd = QuizDetailsPage.init quizCode
+        let detailsModel, initCmd =
+            QuizDetailsPage.init quizCode
 
         { model with page = Page.QuizDetails(quizCode, { Model = detailsModel }) },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map Message.QuizDetailsMessage ]
     | SetPage page ->
-        let disconnectCmd = disconnectPreviousPage model.page
+        let disconnectCmd =
+            disconnectPreviousPage model.page
 
         { model with page = page; Quiz = None }, disconnectCmd
     | ClearError -> { model with Error = None }, Cmd.none
@@ -240,8 +253,10 @@ let defaultModel =
             pageModel
             { Code = ""
               Scores = Deferred.NotYetStarted }
+    | QuizzesCompleted pageModel -> Router.definePageModel pageModel { Quizzes = NotYetStarted }
 
-let router = Router.inferWithModel SetPage (fun model -> model.page) defaultModel
+let router =
+    Router.inferWithModel SetPage (fun model -> model.page) defaultModel
 
 type Main = Template<"wwwroot/main.html">
 
@@ -283,11 +298,13 @@ let private pagesAreSame page1 page2 =
     | Page.QuizLiveScore (quizCode1, _), Page.QuizLiveScore (quizCode2, _) -> quizCode1 = quizCode2
     | Page.QuizRun one, Page.QuizRun two
     | Page.QuizSpectate one, Page.QuizSpectate two -> one = two
+    | Page.QuizzesCompleted _, Page.QuizzesCompleted _ -> true
     | Page.Home, _
     | Page.QuizDetails _, _
     | Page.QuizRun _, _
     | Page.QuizSpectate _, _
-    | Page.QuizLiveScore _, _ -> false
+    | Page.QuizLiveScore _, _ 
+    | Page.QuizzesCompleted _, _ -> false
 
 let menuItem (model: Model) (page: Page) (text: string) =
     Main
@@ -317,17 +334,21 @@ let view capabilityProvider model dispatch =
             cond model.page
             <| function
                 | Home -> homePage model dispatch
-                | QuizDetails (code, model) -> QuizDetailsPage.render (fun msg -> msg |> QuizDetailsMessage |> dispatch) model.Model
+                | QuizDetails (code, model) ->
+                    QuizDetailsPage.render (fun msg -> msg |> QuizDetailsMessage |> dispatch) model.Model
                 | QuizSpectate code
                 | QuizRun code ->
                     match model.Quiz with
                     | None -> Node.Empty()
                     | Some quizModel ->
-                        RunningQuizPage.render (linkToQuizPage router) capabilityProvider quizModel (fun quizMsg -> dispatch (QuizMessage quizMsg))
+                        RunningQuizPage.render (linkToQuizPage router) capabilityProvider quizModel (fun quizMsg ->
+                            dispatch (QuizMessage quizMsg))
                 | QuizLiveScore (quizCode, pageModel) ->
-                    let model = { pageModel.Model with Code = quizCode }
+                    let model =
+                        { pageModel.Model with Code = quizCode }
 
                     LiveScorePage.page model
+                | QuizzesCompleted pageModel -> CompletedQuizzesPage.render dispatch model
         )
         .Error(
             cond model.Error
@@ -534,7 +555,8 @@ type MyApp() =
 
         let onQuizEvent =
             fun handler ->
-                let handlerTask = fun event -> handler event |> Async.startAsPlainTask
+                let handlerTask =
+                    fun event -> handler event |> Async.startAsPlainTask
 
                 hubConnection.On<RunQuizEvent>(nameof clientStub.RunQuizEventOccurred, handlerTask)
                 |> ignore
@@ -574,10 +596,10 @@ type MyApp() =
                 navigate
                 availableCapabilities
                 availableQuizControlCapabilities
-        
+
         let view model dispatch =
             view availableCapabilities model dispatch
-        
+
         Program.mkProgram
             (fun _ ->
                 hubConnection.StartAsync() |> ignore
