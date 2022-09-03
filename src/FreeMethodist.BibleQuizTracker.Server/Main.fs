@@ -328,6 +328,7 @@ let view capabilityProvider model dispatch =
             concat {
                 menuItem model Home "Home"
                 menuItem model (QuizDetails("Example", Router.noModel)) "Quiz Example"
+                menuItem model (Page.QuizzesCompleted Router.noModel) "Completed Quizzes"
             }
         )
         .Body(
