@@ -258,17 +258,8 @@ let saveNewQuizToBlob
     : SaveNewQuiz =
     fun quiz ->
         asyncResult {
-            let blobContainerClientOld =
-                blobServiceClient.GetBlobContainerClient(containerNameOld)
-
             let blobContainerClient =
                 blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
-
-            do!
-                blobContainerClientOld.CreateIfNotExistsAsync()
-                |> Async.AwaitTask
-                |> Async.catchExceptionsAsErrors DbError.Exception
-                |> AsyncResult.ignore
 
             do!
                 blobContainerClient.CreateIfNotExistsAsync()
@@ -285,11 +276,6 @@ let saveNewQuizToBlob
                      |> AsyncResult.ofSuccess)
                 with
                 | exn -> exn |> DbError.Exception |> AsyncResult.ofError
-
-            let blobClientOld =
-                quizCode
-                |> getBlobName
-                |> blobContainerClientOld.GetBlobClient
 
             let blobClient =
                 quizCode
@@ -311,10 +297,6 @@ let saveNewQuizToBlob
                 |> fun data ->
                     blobClient.UploadAsync(data, uploadOptions, CancellationToken.None)
                     |> Async.AwaitTask
-                    |> Async.map (fun _ -> data)
-                |> Async.bind (fun data ->
-                    blobClientOld.UploadAsync(data, uploadOptions, CancellationToken.None)
-                    |> Async.AwaitTask)
                 |> Async.map validateBlobOperation
                 |> AsyncResult.ignore
 
