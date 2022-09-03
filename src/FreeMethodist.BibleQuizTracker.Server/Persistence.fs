@@ -413,7 +413,7 @@ let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
         else
             getFromBlob quizCode
 
-let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) (deserialize) =
+let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) =
     asyncResult {
         let blobContainerClient =
             blobServiceClient.GetBlobContainerClient(containerNameOld)

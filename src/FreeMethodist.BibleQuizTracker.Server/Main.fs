@@ -8,6 +8,7 @@ open Bolero.Remoting.Client
 open Bolero.Templating.Client
 open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
+open FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
 open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
 open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
@@ -47,6 +48,7 @@ type Message =
     | CreateQuiz of CreateQuizForm.Message
     | LiveScoreMessage of LiveScorePage.Message
     | QuizDetailsMessage of QuizDetailsMessage
+    | CompletedQuizzesMessage of CompletedQuizzesPage.Message
 
 let clientStub =
     Unchecked.defaultof<QuizHub.Client>
@@ -103,6 +105,7 @@ let update
     (navigate: Page -> unit)
     capabilitiesProvider
     quizControlCapProvider
+    getCompletedQuizzes
     (message: Message)
     model
     : Model * Cmd<Message> =
@@ -168,6 +171,16 @@ let update
         { model with page = Page.QuizDetails(quizCode, { Model = detailsModel }) },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map Message.QuizDetailsMessage ]
+    | SetPage (Page.QuizzesCompleted pageModel) ->
+        let disconnectCmd =
+            disconnectPreviousPage model.page
+
+        let initialModel, initCmd =
+            CompletedQuizzesPage.init
+
+        { model with page = Page.QuizzesCompleted { Model = initialModel } },
+        Cmd.batch [ disconnectCmd
+                    initCmd |> Cmd.map Message.CompletedQuizzesMessage ]
     | SetPage page ->
         let disconnectCmd =
             disconnectPreviousPage model.page
@@ -234,6 +247,25 @@ let update
                     | QuizDetailsPage.ExternalMessage.NoMessage -> None
                     | QuizDetailsPage.ExternalMessage.ErrorMessage error -> Some error },
             cmd |> Cmd.map QuizDetailsMessage
+        | _ -> model, Cmd.none
+    | CompletedQuizzesMessage message ->
+        match model.page with
+        | QuizzesCompleted pageModel ->
+            let newModel, cmd, externalMsg =
+                CompletedQuizzesPage.update getCompletedQuizzes pageModel.Model message
+
+            let model =
+                { model with
+                    page = QuizzesCompleted { Model = newModel }
+                    Error =
+                        match externalMsg with
+                        | CompletedQuizzesPage.ExternalMessage.NoError -> None
+                        | CompletedQuizzesPage.ExternalMessage.Error error -> Some error }
+
+            let cmd =
+                cmd |> Cmd.map CompletedQuizzesMessage
+
+            model, cmd
         | _ -> model, Cmd.none
 
 
@@ -303,7 +335,7 @@ let private pagesAreSame page1 page2 =
     | Page.QuizDetails _, _
     | Page.QuizRun _, _
     | Page.QuizSpectate _, _
-    | Page.QuizLiveScore _, _ 
+    | Page.QuizLiveScore _, _
     | Page.QuizzesCompleted _, _ -> false
 
 let menuItem (model: Model) (page: Page) (text: string) =
@@ -547,6 +579,9 @@ type MyApp() =
     [<Inject>]
     member val TryGetQuiz = Unchecked.defaultof<TryGetQuiz> with get, set
 
+    [<Inject>]
+    member val GetRecentCompletedQuizzes = Unchecked.defaultof<GetRecentCompletedQuizzes> with get, set
+
     override this.Program =
         let hubConnection = this.HubConnection
 
@@ -597,6 +632,8 @@ type MyApp() =
                 navigate
                 availableCapabilities
                 availableQuizControlCapabilities
+                this.GetRecentCompletedQuizzes
+
 
         let view model dispatch =
             view availableCapabilities model dispatch

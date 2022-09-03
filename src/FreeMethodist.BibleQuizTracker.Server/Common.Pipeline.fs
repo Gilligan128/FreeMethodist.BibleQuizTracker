@@ -99,6 +99,8 @@ type SaveJump = Jump -> unit
 
 type TryGetQuiz = QuizCode -> AsyncResult<Option<Quiz>, DbError>
 
+type GetRecentCompletedQuizzes = unit -> AsyncResult<string list, DbError>
+
 //Event Handling
 type PublishQuizEventTask = string -> QuizCode -> obj -> Async<unit>
 

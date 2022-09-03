@@ -126,9 +126,9 @@ let private startWorkflow (getQuiz: GetQuiz) model getCode finishedMessage workf
     |> fun async -> model, Cmd.OfAsync.result async, NoMessage
 
 
-let private finishWorkflow reloadModel capabilityProvider mapWorkflowErrors model result =
+let private finishWorkflow reloadModel  mapWorkflowErrors model result =
     match result with
-    | Ok quiz -> quiz |> reloadModel capabilityProvider model, Cmd.none, NoMessage
+    | Ok quiz -> quiz |> reloadModel model, Cmd.none, NoMessage
     | Result.Error error ->
         model,
         Cmd.none,
@@ -147,12 +147,14 @@ let update
     =
     let navigateHomeCmd =
         navigate |> subOfFunc Page.Home |> Cmd.ofSub
-
+    
+    let reloadModel = reloadModel capabilityProvider
+    
     let startWorkflow finishedMessage cap =
         startWorkflow getQuiz model (fun model -> model.Code) finishedMessage cap
 
     let finishWorkflow mapWorkflowErrors result =
-        finishWorkflow reloadModel capabilityProvider mapWorkflowErrors model result
+        finishWorkflow reloadModel mapWorkflowErrors model result
 
     match message with
     | Initialize (Started _) ->
@@ -164,7 +166,7 @@ let update
             |> Cmd.OfAsync.result
 
         { model with Details = InProgress }, cmd, NoMessage
-    | Initialize (Finished (Ok (Some quiz))) -> reloadModel capabilityProvider model quiz, Cmd.none, NoMessage
+    | Initialize (Finished (Ok (Some quiz))) -> reloadModel model quiz, Cmd.none, NoMessage
     | Initialize (Finished (Ok None)) ->
         { model with Details = Deferred.NotYetStarted }, navigateHomeCmd, $"Quiz {model.Code} not found" |> ErrorMessage
     | Initialize (Finished (Result.Error error)) -> model, navigateHomeCmd, error |> mapDbErrorToString |> ErrorMessage

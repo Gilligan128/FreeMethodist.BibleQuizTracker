@@ -76,7 +76,7 @@ let ``Get Completed`` () =
         
         do! saveQuiz completedQuiz 
     
-        let! result = Persistence.getRecentCompletedQuizzes blobServiceClient (fun (json :string) -> JsonSerializer.Deserialize<Quiz>(json, fsharpJsonOptions))
+        let! result = Persistence.getRecentCompletedQuizzes blobServiceClient
       
         Assert.NotEmpty(result)
     }

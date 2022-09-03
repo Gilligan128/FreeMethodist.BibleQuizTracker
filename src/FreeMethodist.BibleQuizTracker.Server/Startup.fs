@@ -145,6 +145,10 @@ type Startup() =
                             options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                         .Build())
             )
+            .AddScoped<GetRecentCompletedQuizzes>(Func<IServiceProvider, GetRecentCompletedQuizzes>(fun provider ->
+                let blobClient = provider.GetRequiredService<BlobServiceClient>()
+                fun () -> Persistence.getRecentCompletedQuizzes blobClient
+            ))
         |> ignore
 
         //So that Discriminated unions can be serialized/deserialized
