@@ -75,8 +75,8 @@ let ``Get Completed`` () =
         let completedQuiz = Completed { Code = "completed"; CompletedQuestions = []; CompetitionStyle = CompletedCompetitionStyle.Individual [] }
         
         do! saveQuiz completedQuiz 
-    
-        let! result = Persistence.getRecentCompletedQuizzes blobServiceClient
+     
+        let! result = Persistence.getRecentCompletedQuizzes blobServiceClient $"{Environment.MachineName}test"
       
         Assert.NotEmpty(result)
     }

@@ -147,7 +147,7 @@ type Startup() =
             )
             .AddScoped<GetRecentCompletedQuizzes>(Func<IServiceProvider, GetRecentCompletedQuizzes>(fun provider ->
                 let blobClient = provider.GetRequiredService<BlobServiceClient>()
-                fun () -> Persistence.getRecentCompletedQuizzes blobClient
+                fun () -> Persistence.getRecentCompletedQuizzes blobClient (resolveTenantName provider)
             ))
         |> ignore
 

@@ -7,6 +7,7 @@ open Bolero.Html
 open CompletedQuizzesModel
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
+open FreeMethodist.BibleQuizTracker.Server.Routing
 open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
@@ -31,7 +32,7 @@ let update getCompletedQuizzes model message =
     | Initialize (Finished result) -> {model with Quizzes = Resolved result}, Cmd.none, NoError
                    
 
-let render dispatch model =
+let render link dispatch model =
     match model.Quizzes with
     | NotYetStarted ->
         h1 {
@@ -46,17 +47,27 @@ let render dispatch model =
         }
     | Resolved (Result.Error error) -> p { text (error |> mapDbErrorToString) }
     | Resolved (Ok resolved) ->
-        div {
-            attr.``class`` "column"
+        concat {
+            h1 {
+                attr.``class`` "title"
+                "Recently Completed Quizzes"
+            }
+            div {
+                attr.``class`` "column"
 
-            forEach resolved
-            <| fun quiz ->
-                div {
-                    attr.``class`` "card"
-
+                forEach resolved
+                <| fun quiz ->
                     div {
-                        attr.``class`` "card-content"
-                        quiz.Code
+                        attr.``class`` "card"
+
+                        div {
+                            attr.``class`` "card-content"
+                            
+                            a {
+                                attr.href (link (Page.QuizDetails (quiz.Code, Router.noModel) ))
+                                quiz.Code
+                               }
+                        }
                     }
-                }
+            }
         }

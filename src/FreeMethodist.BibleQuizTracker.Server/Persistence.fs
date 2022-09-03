@@ -413,10 +413,10 @@ let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
         else
             getFromBlob quizCode
 
-let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) =
+let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) (tenantName : string) =
     asyncResult {
         let blobContainerClient =
-            blobServiceClient.GetBlobContainerClient(containerNameOld)
+            blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
 
         let state = nameof Quiz.Completed
         let expression = $"\"State\" = '{state}'"
@@ -426,6 +426,8 @@ let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) =
             let results =
                 blobContainerClient.FindBlobsByTags(expression)
                 |> Seq.map (fun item -> item.BlobName)
+                |> Seq.map (fun name -> name.Replace("quizzes/", ""))
+                |> Seq.map (fun name -> name.Replace("quiz-", ""))
                 |> Seq.toList
 
             return results

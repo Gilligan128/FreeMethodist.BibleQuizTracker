@@ -381,7 +381,7 @@ let view capabilityProvider model dispatch =
                         { pageModel.Model with Code = quizCode }
 
                     LiveScorePage.page model
-                | QuizzesCompleted pageModel -> CompletedQuizzesPage.render dispatch pageModel.Model
+                | QuizzesCompleted pageModel -> CompletedQuizzesPage.render router.Link dispatch pageModel.Model
         )
         .Error(
             cond model.Error
