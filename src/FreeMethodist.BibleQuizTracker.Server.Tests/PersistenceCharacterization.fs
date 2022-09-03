@@ -48,7 +48,7 @@ let ``Save Blob`` () =
     
     Assert.Equal(Ok (), result)
     
-[<Fact>]
+[<Fact(Skip="Characterization Test")>]
 let ``Get Completed`` () =
    
     let fsharpJsonOptions = createJsonOptions ()
