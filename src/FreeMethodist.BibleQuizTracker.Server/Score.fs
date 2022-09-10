@@ -31,23 +31,19 @@ type QuizzerScore =
 module Score =
     let private answerScore answerState =
         let score =
-            TeamScore.initial
-            |> TeamScore.correctAnswer
-            |> TeamScore.value
+            TeamScore.zero |> TeamScore.correctAnswer
 
         match answerState with
         | AnsweredCorrectly -> score
-        | AnsweredIncorrectly -> 0
-        | DidNotAnswer -> 0
+        | AnsweredIncorrectly -> TeamScore.zero
+        | DidNotAnswer -> TeamScore.zero
 
     let private appealScore appealState =
         let score =
-            TeamScore.initial
-            |> TeamScore.failAppeal
-            |> TeamScore.value
+            TeamScore.zero |> TeamScore.failAppeal
 
         match appealState with
-        | NoFailure -> 0
+        | NoFailure -> TeamScore.zero
         | AppealFailure -> score
 
     let quizzerScoreForTeamStyle eventState =
@@ -58,15 +54,15 @@ module Score =
         eventState
         |> fun eventState ->
             answerScore eventState.AnswerState
-            + appealScore eventState.AppealState
+            |> TeamScore.add (appealScore eventState.AppealState)
 
     let teamScore eventState =
         eventState
         |> fun eventState ->
             answerScore eventState.AnswerState
-            + appealScore eventState.AppealState
+            |> TeamScore.add (appealScore eventState.AppealState)
 
-    let refreshQuestionScore questionNumber (answerState, failedAppeal) : QuestionQuizzerEvents =
+    let createScoreModelForQuestion questionNumber (questionState: QuestionState) : QuestionQuizzerEvents =
         let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
 
         let quizzerFailedAppeal failedAppeal quizzer =
@@ -75,7 +71,7 @@ module Score =
             | Some q -> q = quizzer
 
         let answersWithoutAppeals =
-            match answerState with
+            match questionState.AnswerState with
             | Incomplete quizzers -> quizzers |> List.map incorrectAnswer
             | Complete (Answered question) ->
                 [ (question.Answerer, AnsweredCorrectly) ]
@@ -84,7 +80,7 @@ module Score =
             | Complete (Unanswered question) -> question |> List.map incorrectAnswer
 
         let answersWithAppealQuizzer =
-            match failedAppeal with
+            match questionState.FailedAppeal with
             | None -> answersWithoutAppeals
             | Some quizzer when
                 not
@@ -105,15 +101,38 @@ module Score =
                   State =
                     { AnswerState = answer
                       AppealState =
-                        (if quizzerFailedAppeal failedAppeal quizzer then
+                        (if quizzerFailedAppeal questionState.FailedAppeal quizzer then
                              AppealFailure
                          else
                              NoFailure) } })
 
         questionQuizzerEvents
 
-    let refreshQuestionScores questions =
+    let createScoreModel questions =
         questions
-        |> Map.map refreshQuestionScore
+        |> Map.map createScoreModelForQuestion
         |> Map.toList
         |> List.collect snd
+    
+    let sumScores scores =
+       scores
+       |> Seq.append [TeamScore.zero]
+       |> Seq.reduce (fun runningScore current -> runningScore |> TeamScore.add current)
+    
+    let calculateTeamScore questions quizzersOnTeam =
+        questions
+        |> createScoreModel
+        |> Seq.filter (fun scoreEvent ->
+            quizzersOnTeam
+            |> Seq.contains (scoreEvent.Position |> snd))
+        |> Seq.map (fun event -> event.State)
+        |> Seq.map teamScore
+        |> sumScores
+
+    let calculateQuizzerScore (scoringBasedOnStyle: EventState -> TeamScore) questions quizzer =
+        questions
+        |> createScoreModel
+        |> Seq.filter (fun scoreEvent -> quizzer = (scoreEvent.Position |> snd))
+        |> Seq.map (fun event -> event.State)
+        |> Seq.map scoringBasedOnStyle
+        |> sumScores

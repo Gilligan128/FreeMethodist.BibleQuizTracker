@@ -12,7 +12,7 @@ module ItemizedScore =
 
     let answerScore answerState =
         let score =
-            TeamScore.initial
+            TeamScore.zero
             |> TeamScore.correctAnswer
             |> TeamScore.value
 
@@ -23,7 +23,7 @@ module ItemizedScore =
 
     let appealScore appealState =
         let score =
-            TeamScore.initial
+            TeamScore.zero
             |> TeamScore.failAppeal
             |> TeamScore.value
 

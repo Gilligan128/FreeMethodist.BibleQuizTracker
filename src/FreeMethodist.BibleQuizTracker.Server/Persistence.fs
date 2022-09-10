@@ -23,7 +23,7 @@ let initExample quizCode =
                     Score = TeamScore.ofQuestions 1
                     Participation = In }
                   { Name = "John"
-                    Score = TeamScore.initial
+                    Score = TeamScore.zero
                     Participation = In } ] }
           TeamTwo =
             { Name = "RIGHT"
@@ -33,7 +33,7 @@ let initExample quizCode =
                     Score = TeamScore.ofQuestions 2
                     Participation = In }
                   { Name = "Juni"
-                    Score = TeamScore.initial
+                    Score = TeamScore.zero
                     Participation = In } ] }
           CurrentQuestion =
             (PositiveNumber.one

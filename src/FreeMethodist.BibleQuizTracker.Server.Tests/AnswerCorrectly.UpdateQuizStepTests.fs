@@ -38,7 +38,7 @@ let ``When Quizzer Answers then individual score goes up`` () =
         updateQuiz quizzer.Name initialQuiz
 
     let expectedScore =
-        TeamScore.initial |> TeamScore.correctAnswer
+        TeamScore.zero |> TeamScore.correctAnswer
 
     assertSuccess result (fun (updatedQuiz) ->
         let updatedQuizzer =

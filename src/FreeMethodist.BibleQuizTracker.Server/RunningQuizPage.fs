@@ -157,8 +157,7 @@ let private refreshModel (quiz: RunningTeamQuiz) =
             NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
             QuestionScores =
                 quiz.Questions
-                |> Map.map (fun _ v -> (v.AnswerState, v.FailedAppeal))
-                |> Score.refreshQuestionScores }
+                |> Score.createScoreModel }
 
     stateMatchedModel
 

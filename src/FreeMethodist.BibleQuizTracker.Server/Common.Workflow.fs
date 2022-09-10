@@ -22,7 +22,7 @@ type WithinQuizCommand<'data> =
       Quiz: QuizCode }
 
 type TeamScore = private TeamScore of int //increments of 20
-
+    
 type TeamPosition =
     | TeamOne
     | TeamTwo
@@ -180,7 +180,7 @@ module TeamScore =
 
     let value (TeamScore score) = score
 
-    let initial: TeamScore = TeamScore 0
+    let zero: TeamScore = TeamScore 0
 
     let ofQuestions questionCount = TeamScore(questionCount * 20)
 
@@ -192,6 +192,9 @@ module TeamScore =
     let revertAppealFailure (TeamScore value) = TeamScore(value + 20)
     
     let toString (TeamScore value) = string value
+    
+    let add (score1 : TeamScore) (score2: TeamScore) = TeamScore ((score1 |> value) + (score2 |> value))
+    
 
 [<RequireQualifiedAccess>]
 module RevertedCorrectAnswer =
@@ -307,7 +310,7 @@ module QuizzerState =
     let create name =
         { Name = name
           Participation = In
-          Score = TeamScore.initial }
+          Score = TeamScore.zero }
 
     let isQuizzer quizzerName (quizzerState: QuizzerState) = quizzerState.Name = quizzerName
 
@@ -340,11 +343,11 @@ module RunningTeamQuiz =
         { Code = "Example"
           TeamOne =
             { Name = "LEFT"
-              Score = TeamScore.initial
+              Score = TeamScore.zero
               Quizzers = [] }
           TeamTwo =
             { Name = "RIGHT"
-              Score = TeamScore.initial
+              Score = TeamScore.zero
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None

@@ -48,6 +48,12 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
                 Quizzers =
                     team.Quizzers
                     |> List.filter (fun q -> q.Name <> input.Quizzer) }
+            |> fun team ->
+                { team with
+                    Score =
+                        team.Quizzers
+                        |> Seq.map (fun q -> q.Name)
+                        |> Score.calculateTeamScore quiz.Questions }
 
         let replaceCurrent =
             quiz.CurrentQuizzer
@@ -99,14 +105,22 @@ let createEvents: CreateEvents =
 let removeQuizzer getQuiz (saveQuiz: SaveQuiz) : RemoveQuizzer.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError RemoveQuizzer.DbError
-            let! validQuiz = validateRemoval validateRunningQuiz quiz command.Data |> AsyncResult.ofResult
+            let! quiz =
+                getQuiz command.Quiz
+                |> AsyncResult.mapError RemoveQuizzer.DbError
+
+            let! validQuiz =
+                validateRemoval validateRunningQuiz quiz command.Data
+                |> AsyncResult.ofResult
 
             let quiz, currentChangedEvent =
                 removeQuizzerFromQuiz command.Data validQuiz []
 
-            do! quiz |> Running |> saveQuiz |> AsyncResult.mapError RemoveQuizzer.DbError 
+            do!
+                quiz
+                |> Running
+                |> saveQuiz
+                |> AsyncResult.mapError RemoveQuizzer.DbError
 
             return createEvents command.Quiz command.Data currentChangedEvent
         }
-

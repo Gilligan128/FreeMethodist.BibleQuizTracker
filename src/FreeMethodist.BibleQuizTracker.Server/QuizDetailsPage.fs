@@ -45,8 +45,7 @@ let private loadRunningQuiz quiz =
     { NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
       QuestionsWithEvents =
         quiz.Questions
-        |> Map.map (fun k v -> (v.AnswerState, v.FailedAppeal))
-        |> Score.refreshQuestionScores
+        |> Score.createScoreModel
       CompetitionStyle = ItemizedCompetitionStyle.Team(quiz.TeamOne |> loadRunningTeam, quiz.TeamTwo |> loadRunningTeam) }
 
 let private loadCompletedTeam (team: CompletedTeam) : ItemizedTeam =
@@ -61,9 +60,9 @@ let private loadCompletedQuiz (quiz: CompletedQuiz) =
         quiz.CompletedQuestions
         |> List.indexed
         |> List.collect (fun (i, v) ->
-            Score.refreshQuestionScore
+            Score.createScoreModelForQuestion
                 (i + 1 |> PositiveNumber.numberOrOne)
-                ((QuizAnswer.Complete v.AnswerState), v.FailedAppeal))
+                { AnswerState = (Complete v.AnswerState); FailedAppeal = v.FailedAppeal })
       CompetitionStyle =
         match quiz.CompetitionStyle with
         | CompletedCompetitionStyle.Team (teamOne, teamTwo) ->

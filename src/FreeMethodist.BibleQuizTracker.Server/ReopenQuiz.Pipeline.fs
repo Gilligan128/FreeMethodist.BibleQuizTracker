@@ -46,7 +46,7 @@ let mapQuestionToRunning (key, value: CompletedQuestion) : PositiveNumber * Ques
 let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : RunningTeamQuiz =
     let emptyTeam =
         { Name = ""
-          Score = TeamScore.initial
+          Score = TeamScore.zero
           Quizzers = [] }
 
     match quiz with
