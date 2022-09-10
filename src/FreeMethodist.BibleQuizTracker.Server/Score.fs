@@ -122,21 +122,27 @@ module Score =
             | scores ->
                 scores
                 |> Seq.reduce (fun runningScore current -> runningScore |> TeamScore.add current)
-
-    let calculateTeamScore questions quizzersOnTeam =
+    
+    let eventsForQuestion questionNumber questions =
         questions
-        |> createScoreModel
-        |> Seq.filter (fun scoreEvent ->
-            quizzersOnTeam
-            |> Seq.contains (scoreEvent.Position |> snd))
+        |> Seq.filter (fun event -> (event.Position |> fst) = questionNumber)
+    
+    let eventsForQuizzers quizzers questions =
+        questions
+        |> Seq.filter  (fun event -> quizzers |> Seq.contains (event.Position |> snd) )
+    
+    let scoreOfEvents scoring events =
+        events
         |> Seq.map (fun event -> event.State)
-        |> Seq.map teamScore
+        |> Seq.map scoring
         |> sumScores
-
+    
+    let calculateTeamScore quizzersOnTeam questions =
+        questions
+        |> eventsForQuizzers quizzersOnTeam
+        |> scoreOfEvents teamScore
+    
     let calculateQuizzerScore (scoringBasedOnStyle: EventState -> TeamScore) questions quizzer =
         questions
-        |> createScoreModel
-        |> Seq.filter (fun scoreEvent -> quizzer = (scoreEvent.Position |> snd))
-        |> Seq.map (fun event -> event.State)
-        |> Seq.map scoringBasedOnStyle
-        |> sumScores
+        |> eventsForQuizzers [quizzer]
+        |> scoreOfEvents scoringBasedOnStyle

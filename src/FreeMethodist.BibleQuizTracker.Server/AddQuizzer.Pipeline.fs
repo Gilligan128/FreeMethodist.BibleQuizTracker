@@ -45,14 +45,20 @@ let addQuizzerToQuiz: AddQuizzerToQuiz =
                     originalTeamState.Quizzers
                     @ [ { Name = input.Name
                           Participation = ParticipationState.In
-                          Score = Score.calculateQuizzerScore Score.quizzerScoreForTeamStyle quiz.Questions input.Name } ] }
+                          Score =
+                            Score.calculateQuizzerScore
+                                Score.quizzerScoreForTeamStyle
+                                (quiz.Questions |> Score.createScoreModel)
+                                input.Name } ] }
             |> fun teamstate ->
                 { teamstate with
                     Score =
-                        Score.calculateTeamScore
-                            quiz.Questions
-                            (teamstate.Quizzers
-                             |> Seq.map (fun quizzerState -> quizzerState.Name)) }
+                        quiz.Questions
+                        |> Score.createScoreModel
+                        |> Score.calculateTeamScore (
+                            teamstate.Quizzers
+                            |> Seq.map (fun quizzerState -> quizzerState.Name)
+                        ) }
 
         match input.Team with
         | TeamOne -> { quiz with TeamOne = newTeamState quiz.TeamOne }

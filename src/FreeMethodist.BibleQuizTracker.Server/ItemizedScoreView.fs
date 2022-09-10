@@ -55,19 +55,6 @@ module ItemizedScore =
 
     let questionsForQuizzer quizzerName q = (q.Position |> snd) = quizzerName
 
-    let scoreList (questions: QuestionQuizzerEvents) questionNumber quizzer =
-        questions
-        |> List.filter (questionsUpToNumber questionNumber)
-        |> List.filter (questionsForQuizzer quizzer)
-        |> List.map (fun q -> Some(q.State.AnswerState, q.State.AppealState))
-        |> List.map quizzerScore
-
-
-    let quizzerRunningScore questions questionNumber quizzer =
-        scoreList questions questionNumber quizzer
-        |> List.map fst //appeals only score at the team level
-        |> List.sum
-    
     let eventHasQuizzers quizzers event = quizzers |> Seq.contains ( event.Position |> snd ) 
     
     let eventOccurred (eventState: EventState) =
@@ -131,7 +118,7 @@ module ItemizedScore =
                 th { " " }
                 th {
                     attr.colspan $"{teamTwoColumns}"
-                    $"Team {teamTwo.Name}"
+                    $"Team {teamTwo.Name}"  
                 }
             }
 
@@ -203,21 +190,13 @@ module ItemizedScore =
     
     
     let teamTotal questionQuizEvents ((teamOne: ItemizedTeam), (teamTwo: ItemizedTeam)) =
-        let maxQuestion =
-            questionQuizEvents
-            |> List.map (fun q -> q.Position)
-            |> List.map fst
-            |> fun (list) -> if list.IsEmpty then PositiveNumber.one else List.max list
-
+     
         let teamScoreNode (team : ItemizedTeam) : Node =
             td {
                 attr.``class`` "has-text-weight-bold"
                 
                 questionQuizEvents
-                |> Seq.filter (eventHasQuizzers team.Quizzers )
-                |> Seq.map (fun event -> event.State)
-                |> Seq.map Score.teamScore
-                |> Score.sumScores
+                |> Score.calculateTeamScore team.Quizzers
                 |> TeamScore.value
                 |> string
             }
@@ -227,7 +206,7 @@ module ItemizedScore =
             <| fun quizzer ->
                 td {
                     text (
-                        quizzerRunningScore questionQuizEvents maxQuestion quizzer
+                        quizzer
                         |> string
                     )
                 }

@@ -51,9 +51,9 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
             |> fun team ->
                 { team with
                     Score =
-                        team.Quizzers
-                        |> Seq.map (fun q -> q.Name)
-                        |> Score.calculateTeamScore quiz.Questions }
+                        quiz.Questions
+                        |> Score.createScoreModel
+                        |> Score.calculateTeamScore (team.Quizzers |> Seq.map (fun q -> q.Name)) }
 
         let replaceCurrent =
             quiz.CurrentQuizzer
