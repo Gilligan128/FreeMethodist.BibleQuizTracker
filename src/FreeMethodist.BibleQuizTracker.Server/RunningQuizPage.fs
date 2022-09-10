@@ -2,6 +2,7 @@
 
 open System
 open System.Linq.Expressions
+open Bolero.Router
 open Bolero
 open Bolero.Html
 open Elmish
@@ -697,13 +698,18 @@ let update
             |> reloadQuizAsync
             |> mapToAsyncOperationCmd CompleteQuiz)
         |> matchOptionalCommand
-    | CompleteQuiz (Finished result) ->
-        let mapErrors error =
+    | CompleteQuiz (Finished (Ok quiz)) ->
+        let newCmd = (quizCode, Router.noModel) |> Page.QuizDetails |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub
+        model, newCmd, NoMessage
+    | CompleteQuiz (Finished (Error error)) ->
+          let mapErrors error =
             match error with
             | CompleteQuiz.Error.DbError dbError -> mapDbErrorToString dbError
             | CompleteQuiz.QuizState quizStateError -> mapQuizStateErrorToString quizStateError
-
-        result |> refreshQuizOrError mapErrors
+          let errorMessage = error
+                          |> mapWorkflowErrors mapErrors
+                          |> ExternalMessage.ErrorMessage
+          model, Cmd.none, errorMessage
     | ReopenQuiz (Started _) ->
         let mapQuizEvent event =
             match event with

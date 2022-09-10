@@ -29,6 +29,7 @@
         <Compile Include="ReopenQuiz.Pipeline.fs" />
         <Compile Include="QuizHub.fs" />
         <Compile Include="JumpPipeline.fs" />
+        <Compile Include="Score.fs" />
         <Compile Include="Common.Page.fs" />
         <Compile Include="RunWorkflow.fs" />
         <Compile Include="Html.fs" />
