@@ -34,7 +34,13 @@ type Startup() =
     let resolveTenantName (provider: IServiceProvider) =
         provider.GetRequiredService<IHostEnvironment>()
         |> getTenantName Environment.MachineName
-
+    
+    //Versioning
+    let backwardsCompatibleToRunningCompetitionStyle quiz =
+                        match quiz with 
+                        | Quiz.Running quiz when obj.ReferenceEquals(quiz.CompetitionStyle, null) -> Running {quiz with CompetitionStyle = RunningCompetitionStyle.Team (quiz.TeamOne, quiz.TeamTwo)} 
+                        | quiz -> quiz
+    
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     member this.ConfigureServices(services: IServiceCollection) =
@@ -56,7 +62,12 @@ type Startup() =
         let fsharpJsonOptions =
             JsonSerializerOptions()
         fsharpJsonOptions.Converters.Add(JsonFSharpConverter(allowNullFields = true))
+        
 
+        let deserialize (json: string) =
+                        JsonSerializer.Deserialize(json, fsharpJsonOptions)
+                        |> backwardsCompatibleToRunningCompetitionStyle
+        
         let getQuiz (provider: IServiceProvider) =
             let localStorage =
                 provider.GetRequiredService<ProtectedLocalStorage>()
@@ -65,12 +76,12 @@ type Startup() =
                 provider.GetRequiredService<BlobServiceClient>()
 
             let getFromLocal =
-                Persistence.getQuizFromLocalStorage localStorage fsharpJsonOptions
+                Persistence.getQuizFromLocalStorage localStorage deserialize
 
             let tenantName = resolveTenantName provider
 
             let getFromBlob =
-                Persistence.getQuizFromBlob blobServiceClient fsharpJsonOptions tenantName
+                Persistence.getQuizFromBlob blobServiceClient deserialize tenantName
 
 
             Persistence.getQuizFromLocalOrBlob getFromLocal getFromBlob
@@ -116,18 +127,10 @@ type Startup() =
                     let localStorage =
                         provider.GetRequiredService<ProtectedLocalStorage>()
 
+                 
+                    
                     let tryGetLocal =
-                        Persistence.tryGetQuizFromLocalStorage localStorage fsharpJsonOptions
-                    
-                    let backwardsCompatibleToRunningCompetitionStyle quiz =
-                        match quiz with 
-                        | Quiz.Running quiz when obj.ReferenceEquals(quiz, null) -> Running {quiz with CompetitionStyle = RunningCompetitionStyle.Team (quiz.TeamOne, quiz.TeamTwo)} 
-                        | quiz -> quiz
-                    
-                    let deserialize (json: string) =
-                        JsonSerializer.Deserialize(json, fsharpJsonOptions)
-                        |> backwardsCompatibleToRunningCompetitionStyle
-                            
+                        Persistence.tryGetQuizFromLocalStorage localStorage deserialize
 
                     let tenantName = resolveTenantName provider
 

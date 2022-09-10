@@ -147,8 +147,12 @@ let private refreshTeam (currentQuestion: QuestionState) (team: QuizTeamState) :
 
 let refreshCompetitionStyle refreshTeam refreshQuizzer competitionStyle =
     match competitionStyle with
-    | RunningCompetitionStyle.Team (teamone, teamTwo) -> LoadedCompetitionStyle.Team (refreshTeam teamone, refreshTeam teamTwo)
-    | RunningCompetitionStyle.Individuals quizzers -> quizzers |> List.map refreshQuizzer |> LoadedCompetitionStyle.Individuals 
+    | RunningCompetitionStyle.Team (teamone, teamTwo) ->
+        LoadedCompetitionStyle.Team(refreshTeam teamone, refreshTeam teamTwo)
+    | RunningCompetitionStyle.Individuals quizzers ->
+        quizzers
+        |> List.map refreshQuizzer
+        |> LoadedCompetitionStyle.Individuals
 
 let private refreshModel (quiz: RunningTeamQuiz) =
     let currentQuestion =
@@ -157,7 +161,11 @@ let private refreshModel (quiz: RunningTeamQuiz) =
 
     let stateMatchedModel =
         { emptyModel with
-            CompetitionStyle = refreshCompetitionStyle (refreshTeam currentQuestion) (refreshQuizzer currentQuestion) quiz.CompetitionStyle
+            CompetitionStyle =
+                refreshCompetitionStyle
+                    (refreshTeam currentQuestion)
+                    (refreshQuizzer currentQuestion)
+                    quiz.CompetitionStyle
             TeamOne = quiz.TeamOne |> refreshTeam currentQuestion
             TeamTwo = quiz.TeamTwo |> refreshTeam currentQuestion
             CurrentQuestion = PositiveNumber.value quiz.CurrentQuestion
@@ -749,12 +757,71 @@ let update
 type private quizPage = Template<"wwwroot/Quiz.html">
 
 
+let quizzerView  removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (teamPosition : TeamPosition) (quizzer: QuizzerModel, jumpPosition: int) =
+    let removeCap =
+        removeQuizzerCap
+        |> fun cap -> cap (quizzer.Name, teamPosition)
+
+    quizPage
+        .Quizzer()
+        .Name(quizzer.Name)
+        .Score(string quizzer.Score)
+        .JumpOrder(jumpPosition |> string)
+        .HiddenClass(
+            match jumpPosition with
+            | 0 -> "is-invisible"
+            | _ -> ""
+        )
+        .RemoveButton(
+            button {
+                attr.``class`` "button is-info is-light"
+
+                removeCap |> Html.disabledIfNone
+
+                on.click (fun _ ->
+                    removeCap
+                    |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
+
+                span {
+                    attr.``class`` "icon"
+                    i { attr.``class`` "fas fa-times-circle" }
+                }
+            }
+        )
+        .Select(fun _ -> dispatch (SelectQuizzer(Started quizzer.Name)))
+        .BackgroundColor(
+            currentQuizzer
+            |> Option.map (fun current ->
+                if quizzer.Name = current then
+                    "has-background-grey-lighter"
+                else
+                    "has-background-white-ter")
+            |> (fun current ->
+                match current with
+                | None -> ""
+                | Some q -> q)
+        )
+        .AnswerColor(
+            match quizzer.AnswerState with
+            | DidNotAnswer -> ""
+            | AnsweredCorrectly -> "success"
+            | AnsweredIncorrectly -> "danger"
+        )
+        .AppealVisible(
+            match quizzer.AppealState with
+            | NoFailure -> "is-hidden"
+            | AppealFailure -> ""
+        )
+        .Elt()
+
 let private teamView
     removeQuizzerCap
     position
+    (quizzerView: TeamPosition -> QuizzerModel * int -> Node)
     ((teamModel, jumpOrder, currentQuizzer): TeamModel * string list * Option<Quizzer>)
     (dispatch: Dispatch<Message>)
     =
+
     quizPage
         .Team()
         .Name(teamModel.Name)
@@ -775,64 +842,17 @@ let private teamView
                             | Some v -> v
                             | None -> 0
 
-                    let removeCap =
-                        removeQuizzerCap
-                        |> fun cap -> cap (quizzer.Name, position)
-
-                    quizPage
-                        .Quizzer()
-                        .Name(quizzer.Name)
-                        .Score(string quizzer.Score)
-                        .JumpOrder(jumpPosition |> string)
-                        .HiddenClass(
-                            match jumpPosition with
-                            | 0 -> "is-invisible"
-                            | _ -> ""
-                        )
-                        .RemoveButton(
-                            button {
-                                attr.``class`` "button is-info is-light"
-
-                                removeCap |> Html.disabledIfNone
-
-                                on.click (fun _ ->
-                                    removeCap
-                                    |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
-
-                                span {
-                                    attr.``class`` "icon"
-                                    i { attr.``class`` "fas fa-times-circle" }
-                                }
-                            }
-                        )
-                        .Select(fun _ -> dispatch (SelectQuizzer(Started quizzer.Name)))
-                        .BackgroundColor(
-                            currentQuizzer
-                            |> Option.map (fun current ->
-                                if quizzer.Name = current then
-                                    "has-background-grey-lighter"
-                                else
-                                    "has-background-white-ter")
-                            |> (fun current ->
-                                match current with
-                                | None -> ""
-                                | Some q -> q)
-                        )
-                        .AnswerColor(
-                            match quizzer.AnswerState with
-                            | DidNotAnswer -> ""
-                            | AnsweredCorrectly -> "success"
-                            | AnsweredIncorrectly -> "danger"
-                        )
-                        .AppealVisible(
-                            match quizzer.AppealState with
-                            | NoFailure -> "is-hidden"
-                            | AppealFailure -> ""
-                        )
-                        .Elt()
+                    quizzerView position (quizzer, jumpPosition)
             }
         )
         .Elt()
+
+let individualSideView
+    removeQuizzerCap
+    ((teamModel, jumpOrder, currentQuizzer): QuizzerModel list * string list * Option<Quizzer>)
+    (dispatch: Dispatch<Message>)
+    =
+    Html.empty ()
 
 let private mapItemizedTeam (team: TeamModel) : ItemizedTeam =
     { Name = team.Name
@@ -869,6 +889,8 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                     remove
                         { Quiz = model.Code
                           Data = { Quizzer = quizzer; Team = team } })
+        
+        let quizzerView = quizzerView removeQuizzerCap dispatch resolved.CurrentQuizzer 
 
         quizPage()
             .QuizCode(model.Code)
@@ -880,17 +902,19 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                 | Quizzer name -> name
                 | Scorekeeper -> "Scorekeeper"
             )
-            .TeamOne(
+            .SideOne(
                 teamView
                     removeQuizzerCap
                     TeamPosition.TeamOne
+                    quizzerView
                     (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
                     dispatch
             )
-            .TeamTwo(
+            .SideTwo(
                 teamView
                     removeQuizzerCap
                     TeamPosition.TeamTwo
+                    quizzerView
                     (resolved.TeamTwo, resolved.JumpOrder, resolved.CurrentQuizzer)
                     dispatch
             )
