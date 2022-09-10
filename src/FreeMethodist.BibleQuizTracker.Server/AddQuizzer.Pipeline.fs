@@ -47,7 +47,7 @@ let addQuizzerToQuiz: AddQuizzerToQuiz =
                           Participation = ParticipationState.In
                           Score =
                             Score.calculateQuizzerScore
-                                Score.quizzerScoreForTeamStyle
+                                Score.quizzerTeamStyleScoring
                                 (quiz.Questions |> Score.createScoreModel)
                                 input.Name } ] }
             |> fun teamstate ->

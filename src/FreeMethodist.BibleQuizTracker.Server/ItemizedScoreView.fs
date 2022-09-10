@@ -9,33 +9,7 @@ open Bolero.Html
 module ItemizedScore =
 
     type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
-
-    let answerScore answerState =
-        let score =
-            TeamScore.zero
-            |> TeamScore.correctAnswer
-            |> TeamScore.value
-
-        match answerState with
-        | AnsweredCorrectly -> score
-        | AnsweredIncorrectly -> 0
-        | DidNotAnswer -> 0
-
-    let appealScore appealState =
-        let score =
-            TeamScore.zero
-            |> TeamScore.failAppeal
-            |> TeamScore.value
-
-        match appealState with
-        | NoFailure -> 0
-        | AppealFailure -> score
-
-    let quizzerScore questionState =
-        questionState
-        |> Option.map (fun (answer, appeal) -> (answerScore answer), (appealScore appeal))
-        |> Option.defaultValue (0, 0)
-
+    
     let findQuestionQuizzerState question quizzer = question |> Map.tryFind quizzer
     
     let formatScore score =
@@ -48,12 +22,6 @@ module ItemizedScore =
         | None -> "is-hidden"
         | Some (_, NoFailure) -> "is-hidden"
         | Some (_, AppealFailure) -> ""
-
-    let questionsForNumber questionNumber q = (q.Position |> fst) = questionNumber
-
-    let questionsUpToNumber questionNumber q = (q.Position |> fst) <= questionNumber
-
-    let questionsForQuizzer quizzerName q = (q.Position |> snd) = quizzerName
 
     let eventHasQuizzers quizzers event = quizzers |> Seq.contains ( event.Position |> snd ) 
     
@@ -76,11 +44,9 @@ module ItemizedScore =
 
     let teamScoreForQuestion questions questionNumber (team: ItemizedTeam) =
         questions
-        |> Seq.filter (fun event -> ( event.Position |> fst ) = questionNumber)
-        |> Seq.filter (eventHasQuizzers team.Quizzers)
-        |> Seq.map (fun event -> event.State)
-        |> Seq.map Score.teamScore
-        |> Score.sumScores
+        |> Score.eventsForQuestion questionNumber
+        |> Score.eventsForQuizzers team.Quizzers
+        |> Score.calculate Score.teamScoring
         |> TeamScore.value
 
     let quizzerView scoringBasedOnStyle questionEvents quizzer =
@@ -162,7 +128,7 @@ module ItemizedScore =
             tr {
 
                 forEach teamOne.Quizzers
-                <| quizzerView Score.quizzerScoreForTeamStyle questionsAdapted
+                <| quizzerView Score.quizzerTeamStyleScoring questionsAdapted
 
                 td {
                     if teamEventOccurred teamOne currentQuestionEvents then
@@ -183,7 +149,7 @@ module ItemizedScore =
                 }
                 
                 forEach teamTwo.Quizzers
-                <| quizzerView Score.quizzerScoreForTeamStyle questionsAdapted
+                <| quizzerView Score.quizzerTeamStyleScoring questionsAdapted
             }
 
     let individualsBody quizzers = empty ()

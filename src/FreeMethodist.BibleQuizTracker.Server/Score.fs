@@ -46,17 +46,17 @@ module Score =
         | NoFailure -> TeamScore.zero
         | AppealFailure -> score
 
-    let quizzerScoreForTeamStyle eventState =
+    let quizzerTeamStyleScoring eventState =
         eventState
         |> fun eventState -> answerScore eventState.AnswerState
 
-    let quizzerScoreForIndividualStyle eventState =
+    let quizzerIndividualStyleScoring eventState =
         eventState
         |> fun eventState ->
             answerScore eventState.AnswerState
             |> TeamScore.add (appealScore eventState.AppealState)
 
-    let teamScore eventState =
+    let teamScoring eventState =
         eventState
         |> fun eventState ->
             answerScore eventState.AnswerState
@@ -131,7 +131,7 @@ module Score =
         questions
         |> Seq.filter  (fun event -> quizzers |> Seq.contains (event.Position |> snd) )
     
-    let scoreOfEvents scoring events =
+    let calculate scoring events =
         events
         |> Seq.map (fun event -> event.State)
         |> Seq.map scoring
@@ -140,9 +140,9 @@ module Score =
     let calculateTeamScore quizzersOnTeam questions =
         questions
         |> eventsForQuizzers quizzersOnTeam
-        |> scoreOfEvents teamScore
+        |> calculate teamScoring
     
     let calculateQuizzerScore (scoringBasedOnStyle: EventState -> TeamScore) questions quizzer =
         questions
         |> eventsForQuizzers [quizzer]
-        |> scoreOfEvents scoringBasedOnStyle
+        |> calculate scoringBasedOnStyle
