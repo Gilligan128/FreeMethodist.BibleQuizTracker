@@ -37,7 +37,7 @@ module ItemizedScore =
         |> Option.defaultValue (0, 0)
 
     let findQuestionQuizzerState question quizzer = question |> Map.tryFind quizzer
-
+    
     let formatScore score =
         match score with
         | 0 -> "-"
@@ -67,7 +67,9 @@ module ItemizedScore =
         scoreList questions questionNumber quizzer
         |> List.map fst //appeals only score at the team level
         |> List.sum
-
+    
+    let eventHasQuizzers quizzers event = quizzers |> Seq.contains ( event.Position |> snd ) 
+    
     let eventOccurred (eventState: EventState) =
         match eventState.AnswerState, eventState.AppealState with
         | AnsweredCorrectly, _ -> true
@@ -85,19 +87,16 @@ module ItemizedScore =
                       AppealState = NoFailure })
             |> eventOccurred)
 
-    let teamRunningScore questions questionNumber (team: ItemizedTeam) =
-        team.Quizzers
-        |> List.fold
-            (fun state qz ->
-                let QuizzerRunnigScoreWithAppeals =
-                    scoreList questions questionNumber qz
-                    |> List.map (fun (f, s) -> f + s)
+    let teamScoreForQuestion questions questionNumber (team: ItemizedTeam) =
+        questions
+        |> Seq.filter (fun event -> ( event.Position |> fst ) = questionNumber)
+        |> Seq.filter (eventHasQuizzers team.Quizzers)
+        |> Seq.map (fun event -> event.State)
+        |> Seq.map Score.teamScore
+        |> Score.sumScores
+        |> TeamScore.value
 
-                state
-                + (QuizzerRunnigScoreWithAppeals |> List.sum))
-            0
-
-    let quizzerView questionEvents quizzer =
+    let quizzerView scoringBasedOnStyle questionEvents quizzer =
         itemizedPage
             .Quizzer()
             .AppealVisible(
@@ -108,8 +107,10 @@ module ItemizedScore =
             .Score(
                 quizzer
                 |> findQuestionQuizzerState questionEvents
-                |> quizzerScore
-                |> fst
+                |> Option.map (function (answer, appeal) -> {AnswerState = answer; AppealState = appeal})
+                |> Option.map scoringBasedOnStyle
+                |> Option.map TeamScore.value
+                |> Option.defaultValue 0
                 |> formatScore
             )
             .Elt()
@@ -144,8 +145,8 @@ module ItemizedScore =
                 forEach teamOne.Quizzers
                 <| fun quizzer -> th { quizzer }
 
-                th { "Running Total" }
-                th { "Running Total" }
+                th { "Team Total" }
+                th { "Team Total" }
 
                 forEach teamTwo.Quizzers
                 <| fun quizzer -> th { quizzer }
@@ -179,11 +180,11 @@ module ItemizedScore =
                 td { text (number |> PositiveNumber.value |> string) }
 
                 forEach teamOne.Quizzers
-                <| quizzerView questionsAdapted
+                <| quizzerView Score.quizzerScoreForTeamStyle questionsAdapted
 
                 td {
                     if teamEventOccurred teamOne currentQuestionEvents then
-                        teamRunningScore questionEvents number teamOne
+                        teamScoreForQuestion questionEvents number teamOne
                         |> formatScore
                     else
                         "-"
@@ -191,18 +192,19 @@ module ItemizedScore =
 
                 td {
                     if teamEventOccurred teamTwo currentQuestionEvents then
-                        teamRunningScore questionEvents number teamTwo
+                        teamScoreForQuestion questionEvents number teamTwo
                         |> formatScore
                     else
                         "-"
                 }
 
                 forEach teamTwo.Quizzers
-                <| quizzerView questionsAdapted
+                <| quizzerView Score.quizzerScoreForTeamStyle questionsAdapted
             }
 
     let individualsBody quizzers = empty ()
-
+    
+    
     let teamTotal questionQuizEvents ((teamOne: ItemizedTeam), (teamTwo: ItemizedTeam)) =
         let maxQuestion =
             questionQuizEvents
@@ -210,15 +212,20 @@ module ItemizedScore =
             |> List.map fst
             |> fun (list) -> if list.IsEmpty then PositiveNumber.one else List.max list
 
-        let teamScoreNode team : Node =
+        let teamScoreNode (team : ItemizedTeam) : Node =
             td {
                 attr.``class`` "has-text-weight-bold"
-
-                teamRunningScore questionQuizEvents maxQuestion team
+                
+                questionQuizEvents
+                |> Seq.filter (eventHasQuizzers team.Quizzers )
+                |> Seq.map (fun event -> event.State)
+                |> Seq.map Score.teamScore
+                |> Score.sumScores
+                |> TeamScore.value
                 |> string
             }
 
-        let quizzersFooterNode quizzers =
+        let quizzersTotalNode quizzers =
             forEach quizzers
             <| fun quizzer ->
                 td {
@@ -234,10 +241,10 @@ module ItemizedScore =
                 "TOTAL"
             }
 
-            quizzersFooterNode teamOne.Quizzers
+            quizzersTotalNode teamOne.Quizzers
             teamScoreNode teamOne
             teamScoreNode teamTwo
-            quizzersFooterNode teamTwo.Quizzers
+            quizzersTotalNode teamTwo.Quizzers
         }
 
     let individualsTotal quizzers = empty ()
