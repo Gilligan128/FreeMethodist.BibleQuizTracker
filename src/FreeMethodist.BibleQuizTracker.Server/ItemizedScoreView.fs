@@ -124,30 +124,26 @@ module ItemizedScore =
 
         concat {
             tr {
-                th { "" }
-
                 th {
                     attr.colspan $"{teamOneColumns}"
                     $"Team {teamOne.Name}"
                 }
-
+                th { " " }
                 th {
                     attr.colspan $"{teamTwoColumns}"
                     $"Team {teamTwo.Name}"
                 }
             }
 
-            tr { "" }
-
             tr {
-                th { "Question" }
+                
 
                 forEach teamOne.Quizzers
                 <| fun quizzer -> th { quizzer }
 
                 th { "Team Total" }
+                th { "Question" }
                 th { "Team Total" }
-
                 forEach teamTwo.Quizzers
                 <| fun quizzer -> th { quizzer }
             }
@@ -177,7 +173,6 @@ module ItemizedScore =
                  |> Map.map (fun k v -> v.AnswerState, v.AppealState))
 
             tr {
-                td { text (number |> PositiveNumber.value |> string) }
 
                 forEach teamOne.Quizzers
                 <| quizzerView Score.quizzerScoreForTeamStyle questionsAdapted
@@ -189,7 +184,9 @@ module ItemizedScore =
                     else
                         "-"
                 }
-
+                
+                td { text (number |> PositiveNumber.value |> string) }
+                
                 td {
                     if teamEventOccurred teamTwo currentQuestionEvents then
                         teamScoreForQuestion questionEvents number teamTwo
@@ -197,7 +194,7 @@ module ItemizedScore =
                     else
                         "-"
                 }
-
+                
                 forEach teamTwo.Quizzers
                 <| quizzerView Score.quizzerScoreForTeamStyle questionsAdapted
             }
@@ -236,13 +233,14 @@ module ItemizedScore =
                 }
 
         tr {
+           
+
+            quizzersTotalNode teamOne.Quizzers
+            teamScoreNode teamOne
             td {
                 attr.``class`` "has-text-weight-bold"
                 "TOTAL"
             }
-
-            quizzersTotalNode teamOne.Quizzers
-            teamScoreNode teamOne
             teamScoreNode teamTwo
             quizzersTotalNode teamTwo.Quizzers
         }
