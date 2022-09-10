@@ -28,8 +28,13 @@ type AddQuizzerModel =
     | Active of string * TeamPosition
     | Inert
 
+type LoadedCompetitionStyle =
+    | Team of TeamModel * TeamModel
+    | Individuals of QuizzerModel list
+
 type LoadedModel =
     { JoiningQuizzer: string
+      CompetitionStyle: LoadedCompetitionStyle
       TeamOne: TeamModel
       TeamTwo: TeamModel
       JumpOrder: string list
@@ -80,6 +85,7 @@ type ExternalMessage =
 
 let public emptyModel =
     { JoiningQuizzer = ""
+      CompetitionStyle = Individuals []
       TeamOne = { Name = ""; Score = 0; Quizzers = [] }
       TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
       JumpOrder = []
@@ -102,51 +108,56 @@ let mapLoaded mapper model =
     | InProgress _ -> model
     | Resolved loaded -> Resolved(mapper loaded)
 
+let getAppealState appeal quizzer =
+    match appeal with
+    | None -> NoFailure
+    | Some appealer when appealer = quizzer -> AppealFailure
+    | Some _ -> NoFailure
+
+let private getAnswerState quizAnswer (quizzerState: QuizzerState) =
+    let quizzerWasIncorrect =
+        List.contains quizzerState.Name
+
+    match quizAnswer with
+    | Incomplete incorrectAnswerers when incorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
+    | Incomplete _ -> DidNotAnswer
+    | Complete (Answered question) when question.Answerer = quizzerState.Name -> AnsweredCorrectly
+    | Complete (Answered question) when question.IncorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
+    | Complete (Answered _) -> DidNotAnswer
+    | Complete (Unanswered question) when question |> quizzerWasIncorrect -> AnsweredIncorrectly
+    | Complete (Unanswered _) -> DidNotAnswer
+
+let private refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerState) : QuizzerModel =
+    { Name = quizzer.Name
+      Score = TeamScore.value quizzer.Score
+      ConnectionStatus = Unknown
+      AnswerState =
+        quizzer
+        |> getAnswerState currentQuestion.AnswerState
+      AppealState =
+        quizzer.Name
+        |> getAppealState currentQuestion.FailedAppeal }
+
+let private refreshTeam (currentQuestion: QuestionState) (team: QuizTeamState) : TeamModel =
+    { Name = team.Name
+      Score = team.Score |> TeamScore.value
+      Quizzers =
+        team.Quizzers
+        |> List.map (refreshQuizzer currentQuestion) }
+
+let refreshCompetitionStyle refreshTeam refreshQuizzer competitionStyle =
+    match competitionStyle with
+    | RunningCompetitionStyle.Team (teamone, teamTwo) -> LoadedCompetitionStyle.Team (refreshTeam teamone, refreshTeam teamTwo)
+    | RunningCompetitionStyle.Individuals quizzers -> quizzers |> List.map refreshQuizzer |> LoadedCompetitionStyle.Individuals 
+
 let private refreshModel (quiz: RunningTeamQuiz) =
-    let getAnswerState quizAnswer (quizzerState: QuizzerState) =
-        let quizzerWasIncorrect =
-            List.contains quizzerState.Name
-
-        match quizAnswer with
-        | Incomplete incorrectAnswerers when incorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
-        | Incomplete _ -> DidNotAnswer
-        | Complete (Answered question) when question.Answerer = quizzerState.Name -> AnsweredCorrectly
-        | Complete (Answered question) when question.IncorrectAnswerers |> quizzerWasIncorrect -> AnsweredIncorrectly
-        | Complete (Answered _) -> DidNotAnswer
-        | Complete (Unanswered question) when question |> quizzerWasIncorrect -> AnsweredIncorrectly
-        | Complete (Unanswered _) -> DidNotAnswer
-
-    let getAppealState appeal quizzer =
-        match appeal with
-        | None -> NoFailure
-        | Some appealer when appealer = quizzer -> AppealFailure
-        | Some _ -> NoFailure
-
-    let refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerState) : QuizzerModel =
-        { Name = quizzer.Name
-          Score = TeamScore.value quizzer.Score
-          ConnectionStatus = Unknown
-          AnswerState =
-            quizzer
-            |> getAnswerState currentQuestion.AnswerState
-          AppealState =
-            quizzer.Name
-            |> getAppealState currentQuestion.FailedAppeal }
-
-    let refreshTeam (currentQuestion: QuestionState) (team: QuizTeamState) : TeamModel =
-        { Name = team.Name
-          Score = team.Score |> TeamScore.value
-          Quizzers =
-            team.Quizzers
-            |> List.map (refreshQuizzer currentQuestion) }
-
+    let currentQuestion =
+        quiz.Questions.TryFind(quiz.CurrentQuestion)
+        |> Option.defaultValue QuestionState.initial
 
     let stateMatchedModel =
-        let currentQuestion =
-            quiz.Questions.TryFind(quiz.CurrentQuestion)
-            |> Option.defaultValue QuestionState.initial
-
         { emptyModel with
+            CompetitionStyle = refreshCompetitionStyle (refreshTeam currentQuestion) (refreshQuizzer currentQuestion) quiz.CompetitionStyle
             TeamOne = quiz.TeamOne |> refreshTeam currentQuestion
             TeamTwo = quiz.TeamTwo |> refreshTeam currentQuestion
             CurrentQuestion = PositiveNumber.value quiz.CurrentQuestion
@@ -155,9 +166,7 @@ let private refreshModel (quiz: RunningTeamQuiz) =
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked
             NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
-            QuestionScores =
-                quiz.Questions
-                |> Score.createScoreModel }
+            QuestionScores = quiz.Questions |> Score.createScoreModel }
 
     stateMatchedModel
 
@@ -698,17 +707,24 @@ let update
             |> mapToAsyncOperationCmd CompleteQuiz)
         |> matchOptionalCommand
     | CompleteQuiz (Finished (Ok quiz)) ->
-        let newCmd = (quizCode, Router.noModel) |> Page.QuizDetails |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub
+        let newCmd =
+            (quizCode, Router.noModel)
+            |> Page.QuizDetails
+            |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub
+
         model, newCmd, NoMessage
     | CompleteQuiz (Finished (Error error)) ->
-          let mapErrors error =
+        let mapErrors error =
             match error with
             | CompleteQuiz.Error.DbError dbError -> mapDbErrorToString dbError
             | CompleteQuiz.QuizState quizStateError -> mapQuizStateErrorToString quizStateError
-          let errorMessage = error
-                          |> mapWorkflowErrors mapErrors
-                          |> ExternalMessage.ErrorMessage
-          model, Cmd.none, errorMessage
+
+        let errorMessage =
+            error
+            |> mapWorkflowErrors mapErrors
+            |> ExternalMessage.ErrorMessage
+
+        model, Cmd.none, errorMessage
     | ReopenQuiz (Started _) ->
         let mapQuizEvent event =
             match event with
@@ -776,17 +792,16 @@ let private teamView
                         .RemoveButton(
                             button {
                                 attr.``class`` "button is-info is-light"
-                                
+
                                 removeCap |> Html.disabledIfNone
 
                                 on.click (fun _ ->
                                     removeCap
                                     |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
+
                                 span {
                                     attr.``class`` "icon"
-                                    i {
-                                        attr.``class`` "fas fa-times-circle"
-                                    }
+                                    i { attr.``class`` "fas fa-times-circle" }
                                 }
                             }
                         )
