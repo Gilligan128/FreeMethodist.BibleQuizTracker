@@ -4,15 +4,17 @@ open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
+let private mapCompletedQuizzerToRunning (quizzer: CompletedQuizzer) =
+    { Name = quizzer.Name
+      Score = quizzer.Score
+      Participation = Out }
+
 let private mapCompletedTeamToRunning (team: CompletedTeam) : QuizTeamState =
     { Name = team.Name
       Score = team.Score
       Quizzers =
         team.Quizzers
-        |> List.map (fun q ->
-            { Name = q.Name
-              Score = q.Score
-              Participation = Out }) }
+        |> List.map mapCompletedQuizzerToRunning }
 
 let private mapOptionToList opt =
     match opt with
@@ -26,10 +28,7 @@ let private mapOfficialToRunning (team: OfficialTeam) : QuizTeamState =
         team
         |> OfficialTeam.quizzerList
         |> List.choose id
-        |> List.map (fun q ->
-            { Name = q.Name
-              Score = q.Score
-              Participation = Out }) }
+        |> List.map (mapCompletedQuizzerToRunning) }
 
 let ofNumber value =
     value
@@ -51,13 +50,21 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
 
     match quiz with
     | Choice1Of2 completed ->
-        let teamOne, teamTwo =
+        let teamOne, teamTwo, competitionStyle =
             match completed.CompetitionStyle with
-            | CompletedCompetitionStyle.Individual _ -> emptyTeam, emptyTeam
+            | CompletedCompetitionStyle.Individual quizzers ->
+                emptyTeam,
+                emptyTeam,
+                quizzers
+                |> List.map mapCompletedQuizzerToRunning
+                |> RunningCompetitionStyle.Individuals
             | CompletedCompetitionStyle.Team (teamOne, teamTwo) ->
-                (mapCompletedTeamToRunning teamOne), (mapCompletedTeamToRunning teamTwo)
+                let runningTeamOne, runningTeamTwo = (mapCompletedTeamToRunning teamOne), (mapCompletedTeamToRunning teamTwo)
+                let competitionStyle = (runningTeamOne, runningTeamTwo) |> RunningCompetitionStyle.Team
+                runningTeamOne, runningTeamTwo, competitionStyle
 
         { Code = completed.Code
+          CompetitionStyle = competitionStyle
           TeamOne = teamOne
           TeamTwo = teamTwo
           CurrentQuestion = (ofNumber completed.CompletedQuestions.Length)
@@ -68,12 +75,18 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
             |> List.map mapQuestionToRunning
             |> Map.ofList }
     | Choice2Of2 official ->
-        let teamOne, teamTwo =
+        let teamOne, teamTwo, competitionStyle =
             match official.CompetitionStyle with
-            | OfficialCompetitionStyle.Individual _ -> emptyTeam, emptyTeam
-            | OfficialCompetitionStyle.Team (one, two) -> (one |> mapOfficialToRunning, two |> mapOfficialToRunning)
+            | OfficialCompetitionStyle.Individual quizzers ->
+                let competitionStyle = quizzers |> List.map mapCompletedQuizzerToRunning |> RunningCompetitionStyle.Individuals
+                emptyTeam, emptyTeam, competitionStyle
+            | OfficialCompetitionStyle.Team (one, two) ->
+                let runningTeamOne, runningTeamTwo = (one |> mapOfficialToRunning, two |> mapOfficialToRunning)
+                let competitionStyle = (runningTeamOne, runningTeamTwo) |> RunningCompetitionStyle.Team
+                runningTeamOne, runningTeamTwo, competitionStyle
 
         { Code = official.Code
+          CompetitionStyle = competitionStyle
           TeamOne = teamOne
           TeamTwo = teamTwo
           CurrentQuestion = official.CompletedQuestions.Length |> ofNumber

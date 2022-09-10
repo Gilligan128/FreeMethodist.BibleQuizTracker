@@ -17,12 +17,10 @@ type User =
 
 type TeamName = NonEmptyString
 
-type WithinQuizCommand<'data> =
-    { Data: 'data
-      Quiz: QuizCode }
+type WithinQuizCommand<'data> = { Data: 'data; Quiz: QuizCode }
 
 type TeamScore = private TeamScore of int //increments of 20
-    
+
 type TeamPosition =
     | TeamOne
     | TeamTwo
@@ -53,12 +51,13 @@ module PositiveNumber =
 
     let increment (PositiveNumber i) = PositiveNumber(i + 1)
     let decrement (PositiveNumber i) = PositiveNumber(Math.Max(i - 1, 1))
-    
+
     let numberOrOne number =
         create "" number
         |> function
-        | Ok value -> value
-        | Error _ -> one
+            | Ok value -> value
+            | Error _ -> one
+
 type ParticipationState =
     | In
     | Out
@@ -88,9 +87,14 @@ type QuizTeamState =
       Score: TeamScore
       Quizzers: QuizzerState list }
 
+type RunningCompetitionStyle =
+    | Team of QuizTeamState * QuizTeamState
+    | Individuals of QuizzerState list
+
 type RunningTeamQuiz =
     { Code: QuizCode
       Questions: Map<PositiveNumber, QuestionState>
+      CompetitionStyle: RunningCompetitionStyle
       TeamOne: QuizTeamState
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
@@ -188,13 +192,14 @@ module TeamScore =
     let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
 
     let failAppeal (TeamScore value) = TeamScore(value - 20)
-    
+
     let revertAppealFailure (TeamScore value) = TeamScore(value + 20)
-    
+
     let toString (TeamScore value) = string value
-    
-    let add (score1 : TeamScore) (score2: TeamScore) = TeamScore ((score1 |> value) + (score2 |> value))
-    
+
+    let add (score1: TeamScore) (score2: TeamScore) =
+        TeamScore((score1 |> value) + (score2 |> value))
+
 
 [<RequireQualifiedAccess>]
 module RevertedCorrectAnswer =
@@ -351,7 +356,16 @@ module RunningTeamQuiz =
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
-          Questions = Map.empty }
+          Questions = Map.empty
+          CompetitionStyle =
+            RunningCompetitionStyle.Team(
+                { Name = "LEFT"
+                  Score = TeamScore.zero
+                  Quizzers = [] },
+                { Name = "RIGHT"
+                  Score = TeamScore.zero
+                  Quizzers = [] }
+            ) }
 
 
     let getTeam teamPosition (quiz: RunningTeamQuiz) =

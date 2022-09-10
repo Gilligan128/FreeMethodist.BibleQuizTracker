@@ -13,28 +13,33 @@ open Microsoft.FSharp.Control
 
 
 let initExample quizCode =
+    let teamOne : QuizTeamState= 
+        { Name = "LEFT"
+          Score = TeamScore.ofQuestions 1
+          Quizzers =
+            [ { Name = "Jim"
+                Score = TeamScore.ofQuestions 1
+                Participation = In }
+              { Name = "John"
+                Score = TeamScore.zero
+                Participation = In } ] }
+    let teamTwo : QuizTeamState = 
+        { Name = "RIGHT"
+          Score = TeamScore.ofQuestions 2
+          Quizzers =
+            [ { Name = "Jina"
+                Score = TeamScore.ofQuestions 2
+                Participation = In }
+              { Name = "Juni"
+                Score = TeamScore.zero
+                Participation = In } ] }
     Running
         { Code = quizCode
+          CompetitionStyle = RunningCompetitionStyle.Team (teamOne, teamTwo)
           TeamOne =
-            { Name = "LEFT"
-              Score = TeamScore.ofQuestions 1
-              Quizzers =
-                [ { Name = "Jim"
-                    Score = TeamScore.ofQuestions 1
-                    Participation = In }
-                  { Name = "John"
-                    Score = TeamScore.zero
-                    Participation = In } ] }
+            teamOne
           TeamTwo =
-            { Name = "RIGHT"
-              Score = TeamScore.ofQuestions 2
-              Quizzers =
-                [ { Name = "Jina"
-                    Score = TeamScore.ofQuestions 2
-                    Participation = In }
-                  { Name = "Juni"
-                    Score = TeamScore.zero
-                    Participation = In } ] }
+            teamTwo
           CurrentQuestion =
             (PositiveNumber.one
              |> PositiveNumber.increment

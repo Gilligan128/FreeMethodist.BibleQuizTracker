@@ -13,6 +13,8 @@ let initialTeamStateWithQuizzer quizzer =
                   Participation = In
                   Score = TeamScore.zero } ] }
 
+
+
 [<Fact>]
 let ``Given there is no jump order, when current quizzer removed then there is no current quizzer`` () =
     let input: RemoveQuizzer.Data =
@@ -51,3 +53,4 @@ let ``when a non-current quizzer removed then Current Quizzer remains the same``
 
     Assert.Equal(initialQuizState.CurrentQuizzer, quiz.CurrentQuizzer)
     Assert.Equal(None, currentChangedEvent)
+

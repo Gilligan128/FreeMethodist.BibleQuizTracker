@@ -20,20 +20,10 @@ let validateRemoval validateQuiz : ValidateRemoval =
             let! validQuiz =
                 validateQuiz quiz
                 |> Result.mapError RemoveQuizzer.QuizStateError
-
-            let teamHasQuizzer team =
-                if team.Quizzers
-                   |> List.map (fun q -> q.Name)
-                   |> List.contains input.Quizzer then
-                    Ok validQuiz
-                else
-                    Error(RemoveQuizzer.QuizzerNotParticipating input.Quizzer)
-
-            return!
-                match input.Team with
-                | TeamOne -> teamHasQuizzer validQuiz.TeamOne
-                | TeamTwo -> teamHasQuizzer validQuiz.TeamTwo
-        }
+            return! RunningTeamQuiz.tryFindQuizzerAndTeam input.Quizzer validQuiz
+                    |> Result.ofOption (RemoveQuizzer.QuizzerNotParticipating input.Quizzer)
+                    |> Result.map (fun _ -> validQuiz)
+        } 
 
 let private nextCurrentQuizzer removedQuizzer currentQuizzer =
     if currentQuizzer = removedQuizzer then

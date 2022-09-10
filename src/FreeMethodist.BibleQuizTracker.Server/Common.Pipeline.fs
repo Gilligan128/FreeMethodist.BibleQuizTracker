@@ -42,18 +42,22 @@ type OfficialTeam =
 
 [<RequireQualifiedAccess>]
 module OfficialTeam =
-    let quizzerList (team : OfficialTeam) =
-         [ Some team.QuizzerOne; Some team.QuizzerTwo; team.QuizzerThree; team.QuizzerFour; team.QuizzerFive]
+    let quizzerList (team: OfficialTeam) =
+        [ Some team.QuizzerOne
+          Some team.QuizzerTwo
+          team.QuizzerThree
+          team.QuizzerFour
+          team.QuizzerFive ]
 
 type OfficialCompetitionStyle =
     | Individual of CompletedQuizzer list
-    | Team of OfficialTeam*OfficialTeam
+    | Team of OfficialTeam * OfficialTeam
 
 type OfficialTeamQuiz =
     { Code: QuizCode
       WinningTeam: OfficialTeam
       LosingTeam: OfficialTeam
-      CompetitionStyle : OfficialCompetitionStyle
+      CompetitionStyle: OfficialCompetitionStyle
       CompletedQuestions: CompletedQuestion list }
 
 type Quiz =
@@ -69,6 +73,15 @@ module Quiz =
         | CompetitionStyle.Team teams ->
             Running
                 { Code = unvalidatedQuiz.Code
+                  CompetitionStyle =
+                    RunningCompetitionStyle.Team(
+                        { Name = teams.TeamOneName
+                          Score = TeamScore.zero
+                          Quizzers = [] },
+                        { Name = teams.TeamTwoName
+                          Score = TeamScore.zero
+                          Quizzers = [] }
+                    )
                   TeamOne =
                     { Name = teams.TeamOneName
                       Score = TeamScore.zero
@@ -83,6 +96,7 @@ module Quiz =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial }
             |> Ok
+
     let getCode quiz =
         match quiz with
         | Running r -> r.Code

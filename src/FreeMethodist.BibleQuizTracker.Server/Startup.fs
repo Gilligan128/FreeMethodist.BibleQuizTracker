@@ -5,6 +5,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
@@ -54,8 +55,7 @@ type Startup() =
 
         let fsharpJsonOptions =
             JsonSerializerOptions()
-
-        fsharpJsonOptions.Converters.Add(JsonFSharpConverter())
+        fsharpJsonOptions.Converters.Add(JsonFSharpConverter(allowNullFields = true))
 
         let getQuiz (provider: IServiceProvider) =
             let localStorage =
@@ -118,9 +118,16 @@ type Startup() =
 
                     let tryGetLocal =
                         Persistence.tryGetQuizFromLocalStorage localStorage fsharpJsonOptions
-
+                    
+                    let backwardsCompatibleToRunningCompetitionStyle quiz =
+                        match quiz with 
+                        | Quiz.Running quiz when obj.ReferenceEquals(quiz, null) -> Running {quiz with CompetitionStyle = RunningCompetitionStyle.Team (quiz.TeamOne, quiz.TeamTwo)} 
+                        | quiz -> quiz
+                    
                     let deserialize (json: string) =
                         JsonSerializer.Deserialize(json, fsharpJsonOptions)
+                        |> backwardsCompatibleToRunningCompetitionStyle
+                            
 
                     let tenantName = resolveTenantName provider
 
