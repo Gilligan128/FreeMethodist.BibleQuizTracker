@@ -188,7 +188,7 @@ module TeamScore =
     let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
 
     let failAppeal (TeamScore value) = TeamScore(value - 20)
-
+    
     let revertAppealFailure (TeamScore value) = TeamScore(value + 20)
     
     let toString (TeamScore value) = string value

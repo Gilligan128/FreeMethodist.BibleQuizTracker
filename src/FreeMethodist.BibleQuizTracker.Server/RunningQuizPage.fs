@@ -158,7 +158,7 @@ let private refreshModel (quiz: RunningTeamQuiz) =
             QuestionScores =
                 quiz.Questions
                 |> Map.map (fun _ v -> (v.AnswerState, v.FailedAppeal))
-                |> ItemizedScoreModel.refreshQuestionScores }
+                |> Score.refreshQuestionScores }
 
     stateMatchedModel
 

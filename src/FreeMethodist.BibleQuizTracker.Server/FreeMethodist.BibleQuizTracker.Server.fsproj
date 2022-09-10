@@ -31,9 +31,9 @@
         <Compile Include="JumpPipeline.fs" />
         <Compile Include="Score.fs" />
         <Compile Include="Common.Page.fs" />
+        <Compile Include="LiveScoreModel.fs" />
         <Compile Include="RunWorkflow.fs" />
         <Compile Include="Html.fs" />
-        <Compile Include="LiveScoreModel.fs" />
         <Compile Include="CompletedQuizzesModel.fs" />
         <Compile Include="Routing.fs" />
         <Compile Include="Deferred.fs" />
