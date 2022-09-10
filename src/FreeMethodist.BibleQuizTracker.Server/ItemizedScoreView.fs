@@ -203,7 +203,7 @@ module ItemizedScore =
 
     let individualsBody quizzers = empty ()
 
-    let teamFooter questionQuizEvents ((teamOne: ItemizedTeam), (teamTwo: ItemizedTeam)) =
+    let teamTotal questionQuizEvents ((teamOne: ItemizedTeam), (teamTwo: ItemizedTeam)) =
         let maxQuestion =
             questionQuizEvents
             |> List.map (fun q -> q.Position)
@@ -240,7 +240,7 @@ module ItemizedScore =
             quizzersFooterNode teamTwo.Quizzers
         }
 
-    let individualsFooter quizzers = empty ()
+    let individualsTotal quizzers = empty ()
 
     let render (model: ItemizedScoreModel) dispatch =
         let numberOfQuestions =
@@ -257,11 +257,11 @@ module ItemizedScore =
                 | ItemizedCompetitionStyle.Individual quizzers -> individualsBody quizzers
                 | ItemizedCompetitionStyle.Team (teamOne, teamTwo) ->
                     teamBody (model.QuestionsWithEvents, (numberOfQuestions |> PositiveNumber.value)) (teamOne, teamTwo)
-            )
-            .Footer(
+            )           
+            .Total(
                 match model.CompetitionStyle with
-                | ItemizedCompetitionStyle.Individual quizzers -> individualsFooter quizzers
+                | ItemizedCompetitionStyle.Individual quizzers -> individualsTotal quizzers
                 | ItemizedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamFooter model.QuestionsWithEvents (teamOne, teamTwo)
+                    teamTotal model.QuestionsWithEvents (teamOne, teamTwo)
             )
             .Elt()

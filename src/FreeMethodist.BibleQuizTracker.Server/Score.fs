@@ -113,12 +113,16 @@ module Score =
         |> Map.map createScoreModelForQuestion
         |> Map.toList
         |> List.collect snd
-    
+
     let sumScores scores =
-       scores
-       |> Seq.append [TeamScore.zero]
-       |> Seq.reduce (fun runningScore current -> runningScore |> TeamScore.add current)
-    
+        scores
+        |> List.ofSeq
+        |> function
+            | [] -> TeamScore.zero
+            | scores ->
+                scores
+                |> Seq.reduce (fun runningScore current -> runningScore |> TeamScore.add current)
+
     let calculateTeamScore questions quizzersOnTeam =
         questions
         |> createScoreModel
