@@ -69,7 +69,24 @@ type Quiz =
 module Quiz =
     let start (unvalidatedQuiz: UnvalidatedQuiz) =
         match unvalidatedQuiz.CompetitionStyle with
-        | CompetitionStyle.Individual -> Result.Error()
+        | CompetitionStyle.Individual ->
+             Running
+                { Code = unvalidatedQuiz.Code
+                  CompetitionStyle =
+                    RunningCompetitionStyle.Individuals []
+                  TeamOne =
+                    { Name = ""
+                      Score = TeamScore.zero
+                      Quizzers = [] }
+                  TeamTwo =
+                    { Name = ""
+                      Score = TeamScore.zero
+                      Quizzers = [] }
+                  CurrentQuizzer = None
+                  CurrentQuestion = PositiveNumber.one
+                  Questions =
+                    Map.empty
+                    |> Map.add PositiveNumber.one QuestionState.initial }
         | CompetitionStyle.Team teams ->
             Running
                 { Code = unvalidatedQuiz.Code
@@ -95,7 +112,7 @@ module Quiz =
                   Questions =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial }
-            |> Ok
+       |> Ok
 
     let getCode quiz =
         match quiz with

@@ -8,9 +8,7 @@ open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView
-open FreeMethodist.BibleQuizTracker.Server.ItemizedScoreView.ItemizedScore
 open FreeMethodist.BibleQuizTracker.Server.Routing
-open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 

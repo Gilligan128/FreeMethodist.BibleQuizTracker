@@ -3,7 +3,6 @@
 open Bolero
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
-open FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
 
 /// Routing endpoints definition.
 type Page =

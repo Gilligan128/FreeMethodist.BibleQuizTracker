@@ -814,6 +814,14 @@ let quizzerView  removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (qui
         )
         .Elt()
 
+let private getJumpPosition jumpOrder (quizzer : QuizzerModel) =
+      jumpOrder
+        |> Seq.tryFindIndex (fun q -> q = quizzer.Name)
+        |> Option.map ((+) 1)
+        |> function
+            | Some v -> v
+            | None -> 0
+
 let private teamView
     removeQuizzerCap
     position
@@ -835,12 +843,8 @@ let private teamView
             concat {
                 for quizzer in teamModel.Quizzers do
                     let jumpPosition =
-                        jumpOrder
-                        |> Seq.tryFindIndex (fun q -> q = quizzer.Name)
-                        |> Option.map ((+) 1)
-                        |> function
-                            | Some v -> v
-                            | None -> 0
+                        quizzer
+                        |> getJumpPosition jumpOrder
 
                     quizzerView (quizzer, jumpPosition)
             }
@@ -849,14 +853,28 @@ let private teamView
 
 let individualSideView
     removeQuizzerCap
-    ((teamModel, jumpOrder, currentQuizzer): QuizzerModel list * string list * Option<Quizzer>)
-    (dispatch: Dispatch<Message>)
+    quizzerView
+    (jumpOrder: string list)
+    quizzerModels
     =
-    Html.empty ()
+      forEach quizzerModels <| fun quizzer ->
+                                let jumpPosition =
+                                    quizzer
+                                    |> getJumpPosition jumpOrder
+                                quizzerView (quizzer, jumpPosition)
+
+    
 
 let private mapItemizedTeam (team: TeamModel) : ItemizedTeam =
     { Name = team.Name
       Quizzers = team.Quizzers |> List.map (fun q -> q.Name) }
+
+let sideViewSplit (individualsView : QuizzerModel list -> Node) index quizzerModels=
+    quizzerModels
+         |> List.splitInto 2
+         |> List.tryItem index
+         |> Option.defaultValue []
+         |> individualsView
 
 let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Message>) =
 
@@ -891,7 +909,8 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                           Data = { Quizzer = quizzer } })
         
         let quizzerView = quizzerView removeQuizzerCap dispatch resolved.CurrentQuizzer 
-
+        let individualSideView  = individualSideView removeQuizzerCap quizzerView resolved.JumpOrder
+        
         quizPage()
             .QuizCode(model.Code)
             .QuizUrl(linkToQuiz <| model.Code)
@@ -903,20 +922,30 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                 | Scorekeeper -> "Scorekeeper"
             )
             .SideOne(
-                teamView
-                    removeQuizzerCap
-                    TeamPosition.TeamOne
-                    quizzerView
-                    (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
-                    dispatch
+                match resolved.CompetitionStyle with
+                | LoadedCompetitionStyle.Team(teamOne, teamTwo) ->
+                    teamView
+                        removeQuizzerCap
+                        TeamPosition.TeamOne
+                        quizzerView
+                        (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
+                        dispatch
+                | LoadedCompetitionStyle.Individuals quizzerModels ->
+                     quizzerModels 
+                     |> sideViewSplit individualSideView 0
             )
             .SideTwo(
-                teamView
-                    removeQuizzerCap
-                    TeamPosition.TeamTwo
-                    quizzerView
-                    (resolved.TeamTwo, resolved.JumpOrder, resolved.CurrentQuizzer)
-                    dispatch
+                match resolved.CompetitionStyle with
+                | LoadedCompetitionStyle.Team(teamOne, teamTwo) ->
+                    teamView
+                        removeQuizzerCap
+                        TeamPosition.TeamOne
+                        quizzerView
+                        (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
+                        dispatch
+                | LoadedCompetitionStyle.Individuals quizzerModels ->
+                     quizzerModels 
+                     |> sideViewSplit individualSideView 1
             )
             .CurrentQuestion(string resolved.CurrentQuestion)
             .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(resolved.CurrentQuestion + 1))))

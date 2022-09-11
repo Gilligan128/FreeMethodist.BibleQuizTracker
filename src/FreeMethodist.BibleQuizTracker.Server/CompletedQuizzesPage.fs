@@ -5,10 +5,7 @@ open Elmish
 open Common_Page
 open Bolero.Html
 open CompletedQuizzesModel
-open FreeMethodist.BibleQuizTracker.Server.Common_Page
-open FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
 open FreeMethodist.BibleQuizTracker.Server.Routing
-open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 type ExternalMessage =

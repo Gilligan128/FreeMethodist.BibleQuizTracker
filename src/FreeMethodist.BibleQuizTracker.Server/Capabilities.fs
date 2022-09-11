@@ -1,6 +1,5 @@
 ﻿namespace  FreeMethodist.BibleQuizTracker.Server.Capabilities
 
-open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
