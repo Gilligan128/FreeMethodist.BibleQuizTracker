@@ -375,21 +375,21 @@ module RunningTeamQuiz =
 
     let getTeamScore teamPosition (quiz: RunningTeamQuiz) = (getTeam teamPosition quiz).Score
 
-    let findQuizzerAndTeam quizzer (quiz: RunningTeamQuiz) =
+    let findQuizzerAndTeam (teamOne, teamTwo) quizzer =
         [ yield!
-              (quiz.TeamOne.Quizzers
+              (teamOne.Quizzers
                |> List.map (fun q -> (q, TeamOne)))
           yield!
-              (quiz.TeamTwo.Quizzers
+              (teamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.find (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
-
-    let tryFindQuizzerAndTeam quizzer (quiz: RunningTeamQuiz) =
+    
+    let tryFindQuizzerAndTeam  (teamOne, teamTwo) quizzer =
         [ yield!
-              (quiz.TeamOne.Quizzers
+              (teamOne.Quizzers
                |> List.map (fun q -> (q, TeamOne)))
           yield!
-              (quiz.TeamTwo.Quizzers
+              (teamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.tryFind (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
 

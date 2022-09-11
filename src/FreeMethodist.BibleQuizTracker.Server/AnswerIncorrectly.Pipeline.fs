@@ -78,7 +78,7 @@ let createEvents: CreateEvents =
         let revertedQuizzerOpt =
             quiz.RevertedAnswer
             |> RevertedCorrectAnswer.toOption
-            |> Option.map (fun reverted -> RunningTeamQuiz.findQuizzerAndTeam reverted quiz.QuizState)
+            |> Option.map (RunningTeamQuiz.findQuizzerAndTeam (quiz.QuizState.TeamOne, quiz.QuizState.TeamTwo))
 
         let revertedEvents =
             revertedQuizzerOpt

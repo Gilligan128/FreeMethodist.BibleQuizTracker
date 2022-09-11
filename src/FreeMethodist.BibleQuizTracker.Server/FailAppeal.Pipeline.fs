@@ -52,7 +52,7 @@ let updateQuiz: UpdateQuiz =
 
             let revertedQuizzerOpt =
                 revertingAppealer
-                |> Option.bind (fun q -> RunningTeamQuiz.tryFindQuizzerAndTeam q quiz)
+                |> Option.bind (RunningTeamQuiz.tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo))
                 |> Option.map snd
 
             let updatedQuiz =

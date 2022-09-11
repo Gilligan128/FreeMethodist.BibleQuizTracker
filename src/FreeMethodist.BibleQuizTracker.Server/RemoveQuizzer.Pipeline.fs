@@ -20,10 +20,12 @@ let validateRemoval validateQuiz : ValidateRemoval =
             let! validQuiz =
                 validateQuiz quiz
                 |> Result.mapError RemoveQuizzer.QuizStateError
-            return! RunningTeamQuiz.tryFindQuizzerAndTeam input.Quizzer validQuiz
-                    |> Result.ofOption (RemoveQuizzer.QuizzerNotParticipating input.Quizzer)
-                    |> Result.map (fun _ -> validQuiz)
-        } 
+
+            return!
+                RunningTeamQuiz.tryFindQuizzerAndTeam (validQuiz.TeamOne, validQuiz.TeamTwo) input.Quizzer
+                |> Result.ofOption (RemoveQuizzer.QuizzerNotParticipating input.Quizzer)
+                |> Result.map (fun _ -> validQuiz)
+        }
 
 let private nextCurrentQuizzer removedQuizzer currentQuizzer =
     if currentQuizzer = removedQuizzer then
@@ -31,9 +33,27 @@ let private nextCurrentQuizzer removedQuizzer currentQuizzer =
     else
         Some currentQuizzer
 
+let removeFromCompetitionStyle removeFromTeam competitionStyle quizzer =
+    match competitionStyle with
+    | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+        let _, team =
+            RunningTeamQuiz.findQuizzerAndTeam (teamOne, teamTwo) quizzer
+
+        let teamOne, teamTwo =
+            match team with
+            | TeamOne -> removeFromTeam teamOne, teamTwo
+            | TeamTwo -> teamOne, removeFromTeam teamTwo
+
+        RunningCompetitionStyle.Team(teamOne, teamTwo)
+    | RunningCompetitionStyle.Individuals quizzers ->
+        quizzers
+        |> List.partition (QuizzerState.isQuizzer quizzer)
+        |> snd
+        |> RunningCompetitionStyle.Individuals
+
 let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
     fun input quiz jumps ->
-        let remove (team: QuizTeamState) =
+        let removeFromTeam (team: QuizTeamState) =
             { team with
                 Quizzers =
                     team.Quizzers
@@ -49,16 +69,17 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
             quiz.CurrentQuizzer
             |> Option.bind (nextCurrentQuizzer input.Quizzer)
 
+        let _, team =
+            RunningTeamQuiz.findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) input.Quizzer
+
         let newQuiz =
-            match input.Team with
-            | TeamOne ->
-                { quiz with
-                    TeamOne = remove quiz.TeamOne
-                    CurrentQuizzer = replaceCurrent }
-            | TeamTwo ->
-                { quiz with
-                    TeamTwo = remove quiz.TeamTwo
-                    CurrentQuizzer = replaceCurrent }
+            match team with
+            | TeamOne -> { quiz with TeamOne = removeFromTeam quiz.TeamOne }
+            | TeamTwo -> { quiz with TeamTwo = removeFromTeam quiz.TeamTwo }
+            |> fun oldQuiz ->
+                { oldQuiz with
+                    CompetitionStyle = removeFromCompetitionStyle removeFromTeam oldQuiz.CompetitionStyle input.Quizzer }
+            |> fun oldQuiz -> { oldQuiz with CurrentQuizzer = replaceCurrent }
 
         let currentQuizzerChanged =
             if newQuiz.CurrentQuizzer <> quiz.CurrentQuizzer then
