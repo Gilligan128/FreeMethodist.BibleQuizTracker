@@ -13,7 +13,7 @@ type RemoveQuizzerFromQuiz =
 type CreateEvent = QuizCode -> RemoveQuizzer.Data -> QuizzerNoLongerParticipating
 type CreateEvents = QuizCode -> RemoveQuizzer.Data -> CurrentQuizzerChanged option -> RemoveQuizzer.Event list
 
-let validateRemoval validateQuiz : ValidateRemoval =
+let validateRemoval (validateQuiz: Quiz -> Result<RunningTeamQuiz, QuizStateError>) : ValidateRemoval =
     fun quiz input ->
 
         result {
@@ -21,8 +21,17 @@ let validateRemoval validateQuiz : ValidateRemoval =
                 validateQuiz quiz
                 |> Result.mapError RemoveQuizzer.QuizStateError
 
+            let foundQuizzerOpt =
+                match validQuiz.CompetitionStyle with
+                | RunningCompetitionStyle.Team _ ->
+                    RunningTeamQuiz.tryFindQuizzerAndTeam (validQuiz.TeamOne, validQuiz.TeamTwo) input.Quizzer
+                | RunningCompetitionStyle.Individuals quizzerStates ->
+                    quizzerStates
+                    |> List.tryFind (fun q -> q.Name = input.Quizzer)
+                    |> Option.map (fun quizzer -> quizzer, TeamPosition.TeamOne)
+
             return!
-                RunningTeamQuiz.tryFindQuizzerAndTeam (validQuiz.TeamOne, validQuiz.TeamTwo) input.Quizzer
+                foundQuizzerOpt
                 |> Result.ofOption (RemoveQuizzer.QuizzerNotParticipating input.Quizzer)
                 |> Result.map (fun _ -> validQuiz)
         }
@@ -69,13 +78,16 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
             quiz.CurrentQuizzer
             |> Option.bind (nextCurrentQuizzer input.Quizzer)
 
-        let _, team =
-            RunningTeamQuiz.findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) input.Quizzer
-
         let newQuiz =
-            match team with
-            | TeamOne -> { quiz with TeamOne = removeFromTeam quiz.TeamOne }
-            | TeamTwo -> { quiz with TeamTwo = removeFromTeam quiz.TeamTwo }
+            match quiz.CompetitionStyle with
+            | RunningCompetitionStyle.Team _ ->
+                let _, team =
+                    RunningTeamQuiz.findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) input.Quizzer
+
+                match team with
+                | TeamOne -> { quiz with TeamOne = removeFromTeam quiz.TeamOne }
+                | TeamTwo -> { quiz with TeamTwo = removeFromTeam quiz.TeamTwo }
+            | RunningCompetitionStyle.Individuals _ -> quiz
             |> fun oldQuiz ->
                 { oldQuiz with
                     CompetitionStyle = removeFromCompetitionStyle removeFromTeam oldQuiz.CompetitionStyle input.Quizzer }
