@@ -29,40 +29,67 @@ let validateQuizzerAdd (validateQuiz: ValidateQuizIsRunning) : ValidateQuizzerAd
                 |> List.toSeq
 
             let participatingQuizzers =
-                match input.Team with
-                | TeamOne -> quiz.TeamOne.Quizzers |> getQuizzerNames
-                | TeamTwo -> quiz.TeamTwo.Quizzers |> getQuizzerNames
+                match quiz.CompetitionStyle with
+                | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+                    teamOne.Quizzers @ teamTwo.Quizzers
+                    |> getQuizzerNames
+                | RunningCompetitionStyle.Individuals quizzerStates -> quizzerStates |> getQuizzerNames
 
             do! validateQuizzer participatingQuizzers input.Name
             return quiz
         }
 
+let newQuizzer scoring name scoreModel =
+    { Name = name
+      Participation = ParticipationState.In
+      Score =
+        scoreModel
+        |> Score.eventsForQuizzers [ name ]
+        |> Score.calculate scoring }
+
+let newTeamState name scoreModel (originalTeamState: QuizTeamState) =
+
+    { originalTeamState with
+        Quizzers =
+            originalTeamState.Quizzers
+            @ [ newQuizzer Score.quizzerTeamStyleScoring name scoreModel ] }
+    |> fun teamstate ->
+        { teamstate with
+            Score =
+                scoreModel
+                |> Score.eventsForQuizzers [ name ]
+                |> Score.calculate Score.teamScoring }
+
+let newIndividualRoster scoreModel name quizzers =
+    quizzers
+    @ [ newQuizzer Score.quizzerIndividualStyleScoring name scoreModel ]
+
+
 let addQuizzerToQuiz: AddQuizzerToQuiz =
     fun quiz input ->
-        let newTeamState (originalTeamState: QuizTeamState) =
-            { originalTeamState with
-                Quizzers =
-                    originalTeamState.Quizzers
-                    @ [ { Name = input.Name
-                          Participation = ParticipationState.In
-                          Score =
-                            Score.calculateQuizzerScore
-                                Score.quizzerTeamStyleScoring
-                                (quiz.Questions |> Score.createScoreModel)
-                                input.Name } ] }
-            |> fun teamstate ->
-                { teamstate with
-                    Score =
-                        quiz.Questions
-                        |> Score.createScoreModel
-                        |> Score.calculateTeamScore (
-                            teamstate.Quizzers
-                            |> Seq.map (fun quizzerState -> quizzerState.Name)
-                        ) }
+        let scoreModel =
+            quiz.Questions |> Score.createScoreModel
 
-        match input.Team with
-        | TeamOne -> { quiz with TeamOne = newTeamState quiz.TeamOne }
-        | TeamTwo -> { quiz with TeamTwo = newTeamState quiz.TeamTwo }
+        let newTeamState =
+            newTeamState input.Name scoreModel
+
+        match input.Team, quiz.CompetitionStyle with
+        | None, RunningCompetitionStyle.Team _ -> quiz
+        | Some TeamOne, RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+            { quiz with
+                TeamOne = newTeamState quiz.TeamOne
+                CompetitionStyle = RunningCompetitionStyle.Team(newTeamState teamOne, teamTwo) }
+        | Some TeamTwo, RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+            { quiz with
+                TeamTwo = newTeamState quiz.TeamTwo
+                CompetitionStyle = RunningCompetitionStyle.Team(teamOne, newTeamState teamTwo) }
+        | _, RunningCompetitionStyle.Individuals quizzerStates ->
+            { quiz with
+                CompetitionStyle =
+                    RunningCompetitionStyle.Individuals(
+                        quizzerStates
+                        |> newIndividualRoster scoreModel input.Name
+                    ) }
 
 let createEvent: CreateEvent =
     fun code input -> { Quizzer = input.Name; Quiz = code }

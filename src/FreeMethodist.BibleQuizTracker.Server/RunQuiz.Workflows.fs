@@ -15,7 +15,7 @@ module ChangeCurrentQuestion =
 
 [<RequireQualifiedAccess>]
 module AddQuizzer =
-    type Data = { Name: Quizzer; Team: TeamPosition }
+    type Data = { Name: Quizzer; Team: TeamPosition option; }
     type Command = WithinQuizCommand<Data>
 
     type Error =

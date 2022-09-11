@@ -503,7 +503,7 @@ let update
 
             let inputCommand: AddQuizzer.Command =
                 { Quiz = quizCode
-                  Data = { Name = name; Team = team } }
+                  Data = { Name = name; Team = Some team } }
 
             addQuizzer
             |> Option.map (fun workflow ->
