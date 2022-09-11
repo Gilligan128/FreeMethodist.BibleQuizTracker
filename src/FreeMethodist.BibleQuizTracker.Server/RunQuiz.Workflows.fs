@@ -28,7 +28,7 @@ module AddQuizzer =
 
 [<RequireQualifiedAccess>]
 module RemoveQuizzer =
-    type Data = { Quizzer: Quizzer; Team: TeamPosition }
+    type Data = { Quizzer: Quizzer }
     type Command = WithinQuizCommand<Data>
     type Error =
         | QuizStateError of QuizStateError

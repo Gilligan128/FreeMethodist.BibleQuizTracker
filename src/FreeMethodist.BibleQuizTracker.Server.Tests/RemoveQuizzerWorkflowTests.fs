@@ -18,11 +18,12 @@ let initialTeamStateWithQuizzer quizzer =
 [<Fact>]
 let ``Given there is no jump order, when current quizzer removed then there is no current quizzer`` () =
     let input: RemoveQuizzer.Data =
-        { Quizzer = "Juni"; Team = TeamOne }
+        { Quizzer = "Juni"}
 
     let initialQuizState =
         { RunningTeamQuiz.identity with
             CurrentQuizzer = Some input.Quizzer
+            CompetitionStyle = (initialTeamStateWithQuizzer input.Quizzer, { Name = ""; Score = TeamScore.zero; Quizzers = [] }) |> RunningCompetitionStyle.Team
             TeamOne = initialTeamStateWithQuizzer input.Quizzer }
 
     let quiz, currentChangedEvent =
@@ -41,11 +42,12 @@ let ``Given there is no jump order, when current quizzer removed then there is n
 [<Fact>]
 let ``when a non-current quizzer removed then Current Quizzer remains the same`` () =
     let input: RemoveQuizzer.Data =
-        { Quizzer = "Juni"; Team = TeamOne }
+        { Quizzer = "Juni" }
 
     let initialQuizState =
         { RunningTeamQuiz.identity with
             CurrentQuizzer = Some $"Not {input.Quizzer}"
+            CompetitionStyle = (initialTeamStateWithQuizzer input.Quizzer, { Name = ""; Score = TeamScore.zero; Quizzers = [] }) |> RunningCompetitionStyle.Team
             TeamOne = initialTeamStateWithQuizzer input.Quizzer }
 
     let quiz, currentChangedEvent =

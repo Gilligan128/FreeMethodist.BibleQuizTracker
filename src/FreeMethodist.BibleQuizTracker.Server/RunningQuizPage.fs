@@ -888,7 +888,7 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                 fun () ->
                     remove
                         { Quiz = model.Code
-                          Data = { Quizzer = quizzer; Team = team } })
+                          Data = { Quizzer = quizzer } })
         
         let quizzerView = quizzerView removeQuizzerCap dispatch resolved.CurrentQuizzer 
 
