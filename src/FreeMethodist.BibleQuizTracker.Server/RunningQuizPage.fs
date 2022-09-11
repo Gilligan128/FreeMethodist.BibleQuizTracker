@@ -757,10 +757,10 @@ let update
 type private quizPage = Template<"wwwroot/Quiz.html">
 
 
-let quizzerView  removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (teamPosition : TeamPosition) (quizzer: QuizzerModel, jumpPosition: int) =
+let quizzerView  removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (quizzer: QuizzerModel, jumpPosition: int) =
     let removeCap =
         removeQuizzerCap
-        |> fun cap -> cap (quizzer.Name, teamPosition)
+        |> fun cap -> cap quizzer.Name
 
     quizPage
         .Quizzer()
@@ -817,7 +817,7 @@ let quizzerView  removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (tea
 let private teamView
     removeQuizzerCap
     position
-    (quizzerView: TeamPosition -> QuizzerModel * int -> Node)
+    (quizzerView:  QuizzerModel * int -> Node)
     ((teamModel, jumpOrder, currentQuizzer): TeamModel * string list * Option<Quizzer>)
     (dispatch: Dispatch<Message>)
     =
@@ -842,7 +842,7 @@ let private teamView
                             | Some v -> v
                             | None -> 0
 
-                    quizzerView position (quizzer, jumpPosition)
+                    quizzerView (quizzer, jumpPosition)
             }
         )
         .Elt()
@@ -882,7 +882,7 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
              reopenQuiz) =
             getAvailableCapabilities capabilityProvider model.User resolved.CurrentQuizzer
 
-        let removeQuizzerCap (quizzer, team) =
+        let removeQuizzerCap quizzer =
             removeQuizzer
             |> Option.map (fun remove ->
                 fun () ->
