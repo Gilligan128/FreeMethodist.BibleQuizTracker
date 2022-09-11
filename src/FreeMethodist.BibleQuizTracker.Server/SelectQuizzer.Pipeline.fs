@@ -17,10 +17,17 @@ let validateSelection: ValidateSelection =
                 validateRunningQuiz teamQuiz
                 |> Result.mapError SelectQuizzer.Error.QuizState
 
+            let quizzers =
+                match validQuiz.CompetitionStyle with
+                | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+                    validQuiz.TeamOne.Quizzers
+                    @ validQuiz.TeamTwo.Quizzers
+                | RunningCompetitionStyle.Individuals quizzerStates -> quizzerStates
+
             let hasQuizzer =
-                validQuiz.TeamOne.Quizzers
-                @ validQuiz.TeamTwo.Quizzers
+                quizzers
                 |> List.exists (fun q -> q.Name = input.Quizzer)
+
 
             do!
                 if hasQuizzer then
