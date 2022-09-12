@@ -260,3 +260,22 @@ let ``Given someone else previously answered correctly from same team When Quizz
 
         Assert.Equal(expectedScore, revertedScore)
     }
+    
+[<Fact>]
+let ``Given Individual quiz When quizzer answers correctly then update their score`` () =
+    let answerer = QuizzerState.create "Jim"
+
+    let previouslyUnanswered =
+        ([ answerer.Name ] |> Unanswered |> Complete)
+
+    let initialQuiz =
+        { RunningTeamQuiz.identity with
+            CurrentQuizzer = (Some answerer.Name)
+            CompetitionStyle = RunningCompetitionStyle.Individuals [answerer]
+        }
+        |> insertCurrentAnswer previouslyUnanswered
+
+    let result =
+        updateQuiz answerer.Name initialQuiz
+    
+    Assert.True(result |> Result.isOk)
