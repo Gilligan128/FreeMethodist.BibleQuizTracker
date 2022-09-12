@@ -18,19 +18,19 @@ type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<UpdatedQuiz, AnswerCorrec
 type CreateEvents = Quizzer -> UpdatedQuiz -> AnswerCorrectly.Event list
 
 let private updateQuizzerScore (quizzer: QuizzerState) =
-        { quizzer with Score = quizzer.Score |> TeamScore.correctAnswer }
+    { quizzer with Score = quizzer.Score |> TeamScore.correctAnswer }
 
 let private updateAnsweringQuizzer quizzerName quizzers =
-        quizzers
-        |> List.map (fun q ->
-            if QuizzerState.isQuizzer quizzerName q then
-                (updateQuizzerScore q)
-            else
-                q)
+    quizzers
+    |> List.map (fun q ->
+        if QuizzerState.isQuizzer quizzerName q then
+            (updateQuizzerScore q)
+        else
+            q)
 
 let private recordAnsweredQuestion quizzer currentQuestion (initialQuestionState) =
-        initialQuestionState
-        |> QuizAnswer.answerCorrectly quizzer currentQuestion
+    initialQuestionState
+    |> QuizAnswer.answerCorrectly quizzer currentQuestion
 
 
 let revertTeamScoreIfQuizzerOnTeam quizzer (team: QuizTeamState) =
@@ -43,18 +43,15 @@ let revertTeamScoreIfQuizzerOnTeam quizzer (team: QuizTeamState) =
     else
         team
 
-let possiblyRevertTeamAndIndividualScores revertQuizzerScore revertedQuizzer team =
-    match revertedQuizzer with
-    | NoChange -> team
-    | Reverted reverted ->
-        team
-        |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
-        |> revertTeamScoreIfQuizzerOnTeam reverted
+let possiblyRevertTeamAndIndividualScores revertQuizzerScore reverted team =
+    team
+    |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
+    |> revertTeamScoreIfQuizzerOnTeam reverted
 
 let possiblyRevertQuizScores revertedAnswer (quiz: RunningTeamQuiz) =
     let revertQuizzerScore q : QuizzerState =
         { q with Score = q.Score |> TeamScore.revertCorrectAnswer }
-
+        
     { quiz with
         TeamOne =
             quiz.TeamOne
@@ -106,32 +103,37 @@ let updateTeamAndQuizzerScore quiz (teamOne, teamTwo) quizzerName =
             { quiz with
                 TeamTwo = updateTeam teamTwo
                 CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo) })
-    
-let updateIndividualQuizzerScore quizzerName (updatedQuizInfo : RunningTeamQuiz) quizzerStates =
-    let quizzerExistsResult = 
-            if
-                quizzerStates
-                |> List.exists (QuizzerState.isQuizzer quizzerName)
-            then
-                Ok quizzerStates
-            else
-                quizzerName
-                |> AnswerCorrectly.QuizzerNotFound
-                |> Error
+
+let updateIndividualQuizzerScore quizzerName (updatedQuizInfo: RunningTeamQuiz) quizzerStates =
+    let quizzerExistsResult =
+        if
+            quizzerStates
+            |> List.exists (QuizzerState.isQuizzer quizzerName)
+        then
+            Ok quizzerStates
+        else
+            quizzerName
+            |> AnswerCorrectly.QuizzerNotFound
+            |> Error
 
     quizzerExistsResult
     |> Result.map (fun quizzerStates ->
         { updatedQuizInfo with
-           CompetitionStyle =
-            quizzerStates
-            |> updateAnsweringQuizzer quizzerName
-            |> RunningCompetitionStyle.Individuals })
+            CompetitionStyle =
+                quizzerStates
+                |> updateAnsweringQuizzer quizzerName
+                |> RunningCompetitionStyle.Individuals })
 
 let updateQuiz: UpdateQuiz =
     fun quizzerName quiz ->
         result {
 
             let! updatedQuizInfo, revertedAnswer = updateQuizLevelInfo quizzerName quiz
+
+            let revertedOpt =
+                match revertedAnswer with
+                | NoChange -> None
+                | Reverted reverted -> Some reverted
 
             let! updatedQuizWithScores =
                 match updatedQuizInfo.CompetitionStyle with
@@ -141,11 +143,13 @@ let updateQuiz: UpdateQuiz =
                         (updatedQuizInfo.TeamOne, updatedQuizInfo.TeamTwo)
                         quizzerName
                 | RunningCompetitionStyle.Individuals quizzerStates ->
-                   updateIndividualQuizzerScore quizzerName updatedQuizInfo quizzerStates
-             
+                    updateIndividualQuizzerScore quizzerName updatedQuizInfo quizzerStates
+
             return
                 updatedQuizWithScores
-                |> possiblyRevertQuizScores revertedAnswer
+                |> Some
+                |> Option.map2 (possiblyRevertQuizScores) revertedOpt
+                |> Option.defaultValue updatedQuizWithScores
                 |> fun quiz ->
                     { QuizState = quiz
                       RevertedAnswer = revertedAnswer }
