@@ -45,3 +45,4 @@ let ``Given Question was answered correctly When current quizzer answers correct
 
         Assert.Contains(AnswerCorrectly.Event.IndividualScoreChanged expectedEvent, events)
     }
+
