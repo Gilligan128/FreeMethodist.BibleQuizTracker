@@ -619,7 +619,6 @@ let update
     | AnswerCorrectly (Finished result) ->
         let mapWorkflowSpecificErrors workflowError =
             match workflowError with
-            | AnswerCorrectly.Error.DuplicateQuizzer er -> $"There is more than one quizzer with name {er}"
             | AnswerCorrectly.QuizzerNotFound er -> $"Quizzer {er} was not found in this quiz"
             | AnswerCorrectly.Error.QuizStateError _ -> "Quiz is not running"
             | AnswerCorrectly.Error.NoCurrentQuizzer -> "No one has jumped yet"

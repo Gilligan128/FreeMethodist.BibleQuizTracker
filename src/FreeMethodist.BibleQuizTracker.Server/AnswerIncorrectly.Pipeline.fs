@@ -13,6 +13,13 @@ type UpdatedQuiz =
 type UpdateQuiz = Quizzer -> RunningQuiz -> Result<UpdatedQuiz, AnswerIncorrectly.Error>
 type CreateEvents = UpdatedQuiz -> AnswerIncorrectly.Event list
 
+
+let private revertScoressBasedOnQuizzerIfNecessary revertedCorrectAnswer quiz =
+  revertedCorrectAnswer
+                    |> RevertedCorrectAnswer.toOption
+                    |> Option.bind (fun quizzer ->
+                        RunningQuiz.updateScoresBasedOnQuizzer (QuizScore.revertCorrectAnswer) quizzer quiz)
+                    |> Option.defaultValue quiz
 let updateQuiz: UpdateQuiz =
 
     let updateOrAddQuestion quizzer questionNumber questionOpt =
@@ -32,44 +39,14 @@ let updateQuiz: UpdateQuiz =
                 updateOrAddQuestion quizzer quizCurrentQuestion currentAnswerRecord
                 |> Result.mapError AnswerIncorrectly.Error.QuizzerAlreadyAnsweredIncorrectly
 
-            let updateScore revertedAnswer (quizzer: QuizzerState) =
-                match revertedAnswer with
-                | Reverted q -> quizzer.Score |> QuizScore.revertCorrectAnswer
-                | NoChange -> quizzer.Score
-
-            let updateQuizzerWithScore revertedAnswer (quizzer: QuizzerState) =
-                { quizzer with Score = updateScore revertedAnswer quizzer }
-
-            let updateQuizzerInTeamIfFound quizzer (team: QuizTeamState) =
-                { team with
-                    Quizzers =
-                        team.Quizzers
-                        |> List.map (fun q ->
-                            if q.Name = quizzer then
-                                (updateQuizzerWithScore revertedCorrectAnswer) q
-                            else
-                                q) }
-
-            let revertTeamScoreIfRevertedQuizzerOnTeam revertedAnswer (team: QuizTeamState) =
-                revertedAnswer
-                |> RevertedCorrectAnswer.toOption
-                |> Option.bind (fun q ->
-                    team.Quizzers
-                    |> List.tryFind (QuizzerState.isQuizzer q))
-                |> Option.map (fun _ -> { team with Score = team.Score |> QuizScore.revertCorrectAnswer })
-                |> Option.defaultValue team
+            let quizState =
+                { quiz with
+                    CurrentQuizzer = None
+                    Questions = RunningQuiz.changeCurrentAnswer quiz changedQuestion }
+                |> revertScoressBasedOnQuizzerIfNecessary revertedCorrectAnswer
 
             return
-                { QuizState =
-                    { quiz with
-                        CurrentQuizzer = None
-                        TeamOne =
-                            (updateQuizzerInTeamIfFound quizzer quiz.TeamOne)
-                            |> revertTeamScoreIfRevertedQuizzerOnTeam revertedCorrectAnswer
-                        TeamTwo =
-                            (updateQuizzerInTeamIfFound quizzer quiz.TeamTwo)
-                            |> revertTeamScoreIfRevertedQuizzerOnTeam revertedCorrectAnswer
-                        Questions = RunningQuiz.changeCurrentAnswer quiz changedQuestion }
+                { QuizState = quizState
                   RevertedAnswer = revertedCorrectAnswer }
         }
 
@@ -108,7 +85,9 @@ let createEvents: CreateEvents =
 let answerIncorrectly getQuiz saveQuiz : AnswerIncorrectly.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError AnswerIncorrectly.DbError
+            let! quiz =
+                getQuiz command.Quiz
+                |> AsyncResult.mapError AnswerIncorrectly.DbError
 
             let! runningQuiz =
                 validateRunningQuiz quiz

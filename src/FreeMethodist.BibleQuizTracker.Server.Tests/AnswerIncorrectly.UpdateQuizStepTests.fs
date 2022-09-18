@@ -9,23 +9,29 @@ open Xunit
 
 [<Fact>]
 let ``When Answered Incorrectly record Question with incorrect answerer`` () =
-    result {
-        let answerer = QuizzerState.create "Jim"
+    let answerer = QuizzerState.create "Jim"
+    
+    let answer = result {
 
         let initialQuiz =
             { RunningQuiz.identity with
-                CurrentQuizzer = (Some answerer.Name) }
+                CurrentQuizzer = (Some answerer.Name)
+                TeamOne = { Score = QuizScore.zero; Quizzers = [answerer]; Name = "" } }
 
         let! result = updateQuiz answerer.Name initialQuiz
         
-        let answer =
+        return
             result.QuizState.Questions[result.QuizState.CurrentQuestion]
                 .AnswerState
-
-        let expectedQuestion =
-            Incomplete [ answerer.Name ]
-        Assert.Equal(expectedQuestion, answer)
+       
     }
+        
+    let expectedQuestion =
+        Incomplete [ answerer.Name ]
+    match answer with
+    | Ok answer ->  Assert.Equal(expectedQuestion, answer)
+    | Error error -> failwith $"error"
+   
 
 [<Fact>]
 let ``Given Quizzer was recorded answering correctly for question earlier When Answered Incorrectly then decrement score``

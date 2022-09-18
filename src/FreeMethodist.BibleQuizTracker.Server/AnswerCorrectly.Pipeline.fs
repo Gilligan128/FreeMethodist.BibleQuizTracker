@@ -78,9 +78,7 @@ let updateQuiz: UpdateQuiz =
             let! updatedQuizInfo, revertedAnswer = updateQuizLevelInfo quizzerName quiz
 
             let revertedOpt =
-                match revertedAnswer with
-                | NoChange -> None
-                | Reverted reverted -> Some reverted
+                revertedAnswer |> RevertedCorrectAnswer.toOption
 
             let! updatedQuizWithScores =
                 RunningQuiz.updateScoresBasedOnQuizzer QuizScore.correctAnswer quizzerName updatedQuizInfo
@@ -89,7 +87,7 @@ let updateQuiz: UpdateQuiz =
             return
                 revertedOpt
                 |> Option.bind (fun reverted ->
-                     RunningQuiz.updateScoresBasedOnQuizzer QuizScore.revertCorrectAnswer reverted updatedQuizWithScores)
+                    RunningQuiz.updateScoresBasedOnQuizzer QuizScore.revertCorrectAnswer reverted updatedQuizWithScores)
                 |> Option.defaultValue updatedQuizWithScores
                 |> fun quiz ->
                     { QuizState = quiz

@@ -60,7 +60,6 @@ module AnswerCorrectly =
     type Error =
         | QuizStateError of QuizStateError
         | QuizzerNotFound of Quizzer
-        | DuplicateQuizzer of Quizzer
         | NoCurrentQuizzer
         | QuizzerAlreadyAnsweredCorrectly of QuizAnswer.QuizzerAlreadyAnsweredCorrectly
         | DbError of DbError
