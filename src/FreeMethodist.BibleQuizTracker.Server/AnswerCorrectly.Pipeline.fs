@@ -51,7 +51,7 @@ let possiblyRevertTeamAndIndividualScores revertQuizzerScore reverted team =
 let possiblyRevertQuizScores revertedAnswer (quiz: RunningTeamQuiz) =
     let revertQuizzerScore q : QuizzerState =
         { q with Score = q.Score |> TeamScore.revertCorrectAnswer }
-        
+
     { quiz with
         TeamOne =
             quiz.TeamOne
@@ -89,7 +89,8 @@ let updateTeam changeScore quizzerName (team: QuizTeamState) =
         Score = team.Score |> changeScore }
 
 let updateTeamAndQuizzerScore changeScore quiz (teamOne, teamTwo) quizzerName =
-    let updateTeam = updateTeam changeScore quizzerName
+    let updateTeam =
+        updateTeam changeScore quizzerName
 
     quizzerName
     |> RunningTeamQuiz.tryFindQuizzerAndTeam (teamOne, teamTwo)
@@ -110,7 +111,8 @@ let updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: Runni
             |> List.exists (QuizzerState.isQuizzer quizzerName)
         then
             Some quizzerStates
-        else None
+        else
+            None
 
     quizzerExistsResult
     |> Option.map (fun quizzerStates ->
@@ -120,7 +122,7 @@ let updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: Runni
                 |> updateAnsweringQuizzer changeScore quizzerName
                 |> RunningCompetitionStyle.Individuals })
 
-let updateScoresBasedOnQuizzer changeScore quizzerName (updatedQuizInfo : RunningTeamQuiz) =
+let updateScoresBasedOnQuizzer changeScore quizzerName (updatedQuizInfo: RunningTeamQuiz) =
     match updatedQuizInfo.CompetitionStyle with
     | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
         updateTeamAndQuizzerScore
@@ -142,12 +144,14 @@ let updateQuiz: UpdateQuiz =
                 | NoChange -> None
                 | Reverted reverted -> Some reverted
 
-            let! updatedQuizWithScores = updateScoresBasedOnQuizzer TeamScore.correctAnswer quizzerName updatedQuizInfo
-                                         |> Result.ofOption (AnswerCorrectly.QuizzerNotFound quizzerName)
+            let! updatedQuizWithScores =
+                updateScoresBasedOnQuizzer TeamScore.correctAnswer quizzerName updatedQuizInfo
+                |> Result.ofOption (AnswerCorrectly.QuizzerNotFound quizzerName)
 
             return
                 revertedOpt
-                |> Option.bind (fun reverted -> updateScoresBasedOnQuizzer TeamScore.revertCorrectAnswer reverted updatedQuizWithScores)
+                |> Option.bind (fun reverted ->
+                    updateScoresBasedOnQuizzer TeamScore.revertCorrectAnswer reverted updatedQuizWithScores)
                 |> Option.defaultValue updatedQuizWithScores
                 |> fun quiz ->
                     { QuizState = quiz
@@ -164,17 +168,8 @@ let createEvents: CreateEvents =
             | TeamOne -> quiz.TeamOne.Score
             | TeamTwo -> quiz.TeamTwo.Score
 
-        let findAnswerer quizzer (quiz: RunningTeamQuiz) =
-            [ yield!
-                  (quiz.TeamOne.Quizzers
-                   |> List.map (fun q -> (q, TeamOne)))
-              yield!
-                  (quiz.TeamTwo.Quizzers
-                   |> List.map (fun q -> (q, TeamTwo))) ]
-            |> List.find (fun (q, _) -> q.Name = quizzer)
-
-        let answerer, teamUpdated =
-            findAnswerer quizzer quizState
+        let answerer, teamUpdatedOpt =
+            RunningTeamQuiz.findQuizzer quizState quizzer
 
         let answererScoreChanged =
             AnswerCorrectly.Event.IndividualScoreChanged
@@ -187,8 +182,9 @@ let createEvents: CreateEvents =
             match updatedQuiz.RevertedAnswer with
             | NoChange -> []
             | Reverted revertedQuizzer ->
-                let revertedState, revertedTeam =
-                    quizState |> findAnswerer revertedQuizzer
+                let revertedState, revertedTeamOpt =
+                    revertedQuizzer
+                    |> RunningTeamQuiz.findQuizzer quizState
 
                 let scoreChanged =
                     { NewScore = revertedState.Score
@@ -198,29 +194,38 @@ let createEvents: CreateEvents =
                     |> AnswerCorrectly.Event.IndividualScoreChanged
 
                 let teamScoreChanged =
-                    if teamUpdated <> revertedTeam then
-                        [ AnswerCorrectly.Event.TeamScoreChanged
-                              { NewScore = updatedTeamScore quizState revertedTeam
-                                Team = revertedTeam
-                                Quiz = quizState.Code } ]
-                    else
-                        []
+                    Option.map2
+                        (fun teamUpdated teamReverted ->
+                            if teamUpdated <> teamReverted then
+                                [ AnswerCorrectly.Event.TeamScoreChanged
+                                      { NewScore = updatedTeamScore quizState teamReverted
+                                        Team = teamReverted
+                                        Quiz = quizState.Code } ]
+                            else
+                                [])
+                        teamUpdatedOpt
+                        revertedTeamOpt
+                    |> Option.defaultValue []
 
                 [ scoreChanged
                   yield! teamScoreChanged ]
 
         let teamScoreChanged =
-            AnswerCorrectly.Event.TeamScoreChanged
-                { NewScore = updatedTeamScore quizState teamUpdated
-                  Team = teamUpdated
-                  Quiz = quizState.Code }
+            teamUpdatedOpt
+            |> Option.map (fun teamUpdated ->
+                [ AnswerCorrectly.Event.TeamScoreChanged
+                      { NewScore = updatedTeamScore quizState teamUpdated
+                        Team = teamUpdated
+                        Quiz = quizState.Code } ])
+            |> Option.defaultValue []
+
 
         let currentQuestionChanged =
             AnswerCorrectly.Event.CurrentQuestionChanged
                 { Quiz = quizState.Code
                   NewQuestion = quizState.CurrentQuestion }
 
-        [ teamScoreChanged
+        [ yield! teamScoreChanged
           answererScoreChanged
           currentQuestionChanged
           yield! revertedScoresChanged ]

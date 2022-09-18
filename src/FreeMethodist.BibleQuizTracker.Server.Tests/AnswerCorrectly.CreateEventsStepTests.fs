@@ -46,3 +46,34 @@ let ``Given Question was answered correctly When current quizzer answers correct
         Assert.Contains(AnswerCorrectly.Event.IndividualScoreChanged expectedEvent, events)
     }
 
+[<Fact>]
+let ``Creates Answer Correctly events for Individual Quiz`` () =
+    let newAnswerer =
+            QuizzerState.create "answerer"
+
+    let initialQuiz = RunningTeamQuiz.identity
+            
+    let eventsResult = result {
+        let! quizQuestion, _ =
+            (Some QuizAnswer.initial
+             |> QuizAnswer.answerCorrectly "previous" initialQuiz.CurrentQuestion)
+
+        let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
+            { QuizState =
+                { quiz with CompetitionStyle = RunningCompetitionStyle.Individuals [newAnswerer] }
+              RevertedAnswer = NoChange }
+        return
+            initialQuiz
+            |> setupQuiz
+            |> fun quiz -> { quiz with QuizState = insertCurrentAnswer quizQuestion quiz.QuizState }
+            |> createEvents newAnswerer.Name
+    }
+     
+    let expectedEvent =  
+            { Quiz = initialQuiz.Code
+              Quizzer = newAnswerer.Name
+              NewScore = newAnswerer.Score
+              Question = initialQuiz.CurrentQuestion }   
+    match eventsResult with
+    | Error error -> failwith $"error: {error}"
+    | Ok events -> Assert.Contains(AnswerCorrectly.Event.IndividualScoreChanged expectedEvent, events)

@@ -383,8 +383,8 @@ module RunningTeamQuiz =
               (teamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.find (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
-    
-    let tryFindQuizzerAndTeam  (teamOne, teamTwo) quizzer =
+
+    let tryFindQuizzerAndTeam (teamOne, teamTwo) quizzer =
         [ yield!
               (teamOne.Quizzers
                |> List.map (fun q -> (q, TeamOne)))
@@ -392,6 +392,18 @@ module RunningTeamQuiz =
               (teamTwo.Quizzers
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.tryFind (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
+
+    let findQuizzer (quiz: RunningTeamQuiz) quizzer =
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+            let quizzer, team =
+                findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+
+            quizzer, Some team
+        | RunningCompetitionStyle.Individuals quizzerStates ->
+            quizzerStates
+            |> List.find (QuizzerState.isQuizzer quizzer),
+            None
 
     let changeCurrentAnswer quiz changedQuestion =
         quiz.Questions
