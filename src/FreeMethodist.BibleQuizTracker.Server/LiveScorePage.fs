@@ -142,7 +142,7 @@ module LiveScorePage =
                 div {
                     attr.``class`` "column is-one-third"
                     attr.id $"quizzer-score-{model.Name}"
-                    h4 { text (model.Score |> TeamScore.toString) }
+                    h4 { text (model.Score |> QuizScore.toString) }
                 }
             }
         }
@@ -171,7 +171,7 @@ module LiveScorePage =
                         div {
                             attr.``class`` "column is-one-third"
                             attr.id $"team-score-{model.Name}"
-                            h1 { text (model.Score |> TeamScore.toString) }
+                            h1 { text (model.Score |> QuizScore.toString) }
                         }
                     }
 

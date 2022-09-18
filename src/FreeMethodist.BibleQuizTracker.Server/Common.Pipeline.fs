@@ -12,11 +12,11 @@ type QuizRoomState =
     | Closed
 
 
-type CompletedQuizzer = { Name: Quizzer; Score: TeamScore }
+type CompletedQuizzer = { Name: Quizzer; Score: QuizScore }
 
 type CompletedTeam =
     { Name: TeamName
-      Score: TeamScore
+      Score: QuizScore
       Quizzers: CompletedQuizzer list }
 
 type CompletedCompetitionStyle =
@@ -34,7 +34,7 @@ type CompletedQuiz =
 
 type OfficialTeam =
     { Name: TeamName
-      Score: TeamScore
+      Score: QuizScore
       QuizzerOne: CompletedQuizzer
       QuizzerTwo: CompletedQuizzer
       QuizzerThree: CompletedQuizzer option
@@ -62,7 +62,7 @@ type OfficialTeamQuiz =
       CompletedQuestions: CompletedQuestion list }
 
 type Quiz =
-    | Running of RunningTeamQuiz
+    | Running of RunningQuiz
     | Completed of CompletedQuiz
     | Official of OfficialTeamQuiz
 
@@ -77,11 +77,11 @@ module Quiz =
                     RunningCompetitionStyle.Individuals []
                   TeamOne =
                     { Name = ""
-                      Score = TeamScore.zero
+                      Score = QuizScore.zero
                       Quizzers = [] }
                   TeamTwo =
                     { Name = ""
-                      Score = TeamScore.zero
+                      Score = QuizScore.zero
                       Quizzers = [] }
                   CurrentQuizzer = None
                   CurrentQuestion = PositiveNumber.one
@@ -94,19 +94,19 @@ module Quiz =
                   CompetitionStyle =
                     RunningCompetitionStyle.Team(
                         { Name = teams.TeamOneName
-                          Score = TeamScore.zero
+                          Score = QuizScore.zero
                           Quizzers = [] },
                         { Name = teams.TeamTwoName
-                          Score = TeamScore.zero
+                          Score = QuizScore.zero
                           Quizzers = [] }
                     )
                   TeamOne =
                     { Name = teams.TeamOneName
-                      Score = TeamScore.zero
+                      Score = QuizScore.zero
                       Quizzers = [] }
                   TeamTwo =
                     { Name = teams.TeamTwoName
-                      Score = TeamScore.zero
+                      Score = QuizScore.zero
                       Quizzers = [] }
                   CurrentQuizzer = None
                   CurrentQuestion = PositiveNumber.one
@@ -147,9 +147,9 @@ type NotEnoughPlayersError =
 type StartTeamQuizError = NotEnoughPlayers of NotEnoughPlayersError
 
 //Validation
-type ValidateQuizIsRunning = Quiz -> Result<RunningTeamQuiz, QuizStateError>
-type ValidateCurrentQuizzer = RunningTeamQuiz -> Result<Quizzer, NoCurrentQuizzer>
-type ValidateCurrentQuizzerWithTeam = RunningTeamQuiz -> Result<Quizzer * TeamPosition, NoCurrentQuizzer>
+type ValidateQuizIsRunning = Quiz -> Result<RunningQuiz, QuizStateError>
+type ValidateCurrentQuizzer = RunningQuiz -> Result<Quizzer, NoCurrentQuizzer>
+type ValidateCurrentQuizzerWithTeam = RunningQuiz -> Result<Quizzer * TeamPosition, NoCurrentQuizzer>
 
 let validateCurrentQuizzer: ValidateCurrentQuizzer =
     fun quiz ->

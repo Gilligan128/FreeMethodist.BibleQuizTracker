@@ -25,7 +25,7 @@ let ``Given Question has  been appealed When appeal clears Then record remove ap
                          |> QuestionState.failAppeal quizzer) }
 
         let initialQuiz =
-            RunningTeamQuiz.identity
+            RunningQuiz.identity
             |> setupCurrentQuizzer
             |> insertAppeal
 
@@ -61,7 +61,7 @@ let ``Given someone  preciously failed an appeal for this Question When appeal c
                 TeamTwo = { quiz.TeamTwo with Quizzers = [ QuizzerState.create previousAppealer ] } }
 
         let initialQuiz =
-            RunningTeamQuiz.identity
+            RunningQuiz.identity
             |> setupCurrentQuizzer
             |> insertQuestion
 
@@ -69,7 +69,7 @@ let ``Given someone  preciously failed an appeal for this Question When appeal c
 
         let expectedAppeal =
             initialQuiz.TeamTwo.Score
-            |> TeamScore.revertAppealFailure
+            |> QuizScore.revertAppealFailure
 
         Assert.Equal(expectedAppeal, result.TeamTwo.Score)
     }
@@ -95,7 +95,7 @@ let ``Given no one failed an appeal for this Question When appeal clears Then Er
             TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] }}
 
     let initialQuiz =
-        RunningTeamQuiz.identity
+        RunningQuiz.identity
         |> setupCurrentQuizzer
         |> insertQuestion
 

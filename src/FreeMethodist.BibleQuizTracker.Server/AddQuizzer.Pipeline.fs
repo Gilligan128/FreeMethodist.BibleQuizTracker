@@ -6,8 +6,8 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open Microsoft.FSharp.Core
 
-type ValidateQuizzerAdd = Quiz -> AddQuizzer.Data -> Result<RunningTeamQuiz, AddQuizzer.Error>
-type AddQuizzerToQuiz = RunningTeamQuiz -> AddQuizzer.Data -> RunningTeamQuiz
+type ValidateQuizzerAdd = Quiz -> AddQuizzer.Data -> Result<RunningQuiz, AddQuizzer.Error>
+type AddQuizzerToQuiz = RunningQuiz -> AddQuizzer.Data -> RunningQuiz
 type CreateEvent = QuizCode -> AddQuizzer.Data -> QuizzerParticipating
 
 let validateQuizzer participatingQuizzers quizzer =

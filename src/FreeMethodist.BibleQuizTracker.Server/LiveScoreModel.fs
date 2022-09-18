@@ -4,11 +4,11 @@ open System
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-type LiveScoreQuizzer = { Score: TeamScore; Name: Quizzer }
+type LiveScoreQuizzer = { Score: QuizScore; Name: Quizzer }
 
 type LiveScoreTeam =
     { Name: string
-      Score: TeamScore
+      Score: QuizScore
       Quizzers: LiveScoreQuizzer list }
 
 type LiveScoreCompetitionStyle =

@@ -5,9 +5,9 @@ open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-type ValidateSelection = Quiz -> SelectQuizzer.Input -> Result<RunningTeamQuiz, SelectQuizzer.Error>
-type ChangeCurrentQuizzer = Quizzer -> RunningTeamQuiz -> RunningTeamQuiz
-type CreateEvent = RunningTeamQuiz -> Quizzer -> CurrentQuizzerChanged
+type ValidateSelection = Quiz -> SelectQuizzer.Input -> Result<RunningQuiz, SelectQuizzer.Error>
+type ChangeCurrentQuizzer = Quizzer -> RunningQuiz -> RunningQuiz
+type CreateEvent = RunningQuiz -> Quizzer -> CurrentQuizzerChanged
 
 
 let validateSelection: ValidateSelection =

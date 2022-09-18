@@ -19,7 +19,7 @@ type TeamName = NonEmptyString
 
 type WithinQuizCommand<'data> = { Data: 'data; Quiz: QuizCode }
 
-type TeamScore = private TeamScore of int //increments of 20
+type QuizScore = private QuizScore of int //increments of 20
 
 type TeamPosition =
     | TeamOne
@@ -65,7 +65,7 @@ type ParticipationState =
 type QuizzerState =
     { Name: Quizzer
       Participation: ParticipationState
-      Score: TeamScore }
+      Score: QuizScore }
 
 
 
@@ -84,14 +84,14 @@ type QuestionState =
 
 type QuizTeamState =
     { Name: TeamName
-      Score: TeamScore
+      Score: QuizScore
       Quizzers: QuizzerState list }
 
 type RunningCompetitionStyle =
     | Team of QuizTeamState * QuizTeamState
     | Individuals of QuizzerState list
 
-type RunningTeamQuiz =
+type RunningQuiz =
     { Code: QuizCode
       Questions: Map<PositiveNumber, QuestionState>
       CompetitionStyle: RunningCompetitionStyle
@@ -172,33 +172,33 @@ type NoCurrentQuizzer = NoCurrentQuizzer
 
 //Functions
 [<RequireQualifiedAccess>]
-module TeamScore =
+module QuizScore =
 
     let create score =
         let scoreMod = score % 20
 
         if scoreMod = 0 then
-            Ok(TeamScore score)
+            Ok(QuizScore score)
         else
             Error "Score not divisible by 20"
 
-    let value (TeamScore score) = score
+    let value (QuizScore score) = score
 
-    let zero: TeamScore = TeamScore 0
+    let zero: QuizScore = QuizScore 0
 
-    let ofQuestions questionCount = TeamScore(questionCount * 20)
+    let ofQuestions questionCount = QuizScore(questionCount * 20)
 
-    let correctAnswer (TeamScore value) = TeamScore(value + 20)
-    let revertCorrectAnswer (TeamScore value) = TeamScore(value - 20)
+    let correctAnswer (QuizScore value) = QuizScore(value + 20)
+    let revertCorrectAnswer (QuizScore value) = QuizScore(value - 20)
 
-    let failAppeal (TeamScore value) = TeamScore(value - 20)
+    let failAppeal (QuizScore value) = QuizScore(value - 20)
 
-    let revertAppealFailure (TeamScore value) = TeamScore(value + 20)
+    let revertAppealFailure (QuizScore value) = QuizScore(value + 20)
 
-    let toString (TeamScore value) = string value
+    let toString (QuizScore value) = string value
 
-    let add (score1: TeamScore) (score2: TeamScore) =
-        TeamScore((score1 |> value) + (score2 |> value))
+    let add (score1: QuizScore) (score2: QuizScore) =
+        QuizScore((score1 |> value) + (score2 |> value))
 
 
 [<RequireQualifiedAccess>]
@@ -315,7 +315,7 @@ module QuizzerState =
     let create name =
         { Name = name
           Participation = In
-          Score = TeamScore.zero }
+          Score = QuizScore.zero }
 
     let isQuizzer quizzerName (quizzerState: QuizzerState) = quizzerState.Name = quizzerName
 
@@ -343,16 +343,16 @@ module QuizTeamState =
 
 
 [<RequireQualifiedAccess>]
-module RunningTeamQuiz =
+module RunningQuiz =
     let identity =
         { Code = "Example"
           TeamOne =
             { Name = "LEFT"
-              Score = TeamScore.zero
+              Score = QuizScore.zero
               Quizzers = [] }
           TeamTwo =
             { Name = "RIGHT"
-              Score = TeamScore.zero
+              Score = QuizScore.zero
               Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
@@ -360,20 +360,20 @@ module RunningTeamQuiz =
           CompetitionStyle =
             RunningCompetitionStyle.Team(
                 { Name = "LEFT"
-                  Score = TeamScore.zero
+                  Score = QuizScore.zero
                   Quizzers = [] },
                 { Name = "RIGHT"
-                  Score = TeamScore.zero
+                  Score = QuizScore.zero
                   Quizzers = [] }
             ) }
 
 
-    let getTeam teamPosition (quiz: RunningTeamQuiz) =
+    let getTeam teamPosition (quiz: RunningQuiz) =
         match teamPosition with
         | TeamOne -> quiz.TeamOne
         | TeamTwo -> quiz.TeamTwo
 
-    let getTeamScore teamPosition (quiz: RunningTeamQuiz) = (getTeam teamPosition quiz).Score
+    let getTeamScore teamPosition (quiz: RunningQuiz) = (getTeam teamPosition quiz).Score
 
     let findQuizzerAndTeam (teamOne, teamTwo) quizzer =
         [ yield!
@@ -393,7 +393,7 @@ module RunningTeamQuiz =
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.tryFind (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
 
-    let findQuizzer (quiz: RunningTeamQuiz) quizzer =
+    let findQuizzer (quiz: RunningQuiz) quizzer =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
             let quizzer, team =
@@ -412,6 +412,70 @@ module RunningTeamQuiz =
             |> Option.defaultValue QuestionState.initial
             |> fun q -> { q with AnswerState = changedQuestion }
             |> Some)
+
+    let private updateQuizzerScore changeScore (quizzer: QuizzerState) =
+        { quizzer with Score = quizzer.Score |> changeScore }
+
+    let private updateAnsweringQuizzer changeScore quizzerName quizzers =
+        quizzers
+        |> List.map (fun q ->
+            if QuizzerState.isQuizzer quizzerName q then
+                (updateQuizzerScore changeScore q)
+            else
+                q)
+
+
+    let private updateTeam changeScore quizzerName (team: QuizTeamState) =
+        { team with
+            Quizzers =
+                team.Quizzers
+                |> updateAnsweringQuizzer changeScore quizzerName
+            Score = team.Score |> changeScore }
+
+    let private updateTeamAndQuizzerScore changeScore quiz (teamOne, teamTwo) quizzerName =
+        let updateTeam =
+            updateTeam changeScore quizzerName
+
+        quizzerName
+        |> tryFindQuizzerAndTeam (teamOne, teamTwo)
+        |> Option.map (function
+            | _, TeamOne ->
+                { quiz with
+                    TeamOne = updateTeam teamOne
+                    CompetitionStyle = RunningCompetitionStyle.Team(updateTeam teamOne, teamTwo) }
+            | _, TeamTwo ->
+                { quiz with
+                    TeamTwo = updateTeam teamTwo
+                    CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo) })
+
+    let private updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: RunningQuiz) quizzerStates =
+        let quizzerExistsResult =
+            if
+                quizzerStates
+                |> List.exists (QuizzerState.isQuizzer quizzerName)
+            then
+                Some quizzerStates
+            else
+                None
+
+        quizzerExistsResult
+        |> Option.map (fun quizzerStates ->
+            { updatedQuizInfo with
+                CompetitionStyle =
+                    quizzerStates
+                    |> updateAnsweringQuizzer changeScore quizzerName
+                    |> RunningCompetitionStyle.Individuals })
+
+    let updateScoresBasedOnQuizzer changeScore quizzerName (updatedQuizInfo: RunningQuiz) =
+        match updatedQuizInfo.CompetitionStyle with
+        | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+            updateTeamAndQuizzerScore
+                changeScore
+                updatedQuizInfo
+                (updatedQuizInfo.TeamOne, updatedQuizInfo.TeamTwo)
+                quizzerName
+        | RunningCompetitionStyle.Individuals quizzerStates ->
+            updateIndividualQuizzerScore changeScore quizzerName updatedQuizInfo quizzerStates
 
 type DbError =
     | Exception of exn

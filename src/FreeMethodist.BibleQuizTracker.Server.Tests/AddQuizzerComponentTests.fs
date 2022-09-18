@@ -12,12 +12,12 @@ open Xunit
 let publishQuiz _ _ _ = Async.retn ()
 
 let getQuizAsync code =
-    RunningTeamQuiz.identity
+    RunningQuiz.identity
     |> Running
     |> AsyncResult.retn
 
 let tryGetQuizAsync code =
-    RunningTeamQuiz.identity
+    RunningQuiz.identity
     |> Running
     |> Some
     |> AsyncResult.retn

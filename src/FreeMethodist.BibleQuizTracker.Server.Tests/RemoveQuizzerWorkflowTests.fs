@@ -6,12 +6,12 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 
 let initialTeamStateWithQuizzer quizzer =
-    { RunningTeamQuiz.identity.TeamOne with
+    { RunningQuiz.identity.TeamOne with
         Quizzers =
-            RunningTeamQuiz.identity.TeamOne.Quizzers
+            RunningQuiz.identity.TeamOne.Quizzers
             @ [ { Name = quizzer
                   Participation = In
-                  Score = TeamScore.zero } ] }
+                  Score = QuizScore.zero } ] }
 
 
 
@@ -21,12 +21,12 @@ let ``Given there is no jump order, when current quizzer removed then there is n
         { Quizzer = "Juni" }
 
     let initialQuizState =
-        { RunningTeamQuiz.identity with
+        { RunningQuiz.identity with
             CurrentQuizzer = Some input.Quizzer
             CompetitionStyle =
                 (initialTeamStateWithQuizzer input.Quizzer,
                  { Name = ""
-                   Score = TeamScore.zero
+                   Score = QuizScore.zero
                    Quizzers = [] })
                 |> RunningCompetitionStyle.Team
             TeamOne = initialTeamStateWithQuizzer input.Quizzer }
@@ -50,12 +50,12 @@ let ``when a non-current quizzer removed then Current Quizzer remains the same``
         { Quizzer = "Juni" }
 
     let initialQuizState =
-        { RunningTeamQuiz.identity with
+        { RunningQuiz.identity with
             CurrentQuizzer = Some $"Not {input.Quizzer}"
             CompetitionStyle =
                 (initialTeamStateWithQuizzer input.Quizzer,
                  { Name = ""
-                   Score = TeamScore.zero
+                   Score = QuizScore.zero
                    Quizzers = [] })
                 |> RunningCompetitionStyle.Team
             TeamOne = initialTeamStateWithQuizzer input.Quizzer }
@@ -72,7 +72,7 @@ let ``when removing a quizzer in Individuals then Quizzer is not in roster`` () 
         { Quizzer = "Juni" }
 
     let initialQuizState =
-        { RunningTeamQuiz.identity with
+        { RunningQuiz.identity with
             CurrentQuizzer = Some $"Not {input.Quizzer}"
             CompetitionStyle =
                 [ QuizzerState.create input.Quizzer ]

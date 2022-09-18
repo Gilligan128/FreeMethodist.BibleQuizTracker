@@ -44,7 +44,7 @@ let ``Save Blob`` () =
     let saveQuiz =
         Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions $"{Environment.MachineName}test"
 
-    let result = saveQuiz (Running RunningTeamQuiz.identity) |> Async.RunSynchronously
+    let result = saveQuiz (Running RunningQuiz.identity) |> Async.RunSynchronously
     
     Assert.Equal(Ok (), result)
     

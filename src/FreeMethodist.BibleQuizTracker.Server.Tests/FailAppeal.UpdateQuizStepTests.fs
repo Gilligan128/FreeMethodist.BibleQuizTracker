@@ -16,7 +16,7 @@ let ``Given Question has not been appealed When appeal fails Then record failure
                 TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
 
         let initialQuiz =
-            RunningTeamQuiz.identity |> setupCurrentQuizzer
+            RunningQuiz.identity |> setupCurrentQuizzer
 
         let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
 
@@ -40,12 +40,12 @@ let ``When appeal fails Then change Team score`` () =
                 TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
 
         let initialQuiz =
-            RunningTeamQuiz.identity |> setupCurrentQuizzer
+            RunningQuiz.identity |> setupCurrentQuizzer
 
         let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
 
         let expectedAppeal =
-            initialQuiz.TeamOne.Score |> TeamScore.failAppeal
+            initialQuiz.TeamOne.Score |> QuizScore.failAppeal
 
         Assert.Equal(expectedAppeal, result.TeamOne.Score)
     }
@@ -74,7 +74,7 @@ let ``Given someone else preciously failed an appeal for this Question When appe
                 TeamTwo = { quiz.TeamTwo with Quizzers = [ QuizzerState.create previousAppealer ] } }
 
         let initialQuiz =
-            RunningTeamQuiz.identity
+            RunningQuiz.identity
             |> setupCurrentQuizzer
             |> insertQuestion
 
@@ -82,7 +82,7 @@ let ``Given someone else preciously failed an appeal for this Question When appe
 
         let expectedAppeal =
             initialQuiz.TeamTwo.Score
-            |> TeamScore.revertAppealFailure
+            |> QuizScore.revertAppealFailure
 
         Assert.Equal(expectedAppeal, result.TeamTwo.Score)
     }
@@ -106,7 +106,7 @@ let ``Given the same quizzer preciously failed an appeal for this Question When 
             TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
 
     let initialQuiz =
-        RunningTeamQuiz.identity
+        RunningQuiz.identity
         |> setupCurrentQuizzer
         |> insertQuestion
 

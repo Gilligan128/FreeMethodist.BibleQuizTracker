@@ -7,10 +7,10 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.FSharp.Core
 
 type UpdatedQuiz =
-    { QuizState: RunningTeamQuiz
+    { QuizState: RunningQuiz
       RevertedAnswer: RevertedCorrectAnswer }
 
-type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<UpdatedQuiz, AnswerIncorrectly.Error>
+type UpdateQuiz = Quizzer -> RunningQuiz -> Result<UpdatedQuiz, AnswerIncorrectly.Error>
 type CreateEvents = UpdatedQuiz -> AnswerIncorrectly.Event list
 
 let updateQuiz: UpdateQuiz =
@@ -34,7 +34,7 @@ let updateQuiz: UpdateQuiz =
 
             let updateScore revertedAnswer (quizzer: QuizzerState) =
                 match revertedAnswer with
-                | Reverted q -> quizzer.Score |> TeamScore.revertCorrectAnswer
+                | Reverted q -> quizzer.Score |> QuizScore.revertCorrectAnswer
                 | NoChange -> quizzer.Score
 
             let updateQuizzerWithScore revertedAnswer (quizzer: QuizzerState) =
@@ -56,7 +56,7 @@ let updateQuiz: UpdateQuiz =
                 |> Option.bind (fun q ->
                     team.Quizzers
                     |> List.tryFind (QuizzerState.isQuizzer q))
-                |> Option.map (fun _ -> { team with Score = team.Score |> TeamScore.revertCorrectAnswer })
+                |> Option.map (fun _ -> { team with Score = team.Score |> QuizScore.revertCorrectAnswer })
                 |> Option.defaultValue team
 
             return
@@ -69,7 +69,7 @@ let updateQuiz: UpdateQuiz =
                         TeamTwo =
                             (updateQuizzerInTeamIfFound quizzer quiz.TeamTwo)
                             |> revertTeamScoreIfRevertedQuizzerOnTeam revertedCorrectAnswer
-                        Questions = RunningTeamQuiz.changeCurrentAnswer quiz changedQuestion }
+                        Questions = RunningQuiz.changeCurrentAnswer quiz changedQuestion }
                   RevertedAnswer = revertedCorrectAnswer }
         }
 
@@ -78,7 +78,7 @@ let createEvents: CreateEvents =
         let revertedQuizzerOpt =
             quiz.RevertedAnswer
             |> RevertedCorrectAnswer.toOption
-            |> Option.map (RunningTeamQuiz.findQuizzerAndTeam (quiz.QuizState.TeamOne, quiz.QuizState.TeamTwo))
+            |> Option.map (RunningQuiz.findQuizzerAndTeam (quiz.QuizState.TeamOne, quiz.QuizState.TeamTwo))
 
         let revertedEvents =
             revertedQuizzerOpt
@@ -91,7 +91,7 @@ let createEvents: CreateEvents =
                   { Quiz = quiz.QuizState.Code
                     NewScore =
                       quiz.QuizState
-                      |> RunningTeamQuiz.getTeam team
+                      |> RunningQuiz.getTeam team
                       |> fun team -> team.Score
                     Team = team }
                   |> AnswerIncorrectly.Event.TeamScoreChanged ])

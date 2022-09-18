@@ -7,7 +7,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
 [<Fact>]
 let ``When Selecting Quizzer then that is now the quiz's current quizzer`` () =
-    let quiz = RunningTeamQuiz.identity
+    let quiz = RunningQuiz.identity
 
     let result =
         SelectQuizzer_Pipeline.changeCurrentQuizzer "Jordan" quiz
@@ -17,7 +17,7 @@ let ``When Selecting Quizzer then that is now the quiz's current quizzer`` () =
 [<Fact>]
 let ``Given an Individual quiz, When valiating a quizzer participating, then validation is successful`` () =
     let quizzer = "Jordan"
-    let quiz = RunningTeamQuiz.identity
+    let quiz = RunningQuiz.identity
                 |> fun quiz -> {quiz with CompetitionStyle = RunningCompetitionStyle.Individuals [QuizzerState.create quizzer]}
                 
     let result = SelectQuizzer_Pipeline.validateSelection ( Running quiz) { Quizzer = quizzer }

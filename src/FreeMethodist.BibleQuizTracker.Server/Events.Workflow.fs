@@ -8,7 +8,7 @@ type QuizzerNoLongerParticipating = { Quizzer: Quizzer; Quiz: QuizCode }
 type TeamScoreChanged =
     { Quiz: QuizCode
       Team: TeamPosition
-      NewScore: TeamScore }
+      NewScore: QuizScore }
 
 
 type CurrentQuestionChanged =
@@ -24,7 +24,7 @@ type CurrentQuizzerChanged =
 type IndividualScoreChanged =
     { Quiz: QuizCode
       Quizzer: Quizzer
-      NewScore: TeamScore
+      NewScore: QuizScore
       Question: QuestionNumber }
 
 type QuizStateChanged = { Quiz: QuizCode; NewState : string }

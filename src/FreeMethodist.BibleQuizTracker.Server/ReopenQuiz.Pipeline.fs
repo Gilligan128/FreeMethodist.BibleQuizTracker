@@ -42,10 +42,10 @@ let mapQuestionToRunning (key, value: CompletedQuestion) : PositiveNumber * Ques
     { FailedAppeal = value.FailedAppeal
       AnswerState = QuizAnswer.Complete value.AnswerState }
 
-let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : RunningTeamQuiz =
+let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : RunningQuiz =
     let emptyTeam =
         { Name = ""
-          Score = TeamScore.zero
+          Score = QuizScore.zero
           Quizzers = [] }
 
     match quiz with

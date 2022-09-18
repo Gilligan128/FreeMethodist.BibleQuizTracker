@@ -129,7 +129,7 @@ let private getAnswerState quizAnswer (quizzerState: QuizzerState) =
 
 let private refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerState) : QuizzerModel =
     { Name = quizzer.Name
-      Score = TeamScore.value quizzer.Score
+      Score = QuizScore.value quizzer.Score
       ConnectionStatus = Unknown
       AnswerState =
         quizzer
@@ -140,7 +140,7 @@ let private refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerSta
 
 let private refreshTeam (currentQuestion: QuestionState) (team: QuizTeamState) : TeamModel =
     { Name = team.Name
-      Score = team.Score |> TeamScore.value
+      Score = team.Score |> QuizScore.value
       Quizzers =
         team.Quizzers
         |> List.map (refreshQuizzer currentQuestion) }
@@ -154,7 +154,7 @@ let refreshCompetitionStyle refreshTeam refreshQuizzer competitionStyle =
         |> List.map refreshQuizzer
         |> LoadedCompetitionStyle.Individuals
 
-let private refreshModel (quiz: RunningTeamQuiz) =
+let private refreshModel (quiz: RunningQuiz) =
     let currentQuestion =
         quiz.Questions.TryFind(quiz.CurrentQuestion)
         |> Option.defaultValue QuestionState.initial

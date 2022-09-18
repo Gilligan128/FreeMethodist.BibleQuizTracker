@@ -19,13 +19,13 @@ let ``Given Question was answered correctly When current quizzer answers correct
         let newAnswerer =
             QuizzerState.create "answerer"
 
-        let initialQuiz = RunningTeamQuiz.identity
+        let initialQuiz = RunningQuiz.identity
 
         let! quizQuestion, _ =
             (Some QuizAnswer.initial
              |> QuizAnswer.answerCorrectly "previous" initialQuiz.CurrentQuestion)
 
-        let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
+        let setupQuiz (quiz: RunningQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
                     TeamOne = { quiz.TeamOne with Quizzers = [ previousAnswerer; newAnswerer ] } }
@@ -51,14 +51,14 @@ let ``Creates Answer Correctly events for Individual Quiz`` () =
     let newAnswerer =
             QuizzerState.create "answerer"
 
-    let initialQuiz = RunningTeamQuiz.identity
+    let initialQuiz = RunningQuiz.identity
             
     let eventsResult = result {
         let! quizQuestion, _ =
             (Some QuizAnswer.initial
              |> QuizAnswer.answerCorrectly "previous" initialQuiz.CurrentQuestion)
 
-        let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
+        let setupQuiz (quiz: RunningQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with CompetitionStyle = RunningCompetitionStyle.Individuals [newAnswerer] }
               RevertedAnswer = NoChange }

@@ -4,9 +4,9 @@ open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
-type UpdateQuiz = RunningTeamQuiz -> Result<RunningTeamQuiz * TeamPosition option, ClearAppeal.Error>
+type UpdateQuiz = RunningQuiz -> Result<RunningQuiz * TeamPosition option, ClearAppeal.Error>
 
-type CreateEvents = RunningTeamQuiz * TeamPosition option -> ClearAppeal.Event list
+type CreateEvents = RunningQuiz * TeamPosition option -> ClearAppeal.Event list
 
 let updateQuiz: UpdateQuiz =
     fun quiz ->
@@ -29,9 +29,9 @@ let updateQuiz: UpdateQuiz =
                             quiz.Questions
                             |> Map.add quiz.CurrentQuestion changedQuestion }
 
-            let updateRevertingTeamScore teamPositionOpt (quiz: RunningTeamQuiz) =
+            let updateRevertingTeamScore teamPositionOpt (quiz: RunningQuiz) =
                 let updateScore (team: QuizTeamState) =
-                    { team with Score = team.Score |> TeamScore.revertAppealFailure }
+                    { team with Score = team.Score |> QuizScore.revertAppealFailure }
 
                 match teamPositionOpt with
                 | None -> quiz
@@ -40,7 +40,7 @@ let updateQuiz: UpdateQuiz =
 
             let revertedTeamOpt =
                 revertingAppealer
-                |> RunningTeamQuiz.tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo)
+                |> RunningQuiz.tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo)
                 |> Option.map snd
 
             let updatedQuiz =
@@ -60,7 +60,7 @@ let createEvents: CreateEvents =
                 [ ClearAppeal.Event.TeamScoreChanged
                       { Quiz = quiz.Code
                         Team = team
-                        NewScore = quiz |> RunningTeamQuiz.getTeamScore team } ])
+                        NewScore = quiz |> RunningQuiz.getTeamScore team } ])
             |> Option.defaultValue []
 
         revertedEvents

@@ -23,7 +23,7 @@ let private mapRunningQuestionToComplete (question: QuestionState) : CompletedQu
         | Incomplete attempts -> Unanswered attempts
         | QuizAnswer.Complete completed -> completed }
 
-let updateQuizToComplete (quiz: RunningTeamQuiz) : CompletedQuiz =
+let updateQuizToComplete (quiz: RunningQuiz) : CompletedQuiz =
 
     { Code = quiz.Code
       CompetitionStyle =

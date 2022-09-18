@@ -9,14 +9,14 @@ open Xunit
 
 
 let quizWithQuizzerOnTeamOne quizzer =
-    { RunningTeamQuiz.identity with TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ quizzer ] } }
+    { RunningQuiz.identity with TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ quizzer ] } }
 
 [<Fact>]
 let ``Quizzer Answers who is not participating results in error`` () =
     let quiz =
-        { RunningTeamQuiz.identity with
-            TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ QuizzerState.create "Jim" ] }
-            TeamTwo = { RunningTeamQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
+        { RunningQuiz.identity with
+            TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ QuizzerState.create "Jim" ] }
+            TeamTwo = { RunningQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
 
     let quizzer = "Not Participating"
 
@@ -38,7 +38,7 @@ let ``When Quizzer Answers then individual score goes up`` () =
         updateQuiz quizzer.Name initialQuiz
 
     let expectedScore =
-        TeamScore.zero |> TeamScore.correctAnswer
+        QuizScore.zero |> QuizScore.correctAnswer
 
     assertSuccess result (fun (updatedQuiz) ->
         let updatedQuizzer =
@@ -57,7 +57,7 @@ let ``When Quizzer Answers then team score goes up`` () =
     let result =
         updateQuiz quizzer.Name initialQuiz
 
-    let expectedScore = TeamScore.ofQuestions 1
+    let expectedScore = QuizScore.ofQuestions 1
     assertSuccess result (fun (updatedQuiz) -> Assert.Equal(expectedScore, updatedQuiz.QuizState.TeamOne.Score))
 
 
@@ -69,9 +69,9 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
     let nonAnswerer = QuizzerState.create "Jim"
 
     let quiz =
-        { RunningTeamQuiz.identity with
-            TeamOne = { RunningTeamQuiz.identity.TeamOne with Quizzers = [ nonAnswerer; answerer ] }
-            TeamTwo = { RunningTeamQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
+        { RunningQuiz.identity with
+            TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ nonAnswerer; answerer ] }
+            TeamTwo = { RunningQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
 
     let result = updateQuiz answerer.Name quiz
 
@@ -165,11 +165,11 @@ let ``Given someone else previously answered correctly  When Quizzer Answers the
         |> Answered
         |> Complete
 
-    let setupQuiz (quiz: RunningTeamQuiz) =
+    let setupQuiz (quiz: RunningQuiz) =
         { quiz with TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] } }
 
     let initialQuiz =
-        RunningTeamQuiz.identity
+        RunningQuiz.identity
         |> setupQuiz
         |> insertCurrentAnswer alreadyAnsweredQuestion
 
@@ -182,7 +182,7 @@ let ``Given someone else previously answered correctly  When Quizzer Answers the
 
         let expectedScore =
             previousAnswerer.Score
-            |> TeamScore.revertCorrectAnswer
+            |> QuizScore.revertCorrectAnswer
 
         Assert.Equal(expectedScore, revertedQuizzerState.Score)
     }
@@ -202,7 +202,7 @@ let ``Given someone else previously answered correctly from other team When Quiz
         |> Answered
         |> Complete
 
-    let setupQuiz (quiz: RunningTeamQuiz) =
+    let setupQuiz (quiz: RunningQuiz) =
         { quiz with
             TeamOne = { quiz.TeamOne with Quizzers = [ quizzer ] }
             TeamTwo = { quiz.TeamTwo with Quizzers = [ previousAnswerer ] }
@@ -210,7 +210,7 @@ let ``Given someone else previously answered correctly from other team When Quiz
          }
 
     let initialQuiz =
-        RunningTeamQuiz.identity
+        RunningQuiz.identity
         |> setupQuiz
         |> insertCurrentAnswer alreadyAnswered
 
@@ -222,7 +222,7 @@ let ``Given someone else previously answered correctly from other team When Quiz
 
         let expectedScore =
             initialQuiz.TeamTwo.Score
-            |> TeamScore.revertCorrectAnswer
+            |> QuizScore.revertCorrectAnswer
 
         Assert.Equal(expectedScore, revertedScore)
     }
@@ -242,11 +242,11 @@ let ``Given someone else previously answered correctly from same team When Quizz
         |> Answered
         |> Complete
 
-    let setupQuiz (quiz: RunningTeamQuiz) =
+    let setupQuiz (quiz: RunningQuiz) =
         { quiz with TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] } }
 
     let initialQuiz =
-        RunningTeamQuiz.identity
+        RunningQuiz.identity
         |> setupQuiz
         |> insertCurrentAnswer alreadyAnsweredQuestion
 
@@ -270,7 +270,7 @@ let ``Given Individual quiz When quizzer answers correctly then update their sco
         ([ answerer.Name ] |> Unanswered |> Complete)
 
     let initialQuiz =
-        { RunningTeamQuiz.identity with
+        { RunningQuiz.identity with
             CurrentQuizzer = (Some answerer.Name)
             CompetitionStyle = RunningCompetitionStyle.Individuals [ answerer ] }
         |> insertCurrentAnswer previouslyUnanswered
@@ -296,14 +296,14 @@ let ``Given a quizzer has answered correctly from a different team for an Indivi
         |> Complete
 
     let initialQuiz =
-        RunningTeamQuiz.identity
+        RunningQuiz.identity
         |> function
             | quiz -> { quiz with CompetitionStyle = RunningCompetitionStyle.Individuals [ quizzer; previousAnswerer ] }
         |> insertCurrentAnswer alreadyAnsweredQuestion
 
     let expectedScore =
                 previousAnswerer.Score
-                |> TeamScore.revertCorrectAnswer
+                |> QuizScore.revertCorrectAnswer
 
     let revertedScoreResult =
         result {

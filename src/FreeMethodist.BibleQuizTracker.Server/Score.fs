@@ -24,26 +24,26 @@ type QuestionQuizzerEvent =
 type QuestionQuizzerEvents = QuestionQuizzerEvent list
 
 type QuizzerScore =
-    { AnswerScore: TeamScore
-      AppealScore: TeamScore }
+    { AnswerScore: QuizScore
+      AppealScore: QuizScore }
 
 [<RequireQualifiedAccess>]
 module Score =
     let private answerScore answerState =
         let score =
-            TeamScore.zero |> TeamScore.correctAnswer
+            QuizScore.zero |> QuizScore.correctAnswer
 
         match answerState with
         | AnsweredCorrectly -> score
-        | AnsweredIncorrectly -> TeamScore.zero
-        | DidNotAnswer -> TeamScore.zero
+        | AnsweredIncorrectly -> QuizScore.zero
+        | DidNotAnswer -> QuizScore.zero
 
     let private appealScore appealState =
         let score =
-            TeamScore.zero |> TeamScore.failAppeal
+            QuizScore.zero |> QuizScore.failAppeal
 
         match appealState with
-        | NoFailure -> TeamScore.zero
+        | NoFailure -> QuizScore.zero
         | AppealFailure -> score
 
     let quizzerTeamStyleScoring eventState =
@@ -54,13 +54,13 @@ module Score =
         eventState
         |> fun eventState ->
             answerScore eventState.AnswerState
-            |> TeamScore.add (appealScore eventState.AppealState)
+            |> QuizScore.add (appealScore eventState.AppealState)
 
     let teamScoring eventState =
         eventState
         |> fun eventState ->
             answerScore eventState.AnswerState
-            |> TeamScore.add (appealScore eventState.AppealState)
+            |> QuizScore.add (appealScore eventState.AppealState)
 
     let createScoreModelForQuestion questionNumber (questionState: QuestionState) : QuestionQuizzerEvents =
         let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
@@ -118,10 +118,10 @@ module Score =
         scores
         |> List.ofSeq
         |> function
-            | [] -> TeamScore.zero
+            | [] -> QuizScore.zero
             | scores ->
                 scores
-                |> Seq.reduce (fun runningScore current -> runningScore |> TeamScore.add current)
+                |> Seq.reduce (fun runningScore current -> runningScore |> QuizScore.add current)
     
     let eventsForQuestion questionNumber questions =
         questions
@@ -142,7 +142,7 @@ module Score =
         |> eventsForQuizzers quizzersOnTeam
         |> calculate teamScoring
     
-    let calculateQuizzerScore (scoringBasedOnStyle: EventState -> TeamScore) questions quizzer =
+    let calculateQuizzerScore (scoringBasedOnStyle: EventState -> QuizScore) questions quizzer =
         questions
         |> eventsForQuizzers [quizzer]
         |> calculate scoringBasedOnStyle

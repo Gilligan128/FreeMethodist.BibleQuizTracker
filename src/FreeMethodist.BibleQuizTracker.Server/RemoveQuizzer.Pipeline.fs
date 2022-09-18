@@ -5,15 +5,15 @@ open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-type ValidateRemoval = Quiz -> RemoveQuizzer.Data -> Result<RunningTeamQuiz, RemoveQuizzer.Error>
+type ValidateRemoval = Quiz -> RemoveQuizzer.Data -> Result<RunningQuiz, RemoveQuizzer.Error>
 
 type RemoveQuizzerFromQuiz =
-    RemoveQuizzer.Data -> RunningTeamQuiz -> Jump seq -> RunningTeamQuiz * CurrentQuizzerChanged option
+    RemoveQuizzer.Data -> RunningQuiz -> Jump seq -> RunningQuiz * CurrentQuizzerChanged option
 
 type CreateEvent = QuizCode -> RemoveQuizzer.Data -> QuizzerNoLongerParticipating
 type CreateEvents = QuizCode -> RemoveQuizzer.Data -> CurrentQuizzerChanged option -> RemoveQuizzer.Event list
 
-let validateRemoval (validateQuiz: Quiz -> Result<RunningTeamQuiz, QuizStateError>) : ValidateRemoval =
+let validateRemoval (validateQuiz: Quiz -> Result<RunningQuiz, QuizStateError>) : ValidateRemoval =
     fun quiz input ->
 
         result {
@@ -24,7 +24,7 @@ let validateRemoval (validateQuiz: Quiz -> Result<RunningTeamQuiz, QuizStateErro
             let foundQuizzerOpt =
                 match validQuiz.CompetitionStyle with
                 | RunningCompetitionStyle.Team _ ->
-                    RunningTeamQuiz.tryFindQuizzerAndTeam (validQuiz.TeamOne, validQuiz.TeamTwo) input.Quizzer
+                    RunningQuiz.tryFindQuizzerAndTeam (validQuiz.TeamOne, validQuiz.TeamTwo) input.Quizzer
                 | RunningCompetitionStyle.Individuals quizzerStates ->
                     quizzerStates
                     |> List.tryFind (fun q -> q.Name = input.Quizzer)
@@ -46,7 +46,7 @@ let removeFromCompetitionStyle removeFromTeam competitionStyle quizzer =
     match competitionStyle with
     | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
         let _, team =
-            RunningTeamQuiz.findQuizzerAndTeam (teamOne, teamTwo) quizzer
+            RunningQuiz.findQuizzerAndTeam (teamOne, teamTwo) quizzer
 
         let teamOne, teamTwo =
             match team with
@@ -82,7 +82,7 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
             match quiz.CompetitionStyle with
             | RunningCompetitionStyle.Team _ ->
                 let _, team =
-                    RunningTeamQuiz.findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) input.Quizzer
+                    RunningQuiz.findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) input.Quizzer
 
                 match team with
                 | TeamOne -> { quiz with TeamOne = removeFromTeam quiz.TeamOne }

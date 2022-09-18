@@ -10,23 +10,12 @@ open Microsoft.FSharp.Core
 type AnswerQuestion = Quizzer -> AnsweredQuestion
 
 type UpdatedQuiz =
-    { QuizState: RunningTeamQuiz
+    { QuizState: RunningQuiz
       RevertedAnswer: RevertedCorrectAnswer }
 
-type UpdateQuiz = Quizzer -> RunningTeamQuiz -> Result<UpdatedQuiz, AnswerCorrectly.Error>
+type UpdateQuiz = Quizzer -> RunningQuiz -> Result<UpdatedQuiz, AnswerCorrectly.Error>
 
 type CreateEvents = Quizzer -> UpdatedQuiz -> AnswerCorrectly.Event list
-
-let private updateQuizzerScore changeScore (quizzer: QuizzerState) =
-    { quizzer with Score = quizzer.Score |> changeScore }
-
-let private updateAnsweringQuizzer changeScore quizzerName quizzers =
-    quizzers
-    |> List.map (fun q ->
-        if QuizzerState.isQuizzer quizzerName q then
-            (updateQuizzerScore changeScore q)
-        else
-            q)
 
 let private recordAnsweredQuestion quizzer currentQuestion (initialQuestionState) =
     initialQuestionState
@@ -39,7 +28,7 @@ let revertTeamScoreIfQuizzerOnTeam quizzer (team: QuizTeamState) =
         |> List.exists (QuizzerState.isQuizzer quizzer)
 
     if quizzerFound then
-        { team with Score = team.Score |> TeamScore.revertCorrectAnswer }
+        { team with Score = team.Score |> QuizScore.revertCorrectAnswer }
     else
         team
 
@@ -48,9 +37,9 @@ let possiblyRevertTeamAndIndividualScores revertQuizzerScore reverted team =
     |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
     |> revertTeamScoreIfQuizzerOnTeam reverted
 
-let possiblyRevertQuizScores revertedAnswer (quiz: RunningTeamQuiz) =
+let possiblyRevertQuizScores revertedAnswer (quiz: RunningQuiz) =
     let revertQuizzerScore q : QuizzerState =
-        { q with Score = q.Score |> TeamScore.revertCorrectAnswer }
+        { q with Score = q.Score |> QuizScore.revertCorrectAnswer }
 
     { quiz with
         TeamOne =
@@ -60,7 +49,7 @@ let possiblyRevertQuizScores revertedAnswer (quiz: RunningTeamQuiz) =
             quiz.TeamTwo
             |> possiblyRevertTeamAndIndividualScores revertQuizzerScore revertedAnswer }
 
-let updateQuizLevelInfo quizzer (quiz: RunningTeamQuiz) =
+let updateQuizLevelInfo quizzer (quiz: RunningQuiz) =
     result {
         let newCurrentQuestion =
             quiz.CurrentQuestion |> PositiveNumber.increment
@@ -75,63 +64,12 @@ let updateQuizLevelInfo quizzer (quiz: RunningTeamQuiz) =
                 |> AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly)
 
         let currentQuestionInQuiz =
-            { quiz with Questions = RunningTeamQuiz.changeCurrentAnswer quiz updatedAnswer }
+            { quiz with Questions = RunningQuiz.changeCurrentAnswer quiz updatedAnswer }
             |> changeCurrentQuestionInQuiz newCurrentQuestion
 
         return currentQuestionInQuiz, revertedQuizzer
     }
 
-let updateTeam changeScore quizzerName (team: QuizTeamState) =
-    { team with
-        Quizzers =
-            team.Quizzers
-            |> updateAnsweringQuizzer changeScore quizzerName
-        Score = team.Score |> changeScore }
-
-let updateTeamAndQuizzerScore changeScore quiz (teamOne, teamTwo) quizzerName =
-    let updateTeam =
-        updateTeam changeScore quizzerName
-
-    quizzerName
-    |> RunningTeamQuiz.tryFindQuizzerAndTeam (teamOne, teamTwo)
-    |> Option.map (function
-        | _, TeamOne ->
-            { quiz with
-                TeamOne = updateTeam teamOne
-                CompetitionStyle = RunningCompetitionStyle.Team(updateTeam teamOne, teamTwo) }
-        | _, TeamTwo ->
-            { quiz with
-                TeamTwo = updateTeam teamTwo
-                CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo) })
-
-let updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: RunningTeamQuiz) quizzerStates =
-    let quizzerExistsResult =
-        if
-            quizzerStates
-            |> List.exists (QuizzerState.isQuizzer quizzerName)
-        then
-            Some quizzerStates
-        else
-            None
-
-    quizzerExistsResult
-    |> Option.map (fun quizzerStates ->
-        { updatedQuizInfo with
-            CompetitionStyle =
-                quizzerStates
-                |> updateAnsweringQuizzer changeScore quizzerName
-                |> RunningCompetitionStyle.Individuals })
-
-let updateScoresBasedOnQuizzer changeScore quizzerName (updatedQuizInfo: RunningTeamQuiz) =
-    match updatedQuizInfo.CompetitionStyle with
-    | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-        updateTeamAndQuizzerScore
-            changeScore
-            updatedQuizInfo
-            (updatedQuizInfo.TeamOne, updatedQuizInfo.TeamTwo)
-            quizzerName
-    | RunningCompetitionStyle.Individuals quizzerStates ->
-        updateIndividualQuizzerScore changeScore quizzerName updatedQuizInfo quizzerStates
 
 let updateQuiz: UpdateQuiz =
     fun quizzerName quiz ->
@@ -145,13 +83,13 @@ let updateQuiz: UpdateQuiz =
                 | Reverted reverted -> Some reverted
 
             let! updatedQuizWithScores =
-                updateScoresBasedOnQuizzer TeamScore.correctAnswer quizzerName updatedQuizInfo
+                RunningQuiz.updateScoresBasedOnQuizzer QuizScore.correctAnswer quizzerName updatedQuizInfo
                 |> Result.ofOption (AnswerCorrectly.QuizzerNotFound quizzerName)
 
             return
                 revertedOpt
                 |> Option.bind (fun reverted ->
-                    updateScoresBasedOnQuizzer TeamScore.revertCorrectAnswer reverted updatedQuizWithScores)
+                     RunningQuiz.updateScoresBasedOnQuizzer QuizScore.revertCorrectAnswer reverted updatedQuizWithScores)
                 |> Option.defaultValue updatedQuizWithScores
                 |> fun quiz ->
                     { QuizState = quiz
@@ -163,13 +101,13 @@ let createEvents: CreateEvents =
     fun quizzer updatedQuiz ->
         let quizState = updatedQuiz.QuizState
 
-        let updatedTeamScore (quiz: RunningTeamQuiz) teamPosition =
+        let updatedTeamScore (quiz: RunningQuiz) teamPosition =
             match teamPosition with
             | TeamOne -> quiz.TeamOne.Score
             | TeamTwo -> quiz.TeamTwo.Score
 
         let answerer, teamUpdatedOpt =
-            RunningTeamQuiz.findQuizzer quizState quizzer
+            RunningQuiz.findQuizzer quizState quizzer
 
         let answererScoreChanged =
             AnswerCorrectly.Event.IndividualScoreChanged
@@ -184,7 +122,7 @@ let createEvents: CreateEvents =
             | Reverted revertedQuizzer ->
                 let revertedState, revertedTeamOpt =
                     revertedQuizzer
-                    |> RunningTeamQuiz.findQuizzer quizState
+                    |> RunningQuiz.findQuizzer quizState
 
                 let scoreChanged =
                     { NewScore = revertedState.Score

@@ -16,13 +16,13 @@ let ``Given current quizzer answered current question correctly When current qui
         let answerer =
             QuizzerState.create "answerer"
 
-        let initialQuiz = RunningTeamQuiz.identity
+        let initialQuiz = RunningQuiz.identity
 
         let! quizQuestion, _ =
             (Some QuizAnswer.initial
              |> QuizAnswer.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
 
-        let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
+        let setupQuiz (quiz: RunningQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
                     TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }
@@ -50,13 +50,13 @@ let ``Given current quizzer answered current question correctly When current qui
         let answerer =
             QuizzerState.create "answerer"
 
-        let initialQuiz = RunningTeamQuiz.identity
+        let initialQuiz = RunningQuiz.identity
 
         let! quizAnswer, _ =
             (Some QuizAnswer.initial
              |> QuizAnswer.answerCorrectly answerer.Name initialQuiz.CurrentQuestion)
 
-        let setupQuiz (quiz: RunningTeamQuiz) : UpdatedQuiz =
+        let setupQuiz (quiz: RunningQuiz) : UpdatedQuiz =
             { QuizState =
                 { quiz with
                     TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }

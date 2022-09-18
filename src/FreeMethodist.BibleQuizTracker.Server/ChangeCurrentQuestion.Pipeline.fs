@@ -5,10 +5,10 @@ open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
-type CreateEvent = RunningTeamQuiz -> CurrentQuestionChanged
+type CreateEvent = RunningQuiz -> CurrentQuestionChanged
 
 
-let createEvent (quiz: RunningTeamQuiz) =
+let createEvent (quiz: RunningQuiz) =
     { Quiz = quiz.Code
       NewQuestion = quiz.CurrentQuestion }
 

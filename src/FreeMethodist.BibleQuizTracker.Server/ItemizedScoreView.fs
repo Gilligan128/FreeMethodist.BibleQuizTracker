@@ -47,7 +47,7 @@ module ItemizedScore =
         |> Score.eventsForQuestion questionNumber
         |> Score.eventsForQuizzers team.Quizzers
         |> Score.calculate Score.teamScoring
-        |> TeamScore.value
+        |> QuizScore.value
 
     let quizzerView scoringBasedOnStyle questionEvents quizzer =
         itemizedPage
@@ -62,7 +62,7 @@ module ItemizedScore =
                 |> findQuestionQuizzerState questionEvents
                 |> Option.map (function (answer, appeal) -> {AnswerState = answer; AppealState = appeal})
                 |> Option.map scoringBasedOnStyle
-                |> Option.map TeamScore.value
+                |> Option.map QuizScore.value
                 |> Option.defaultValue 0
                 |> formatScore
             )
@@ -163,7 +163,7 @@ module ItemizedScore =
                 
                 questionQuizEvents
                 |> Score.calculateTeamScore team.Quizzers
-                |> TeamScore.value
+                |> QuizScore.value
                 |> string
             }
 
