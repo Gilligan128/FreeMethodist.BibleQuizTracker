@@ -486,7 +486,11 @@ module RunningQuiz =
                 quizzerName
         | RunningCompetitionStyle.Individuals quizzerStates ->
             updateIndividualQuizzerScore changeScore quizzerName updatedQuizInfo quizzerStates
-
+    
+    let teamOneScore (quiz: RunningQuiz) =
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Team (teamOne, _) -> Some teamOne.Score
+        | RunningCompetitionStyle.Individuals _ -> None
 type DbError =
     | Exception of exn
     | RemoteError of string
