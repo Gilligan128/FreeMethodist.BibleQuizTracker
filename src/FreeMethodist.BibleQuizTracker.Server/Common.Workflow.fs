@@ -405,6 +405,16 @@ module RunningQuiz =
             |> List.find (QuizzerState.isQuizzer quizzer),
             None
 
+    let tryFindQuizzer (quiz: RunningQuiz) quizzer =
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+           tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+           |> Option.map (fun (q, team) -> (q, Some team))                
+        | RunningCompetitionStyle.Individuals quizzerStates ->
+            quizzerStates
+            |> List.tryFind (QuizzerState.isQuizzer quizzer)
+            |> Option.map (fun q -> q, None)
+    
     let changeCurrentAnswer quiz changedQuestion =
         quiz.Questions
         |> Map.change quiz.CurrentQuestion (fun q ->

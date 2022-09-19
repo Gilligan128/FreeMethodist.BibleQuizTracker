@@ -15,11 +15,11 @@ type CreateEvents = UpdatedQuiz -> AnswerIncorrectly.Event list
 
 
 let private revertScoressBasedOnQuizzerIfNecessary revertedCorrectAnswer quiz =
-  revertedCorrectAnswer
-                    |> RevertedCorrectAnswer.toOption
-                    |> Option.bind (fun quizzer ->
-                        RunningQuiz.updateScoresBasedOnQuizzer (QuizScore.revertCorrectAnswer) quizzer quiz)
-                    |> Option.defaultValue quiz
+    revertedCorrectAnswer
+    |> RevertedCorrectAnswer.toOption
+    |> Option.bind (fun quizzer -> RunningQuiz.updateScoresBasedOnQuizzer (QuizScore.revertCorrectAnswer) quizzer quiz)
+    |> Option.defaultValue quiz
+
 let updateQuiz: UpdateQuiz =
 
     let updateOrAddQuestion quizzer questionNumber questionOpt =
@@ -55,23 +55,26 @@ let createEvents: CreateEvents =
         let revertedQuizzerOpt =
             quiz.RevertedAnswer
             |> RevertedCorrectAnswer.toOption
-            |> Option.map (RunningQuiz.findQuizzerAndTeam (quiz.QuizState.TeamOne, quiz.QuizState.TeamTwo))
+            |> Option.bind (RunningQuiz.tryFindQuizzer quiz.QuizState)
 
         let revertedEvents =
             revertedQuizzerOpt
-            |> Option.map (fun (quizzer, team) ->
+            |> Option.map (fun (quizzer, teamOpt) ->
                 [ { Quiz = quiz.QuizState.Code
                     Quizzer = quizzer.Name
                     NewScore = quizzer.Score
                     Question = quiz.QuizState.CurrentQuestion }
-                  |> AnswerIncorrectly.Event.IndividualScoreChanged
-                  { Quiz = quiz.QuizState.Code
-                    NewScore =
-                      quiz.QuizState
-                      |> RunningQuiz.getTeam team
-                      |> fun team -> team.Score
-                    Team = team }
-                  |> AnswerIncorrectly.Event.TeamScoreChanged ])
+                  |> AnswerIncorrectly.Event.IndividualScoreChanged ]
+                @ (teamOpt
+                   |> Option.map (fun team ->
+                       { Quiz = quiz.QuizState.Code
+                         NewScore =
+                           quiz.QuizState
+                           |> RunningQuiz.getTeam team
+                           |> fun team -> team.Score
+                         Team = team }
+                       |> AnswerIncorrectly.Event.TeamScoreChanged)
+                   |> Option.toList))
             |> Option.defaultValue []
 
         let quizzerChanged =
