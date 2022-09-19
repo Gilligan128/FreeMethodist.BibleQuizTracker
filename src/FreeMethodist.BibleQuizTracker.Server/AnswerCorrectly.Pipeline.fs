@@ -21,34 +21,6 @@ let private recordAnsweredQuestion quizzer currentQuestion (initialQuestionState
     initialQuestionState
     |> QuizAnswer.answerCorrectly quizzer currentQuestion
 
-
-let revertTeamScoreIfQuizzerOnTeam quizzer (team: QuizTeamState) =
-    let quizzerFound =
-        team.Quizzers
-        |> List.exists (QuizzerState.isQuizzer quizzer)
-
-    if quizzerFound then
-        { team with Score = team.Score |> QuizScore.revertCorrectAnswer }
-    else
-        team
-
-let possiblyRevertTeamAndIndividualScores revertQuizzerScore reverted team =
-    team
-    |> QuizTeamState.updateQuizzerIfFound revertQuizzerScore reverted
-    |> revertTeamScoreIfQuizzerOnTeam reverted
-
-let possiblyRevertQuizScores revertedAnswer (quiz: RunningQuiz) =
-    let revertQuizzerScore q : QuizzerState =
-        { q with Score = q.Score |> QuizScore.revertCorrectAnswer }
-
-    { quiz with
-        TeamOne =
-            quiz.TeamOne
-            |> possiblyRevertTeamAndIndividualScores revertQuizzerScore revertedAnswer
-        TeamTwo =
-            quiz.TeamTwo
-            |> possiblyRevertTeamAndIndividualScores revertQuizzerScore revertedAnswer }
-
 let updateQuizLevelInfo quizzer (quiz: RunningQuiz) =
     result {
         let newCurrentQuestion =

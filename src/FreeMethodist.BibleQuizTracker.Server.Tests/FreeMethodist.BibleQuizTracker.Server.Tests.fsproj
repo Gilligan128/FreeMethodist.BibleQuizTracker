@@ -11,6 +11,7 @@
     <ItemGroup>
         <Compile Include="Common.fs" />
         <Compile Include="Quiz.fs" />
+        <Compile Include="Arrange.fs" />
         <Compile Include="AddQuizzerComponentTests.fs" />
         <Compile Include="SelectQuizzerWorkflowTests.fs" />
         <Compile Include="RemoveQuizzerWorkflowTests.fs" />

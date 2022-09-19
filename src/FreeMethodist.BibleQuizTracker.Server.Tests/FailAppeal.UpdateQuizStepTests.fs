@@ -16,7 +16,7 @@ let ``Given Question has not been appealed When appeal fails Then record failure
                 TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
 
         let initialQuiz =
-            RunningQuiz.identity |> setupCurrentQuizzer
+            RunningQuiz.newTeamQuiz |> setupCurrentQuizzer
 
         let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
 
@@ -40,7 +40,7 @@ let ``When appeal fails Then change Team score`` () =
                 TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
 
         let initialQuiz =
-            RunningQuiz.identity |> setupCurrentQuizzer
+            RunningQuiz.newTeamQuiz |> setupCurrentQuizzer
 
         let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
 
@@ -74,7 +74,7 @@ let ``Given someone else preciously failed an appeal for this Question When appe
                 TeamTwo = { quiz.TeamTwo with Quizzers = [ QuizzerState.create previousAppealer ] } }
 
         let initialQuiz =
-            RunningQuiz.identity
+            RunningQuiz.newTeamQuiz
             |> setupCurrentQuizzer
             |> insertQuestion
 
@@ -106,7 +106,7 @@ let ``Given the same quizzer preciously failed an appeal for this Question When 
             TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
 
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> setupCurrentQuizzer
         |> insertQuestion
 

@@ -9,14 +9,16 @@ open Xunit
 
 
 let quizWithQuizzerOnTeamOne quizzer =
-    { RunningQuiz.identity with TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ quizzer ] } }
+    RunningQuiz.newTeamQuiz
+    |> Arrange.withParticipants [ quizzer ]
 
 [<Fact>]
 let ``Quizzer Answers who is not participating results in error`` () =
     let quiz =
-        { RunningQuiz.identity with
-            TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ QuizzerState.create "Jim" ] }
-            TeamTwo = { RunningQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
+        RunningQuiz.newTeamQuiz
+        |> Arrange.withParticipants [ QuizzerState.create "Jim" ]
+        |> Arrange.withTeamTwoParticipants [ QuizzerState.create "Jessie" ]
+
 
     let quizzer = "Not Participating"
 
@@ -69,9 +71,9 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
     let nonAnswerer = QuizzerState.create "Jim"
 
     let quiz =
-        { RunningQuiz.identity with
-            TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ nonAnswerer; answerer ] }
-            TeamTwo = { RunningQuiz.identity.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
+        { RunningQuiz.newTeamQuiz with
+            TeamOne = { RunningQuiz.newTeamQuiz.TeamOne with Quizzers = [ nonAnswerer; answerer ] }
+            TeamTwo = { RunningQuiz.newTeamQuiz.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
 
     let result = updateQuiz answerer.Name quiz
 
@@ -169,7 +171,7 @@ let ``Given someone else previously answered correctly  When Quizzer Answers the
         { quiz with TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] } }
 
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> setupQuiz
         |> insertCurrentAnswer alreadyAnsweredQuestion
 
@@ -210,7 +212,7 @@ let ``Given someone else previously answered correctly from other team When Quiz
          }
 
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> setupQuiz
         |> insertCurrentAnswer alreadyAnswered
 
@@ -246,7 +248,7 @@ let ``Given someone else previously answered correctly from same team When Quizz
         { quiz with TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] } }
 
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> setupQuiz
         |> insertCurrentAnswer alreadyAnsweredQuestion
 
@@ -270,7 +272,7 @@ let ``Given Individual quiz When quizzer answers correctly then update their sco
         ([ answerer.Name ] |> Unanswered |> Complete)
 
     let initialQuiz =
-        { RunningQuiz.identity with
+        { RunningQuiz.newTeamQuiz with
             CurrentQuizzer = (Some answerer.Name)
             CompetitionStyle = RunningCompetitionStyle.Individuals [ answerer ] }
         |> insertCurrentAnswer previouslyUnanswered
@@ -296,14 +298,18 @@ let ``Given a quizzer has answered correctly from a different team for an Indivi
         |> Complete
 
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> function
-            | quiz -> { quiz with CompetitionStyle = RunningCompetitionStyle.Individuals [ quizzer; previousAnswerer ] }
+            | quiz ->
+                { quiz with
+                    CompetitionStyle =
+                        RunningCompetitionStyle.Individuals [ quizzer
+                                                              previousAnswerer ] }
         |> insertCurrentAnswer alreadyAnsweredQuestion
 
     let expectedScore =
-                previousAnswerer.Score
-                |> QuizScore.revertCorrectAnswer
+        previousAnswerer.Score
+        |> QuizScore.revertCorrectAnswer
 
     let revertedScoreResult =
         result {
@@ -320,4 +326,4 @@ let ``Given a quizzer has answered correctly from a different team for an Indivi
             return revertedScore
         }
 
-    Assert.Equal(Ok (Some expectedScore), revertedScoreResult)
+    Assert.Equal(Ok(Some expectedScore), revertedScoreResult)

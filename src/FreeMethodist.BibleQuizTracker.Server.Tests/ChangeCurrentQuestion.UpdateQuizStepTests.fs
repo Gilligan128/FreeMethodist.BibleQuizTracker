@@ -10,7 +10,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 let ``Given this is the first time a question is current When Changing Question then record an Unanswered Question for previous Question``
     ()
     =
-    let initialQuiz = RunningQuiz.identity
+    let initialQuiz = RunningQuiz.newTeamQuiz
 
     let nextQuestion =
         initialQuiz.CurrentQuestion
@@ -40,7 +40,7 @@ let ``Given this is not the first time a question is current When Changing Quest
         |> Complete
 
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> insertCurrentAnswer quizAnswer
 
     let nextQuestion =
@@ -58,7 +58,7 @@ let ``Given this is not the first time a question is current When Changing Quest
 
 [<Fact>]
 let ``Given the next current question is brand new  When Changing Question then record an Incomplete next question`` () =
-    let initialQuiz = RunningQuiz.identity
+    let initialQuiz = RunningQuiz.newTeamQuiz
 
     let nextQuestion =
         initialQuiz.CurrentQuestion
@@ -83,7 +83,7 @@ let ``Given the next current question is not new When Changing Question then ret
         |> PositiveNumber.increment
     
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> fun quiz -> {quiz with CurrentQuestion = PositiveNumber.one}
         |> insertAnswer nextQuestion quizAnswer
 

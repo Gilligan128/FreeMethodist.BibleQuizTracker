@@ -344,7 +344,7 @@ module QuizTeamState =
 
 [<RequireQualifiedAccess>]
 module RunningQuiz =
-    let identity =
+    let newTeamQuiz =
         { Code = "Example"
           TeamOne =
             { Name = "LEFT"

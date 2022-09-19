@@ -14,7 +14,7 @@ let ``When Answered Incorrectly record Question with incorrect answerer`` () =
     let answer = result {
 
         let initialQuiz =
-            { RunningQuiz.identity with
+            { RunningQuiz.newTeamQuiz with
                 CurrentQuizzer = (Some answerer.Name)
                 TeamOne = { Score = QuizScore.zero; Quizzers = [answerer]; Name = "" } }
 
@@ -52,7 +52,7 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
                 TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] }}
 
         let initialQuiz =
-            RunningQuiz.identity |> setupQuiz |> insertCurrentAnswer previouslyAnsweredQuestion
+            RunningQuiz.newTeamQuiz |> setupQuiz |> insertCurrentAnswer previouslyAnsweredQuestion
 
         let! quiz = updateQuiz answerer.Name initialQuiz
 
@@ -86,7 +86,7 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
                 TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] }}
 
         let initialQuiz =
-            RunningQuiz.identity |> setupQuiz |> insertCurrentAnswer previouslyAnsweredQuestion
+            RunningQuiz.newTeamQuiz |> setupQuiz |> insertCurrentAnswer previouslyAnsweredQuestion
 
         let! result = updateQuiz answerer.Name initialQuiz
 
@@ -108,9 +108,9 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
          |> Complete)
 
     let initialQuiz =
-        { RunningQuiz.identity with
+        { RunningQuiz.newTeamQuiz with
             CurrentQuizzer = (Some answerer.Name)
-            TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ answerer ] }} |> insertCurrentAnswer previouslyAnswered
+            TeamOne = { RunningQuiz.newTeamQuiz.TeamOne with Quizzers = [ answerer ] }} |> insertCurrentAnswer previouslyAnswered
 
     let result =
         updateQuiz answerer.Name initialQuiz
@@ -132,9 +132,9 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
         ([ answerer.Name ] |> Unanswered |> Complete)
 
     let initialQuiz =
-        { RunningQuiz.identity with
+        { RunningQuiz.newTeamQuiz with
             CurrentQuizzer = (Some answerer.Name)
-            TeamOne = { RunningQuiz.identity.TeamOne with Quizzers = [ answerer ] } }
+            TeamOne = { RunningQuiz.newTeamQuiz.TeamOne with Quizzers = [ answerer ] } }
         |> insertCurrentAnswer previouslyUnanswered
 
     let result =

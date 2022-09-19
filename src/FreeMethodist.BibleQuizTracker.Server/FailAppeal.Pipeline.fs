@@ -38,8 +38,10 @@ let updateQuiz: UpdateQuiz =
                     { team with Score = team.Score |> QuizScore.failAppeal }
 
                 match teamPosition with
-                | TeamOne -> { quiz with TeamOne = updateScore quiz.TeamOne }
-                | TeamTwo -> { quiz with TeamTwo = updateScore quiz.TeamTwo }
+                | TeamOne -> { quiz with TeamOne = updateScore quiz.TeamOne
+                                         CompetitionStyle = RunningCompetitionStyle.Team (updateScore quiz.TeamOne, quiz.TeamTwo) }
+                | TeamTwo -> { quiz with TeamTwo = updateScore quiz.TeamTwo
+                                         CompetitionStyle = RunningCompetitionStyle.Team (quiz.TeamOne, updateScore quiz.TeamTwo) }
 
             let updateRevertedAppealTeamScore teamPositionOpt (quiz: RunningQuiz) =
                 let updateScore (team: QuizTeamState) =

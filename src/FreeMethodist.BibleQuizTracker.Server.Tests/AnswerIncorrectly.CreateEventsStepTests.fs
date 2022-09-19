@@ -16,7 +16,7 @@ let ``Given current quizzer answered current question correctly When current qui
         let answerer =
             QuizzerState.create "answerer"
 
-        let initialQuiz = RunningQuiz.identity
+        let initialQuiz = RunningQuiz.newTeamQuiz
 
         let! quizQuestion, _ =
             (Some QuizAnswer.initial
@@ -50,7 +50,7 @@ let ``Given current quizzer answered current question correctly When current qui
         let answerer =
             QuizzerState.create "answerer"
 
-        let initialQuiz = RunningQuiz.identity
+        let initialQuiz = RunningQuiz.newTeamQuiz
 
         let! quizAnswer, _ =
             (Some QuizAnswer.initial

@@ -10,7 +10,7 @@ open FreeMethodist.BibleQuizTracker.Server.CompleteQuiz.Pipeline
 [<Fact>]
 let ``When completing a quiz Then quiz is in a Completed state`` () =
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> fun quiz -> { quiz with Questions = Map.empty }
 
     let actualQuiz =
@@ -72,7 +72,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
           AnswerState = QuizAnswer.Incomplete <| incompleteAnswerers }
 
     let initialQuiz =
-        RunningQuiz.identity
+        RunningQuiz.newTeamQuiz
         |> fun quiz ->
             { quiz with
                 Questions =

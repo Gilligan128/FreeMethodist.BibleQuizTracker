@@ -35,8 +35,10 @@ let updateQuiz: UpdateQuiz =
 
                 match teamPositionOpt with
                 | None -> quiz
-                | Some TeamOne -> { quiz with TeamOne = updateScore quiz.TeamOne }
-                | Some TeamTwo -> { quiz with TeamTwo = updateScore quiz.TeamTwo }
+                | Some TeamOne -> { quiz with TeamOne = updateScore quiz.TeamOne
+                                              CompetitionStyle = RunningCompetitionStyle.Team (updateScore quiz.TeamOne, quiz.TeamTwo) }
+                | Some TeamTwo -> { quiz with TeamTwo = updateScore quiz.TeamTwo
+                                              CompetitionStyle = RunningCompetitionStyle.Team (quiz.TeamOne, updateScore quiz.TeamTwo) }
 
             let revertedTeamOpt =
                 revertingAppealer

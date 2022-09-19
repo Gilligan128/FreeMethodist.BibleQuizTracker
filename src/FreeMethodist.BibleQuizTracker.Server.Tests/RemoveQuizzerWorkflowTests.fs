@@ -6,9 +6,9 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 
 let initialTeamStateWithQuizzer quizzer =
-    { RunningQuiz.identity.TeamOne with
+    { RunningQuiz.newTeamQuiz.TeamOne with
         Quizzers =
-            RunningQuiz.identity.TeamOne.Quizzers
+            RunningQuiz.newTeamQuiz.TeamOne.Quizzers
             @ [ { Name = quizzer
                   Participation = In
                   Score = QuizScore.zero } ] }
@@ -21,7 +21,7 @@ let ``Given there is no jump order, when current quizzer removed then there is n
         { Quizzer = "Juni" }
 
     let initialQuizState =
-        { RunningQuiz.identity with
+        { RunningQuiz.newTeamQuiz with
             CurrentQuizzer = Some input.Quizzer
             CompetitionStyle =
                 (initialTeamStateWithQuizzer input.Quizzer,
@@ -50,7 +50,7 @@ let ``when a non-current quizzer removed then Current Quizzer remains the same``
         { Quizzer = "Juni" }
 
     let initialQuizState =
-        { RunningQuiz.identity with
+        { RunningQuiz.newTeamQuiz with
             CurrentQuizzer = Some $"Not {input.Quizzer}"
             CompetitionStyle =
                 (initialTeamStateWithQuizzer input.Quizzer,
@@ -72,7 +72,7 @@ let ``when removing a quizzer in Individuals then Quizzer is not in roster`` () 
         { Quizzer = "Juni" }
 
     let initialQuizState =
-        { RunningQuiz.identity with
+        { RunningQuiz.newTeamQuiz with
             CurrentQuizzer = Some $"Not {input.Quizzer}"
             CompetitionStyle =
                 [ QuizzerState.create input.Quizzer ]
