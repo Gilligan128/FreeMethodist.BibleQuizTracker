@@ -71,9 +71,9 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
     let nonAnswerer = QuizzerState.create "Jim"
 
     let quiz =
-        { RunningQuiz.newTeamQuiz with
-            TeamOne = { RunningQuiz.newTeamQuiz.TeamOne with Quizzers = [ nonAnswerer; answerer ] }
-            TeamTwo = { RunningQuiz.newTeamQuiz.TeamTwo with Quizzers = [ QuizzerState.create "Jessie" ] } }
+        RunningQuiz.newTeamQuiz
+        |> Arrange.withParticipants [ nonAnswerer; answerer ]
+        |> Arrange.withTeamTwoParticipants [ QuizzerState.create "Jessie" ] 
 
     let result = updateQuiz answerer.Name quiz
 
@@ -167,8 +167,7 @@ let ``Given someone else previously answered correctly  When Quizzer Answers the
         |> Answered
         |> Complete
 
-    let setupQuiz (quiz: RunningQuiz) =
-        { quiz with TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] } }
+    let setupQuiz (quiz: RunningQuiz) = quiz |> Arrange.withParticipants [ quizzer; previousAnswerer ]
 
     let initialQuiz =
         RunningQuiz.newTeamQuiz
@@ -205,11 +204,9 @@ let ``Given someone else previously answered correctly from other team When Quiz
         |> Complete
 
     let setupQuiz (quiz: RunningQuiz) =
-        { quiz with
-            TeamOne = { quiz.TeamOne with Quizzers = [ quizzer ] }
-            TeamTwo = { quiz.TeamTwo with Quizzers = [ previousAnswerer ] }
-
-         }
+        quiz
+        |> Arrange.withParticipants [ quizzer ]
+        |> Arrange.withTeamTwoParticipants [previousAnswerer]
 
     let initialQuiz =
         RunningQuiz.newTeamQuiz
@@ -245,7 +242,7 @@ let ``Given someone else previously answered correctly from same team When Quizz
         |> Complete
 
     let setupQuiz (quiz: RunningQuiz) =
-        { quiz with TeamOne = { quiz.TeamOne with Quizzers = [ quizzer; previousAnswerer ] } }
+        quiz |> Arrange.withParticipants [ quizzer; previousAnswerer ]
 
     let initialQuiz =
         RunningQuiz.newTeamQuiz

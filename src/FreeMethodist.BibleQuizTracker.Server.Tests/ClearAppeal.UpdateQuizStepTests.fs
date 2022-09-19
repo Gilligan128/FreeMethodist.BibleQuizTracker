@@ -11,9 +11,8 @@ let ``Given Question has  been appealed When appeal clears Then record remove ap
         let quizzer = "Jim"
 
         let setupCurrentQuizzer quiz =
-            { quiz with
-                CurrentQuizzer = (Some quizzer)
-                TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
+            { quiz with CurrentQuizzer = (Some quizzer) }
+            |> Arrange.withParticipants [ QuizzerState.create quizzer ]
 
         let insertAppeal quiz =
             { quiz with
@@ -37,6 +36,7 @@ let ``Given Question has  been appealed When appeal clears Then record remove ap
                 .FailedAppeal
         )
     }
+
 [<Fact>]
 let ``Given someone  preciously failed an appeal for this Question When appeal clears Then revert previous appealer's team score``
     ()
@@ -55,10 +55,9 @@ let ``Given someone  preciously failed an appeal for this Question When appeal c
                          |> fun q -> { q with FailedAppeal = Some previousAppealer }) }
 
         let setupCurrentQuizzer quiz =
-            { quiz with
-                CurrentQuizzer = (Some quizzer)
-                TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] }
-                TeamTwo = { quiz.TeamTwo with Quizzers = [ QuizzerState.create previousAppealer ] } }
+            { quiz with CurrentQuizzer = (Some quizzer) }
+            |> Arrange.withParticipants [ QuizzerState.create quizzer ]
+            |> Arrange.withTeamTwoParticipants [ QuizzerState.create previousAppealer ]
 
         let initialQuiz =
             RunningQuiz.newTeamQuiz
@@ -75,9 +74,7 @@ let ``Given someone  preciously failed an appeal for this Question When appeal c
     }
 
 [<Fact>]
-let ``Given no one failed an appeal for this Question When appeal clears Then Error``
-    ()
-    =
+let ``Given no one failed an appeal for this Question When appeal clears Then Error`` () =
     let quizzer = "Jim"
 
     let insertQuestion quiz =
@@ -91,8 +88,8 @@ let ``Given no one failed an appeal for this Question When appeal clears Then Er
 
     let setupCurrentQuizzer quiz =
         { quiz with
-            CurrentQuizzer = (Some quizzer)
-            TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] }}
+            CurrentQuizzer = (Some quizzer) }
+        |> Arrange.withParticipants  [ QuizzerState.create quizzer ]
 
     let initialQuiz =
         RunningQuiz.newTeamQuiz

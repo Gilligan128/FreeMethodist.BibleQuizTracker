@@ -5,15 +5,6 @@ open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 
-let initialTeamStateWithQuizzer quizzer =
-    { RunningQuiz.newTeamQuiz.TeamOne with
-        Quizzers =
-            RunningQuiz.newTeamQuiz.TeamOne.Quizzers
-            @ [ { Name = quizzer
-                  Participation = In
-                  Score = QuizScore.zero } ] }
-
-
 
 [<Fact>]
 let ``Given there is no jump order, when current quizzer removed then there is no current quizzer`` () =
@@ -22,14 +13,8 @@ let ``Given there is no jump order, when current quizzer removed then there is n
 
     let initialQuizState =
         { RunningQuiz.newTeamQuiz with
-            CurrentQuizzer = Some input.Quizzer
-            CompetitionStyle =
-                (initialTeamStateWithQuizzer input.Quizzer,
-                 { Name = ""
-                   Score = QuizScore.zero
-                   Quizzers = [] })
-                |> RunningCompetitionStyle.Team
-            TeamOne = initialTeamStateWithQuizzer input.Quizzer }
+            CurrentQuizzer = Some input.Quizzer }
+        |> Arrange.withParticipants [QuizzerState.create input.Quizzer ]
 
     let quiz, currentChangedEvent =
         RemoveQuizzer_Pipeline.removeQuizzerFromQuiz input initialQuizState []
@@ -52,13 +37,8 @@ let ``when a non-current quizzer removed then Current Quizzer remains the same``
     let initialQuizState =
         { RunningQuiz.newTeamQuiz with
             CurrentQuizzer = Some $"Not {input.Quizzer}"
-            CompetitionStyle =
-                (initialTeamStateWithQuizzer input.Quizzer,
-                 { Name = ""
-                   Score = QuizScore.zero
-                   Quizzers = [] })
-                |> RunningCompetitionStyle.Team
-            TeamOne = initialTeamStateWithQuizzer input.Quizzer }
+            }
+        |> Arrange.withParticipants [QuizzerState.create input.Quizzer]
 
     let quiz, currentChangedEvent =
         RemoveQuizzer_Pipeline.removeQuizzerFromQuiz input initialQuizState []

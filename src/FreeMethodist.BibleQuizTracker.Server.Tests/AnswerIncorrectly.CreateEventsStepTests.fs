@@ -24,8 +24,8 @@ let ``Given current quizzer answered current question correctly When current qui
 
         let setupQuiz (quiz: RunningQuiz) : UpdatedQuiz =
             { QuizState =
-                { quiz with
-                    TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }
+                quiz
+                |> Arrange.withParticipants [ answerer ]
                 |> insertCurrentAnswer quizQuestion
               RevertedAnswer = Reverted answerer.Name }
 
@@ -58,8 +58,8 @@ let ``Given current quizzer answered current question correctly When current qui
 
         let setupQuiz (quiz: RunningQuiz) : UpdatedQuiz =
             { QuizState =
-                { quiz with
-                    TeamOne = { quiz.TeamOne with Quizzers = [ answerer ] } }
+                quiz
+                |> Arrange.withParticipants [answerer]
                 |> insertCurrentAnswer quizAnswer
               RevertedAnswer = Reverted answerer.Name }
 

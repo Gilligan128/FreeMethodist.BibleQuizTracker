@@ -11,9 +11,8 @@ let ``Given Question has not been appealed When appeal fails Then record failure
         let quizzer = "Jim"
 
         let setupCurrentQuizzer quiz =
-            { quiz with
-                CurrentQuizzer = (Some quizzer)
-                TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
+            { quiz with CurrentQuizzer = (Some quizzer) }
+            |> Arrange.withParticipants [ QuizzerState.create quizzer ]
 
         let initialQuiz =
             RunningQuiz.newTeamQuiz |> setupCurrentQuizzer
@@ -36,9 +35,8 @@ let ``When appeal fails Then change Team score`` () =
 
         let setupCurrentQuizzer quiz =
             { quiz with
-                CurrentQuizzer = (Some quizzer)
-                TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
-
+                CurrentQuizzer = (Some quizzer) }
+            |> Arrange.withParticipants [ QuizzerState.create quizzer ]
         let initialQuiz =
             RunningQuiz.newTeamQuiz |> setupCurrentQuizzer
 
@@ -69,9 +67,9 @@ let ``Given someone else preciously failed an appeal for this Question When appe
 
         let setupCurrentQuizzer quiz =
             { quiz with
-                CurrentQuizzer = (Some quizzer)
-                TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] }
-                TeamTwo = { quiz.TeamTwo with Quizzers = [ QuizzerState.create previousAppealer ] } }
+                CurrentQuizzer = (Some quizzer) }
+            |> Arrange.withParticipants [ QuizzerState.create quizzer ]
+            |> Arrange.withTeamTwoParticipants [ QuizzerState.create previousAppealer ]
 
         let initialQuiz =
             RunningQuiz.newTeamQuiz
@@ -86,7 +84,7 @@ let ``Given someone else preciously failed an appeal for this Question When appe
 
         Assert.Equal(expectedAppeal, result.TeamTwo.Score)
     }
-    
+
 [<Fact>]
 let ``Given the same quizzer preciously failed an appeal for this Question When appeal fails Then revert Error`` () =
     let quizzer = "Jim"
@@ -102,14 +100,15 @@ let ``Given the same quizzer preciously failed an appeal for this Question When 
 
     let setupCurrentQuizzer quiz =
         { quiz with
-            CurrentQuizzer = (Some quizzer)
-            TeamOne = { quiz.TeamOne with Quizzers = [ QuizzerState.create quizzer ] } }
+            CurrentQuizzer = (Some quizzer) }
+        |> Arrange.withParticipants  [ QuizzerState.create quizzer ]
 
     let initialQuiz =
         RunningQuiz.newTeamQuiz
         |> setupCurrentQuizzer
         |> insertQuestion
 
-    let result = updateQuiz (quizzer, TeamOne) initialQuiz
+    let result =
+        updateQuiz (quizzer, TeamOne) initialQuiz
 
-    Assert.Equal((Result.Error (FailAppeal.Error.AppealAlreadyFailed quizzer)), result)
+    Assert.Equal((Result.Error(FailAppeal.Error.AppealAlreadyFailed quizzer)), result)
