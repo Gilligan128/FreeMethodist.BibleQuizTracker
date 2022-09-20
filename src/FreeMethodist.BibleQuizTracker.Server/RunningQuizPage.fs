@@ -660,6 +660,7 @@ let update
         let mapEvent event =
             match event with
             | FailAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
+            | FailAppeal.Event.IndividualScoreChanged e -> RunQuizEvent.IndividualScoreChanged e
 
         failAppeal
         |> Option.map (fun workflow ->

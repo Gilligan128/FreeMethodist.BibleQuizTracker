@@ -367,6 +367,20 @@ module RunningQuiz =
                   Quizzers = [] }
             ) }
 
+    let newIndividualQuiz =
+        { Code = "Example"
+          TeamOne =
+            { Name = ""
+              Score = QuizScore.zero
+              Quizzers = [] }
+          TeamTwo =
+            { Name = ""
+              Score = QuizScore.zero
+              Quizzers = [] }
+          CurrentQuestion = PositiveNumber.one
+          CurrentQuizzer = None
+          Questions = Map.empty
+          CompetitionStyle = RunningCompetitionStyle.Individuals [] }
 
     let getTeam teamPosition (quiz: RunningQuiz) =
         match teamPosition with
@@ -408,13 +422,13 @@ module RunningQuiz =
     let tryFindQuizzer (quiz: RunningQuiz) quizzer =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-           tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
-           |> Option.map (fun (q, team) -> (q, Some team))                
+            tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+            |> Option.map (fun (q, team) -> (q, Some team))
         | RunningCompetitionStyle.Individuals quizzerStates ->
             quizzerStates
             |> List.tryFind (QuizzerState.isQuizzer quizzer)
             |> Option.map (fun q -> q, None)
-    
+
     let changeCurrentAnswer quiz changedQuestion =
         quiz.Questions
         |> Map.change quiz.CurrentQuestion (fun q ->
@@ -486,12 +500,12 @@ module RunningQuiz =
                 quizzerName
         | RunningCompetitionStyle.Individuals quizzerStates ->
             updateIndividualQuizzerScore changeScore quizzerName updatedQuizInfo quizzerStates
-    
+
     let teamOneScore (quiz: RunningQuiz) =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, _) -> Some teamOne.Score
         | RunningCompetitionStyle.Individuals _ -> None
-        
+
     let updateTeamScore updateScore teamPosition (quiz: RunningQuiz) =
         let updateScore (team: QuizTeamState) =
             { team with Score = team.Score |> updateScore }

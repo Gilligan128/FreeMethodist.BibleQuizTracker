@@ -149,7 +149,7 @@ type StartTeamQuizError = NotEnoughPlayers of NotEnoughPlayersError
 //Validation
 type ValidateQuizIsRunning = Quiz -> Result<RunningQuiz, QuizStateError>
 type ValidateCurrentQuizzer = RunningQuiz -> Result<Quizzer, NoCurrentQuizzer>
-type ValidateCurrentQuizzerWithTeam = RunningQuiz -> Result<Quizzer * TeamPosition, NoCurrentQuizzer>
+type ValidateCurrentQuizzerWithTeam = RunningQuiz -> Result<Quizzer * TeamPosition option, NoCurrentQuizzer>
 
 let validateCurrentQuizzer: ValidateCurrentQuizzer =
     fun quiz ->
@@ -158,24 +158,10 @@ let validateCurrentQuizzer: ValidateCurrentQuizzer =
 
 let validateCurrentQuizzerWithTeam: ValidateCurrentQuizzerWithTeam =
     fun quiz ->
-        let quizzerOpt quizzers q =
-            quizzers
-            |> List.tryFind (QuizzerState.isQuizzer q)
-            |> Option.map (fun _ -> q)
-
-        let teamOneOpt =
-            quiz.CurrentQuizzer
-            |> Option.bind (fun q -> q |> quizzerOpt quiz.TeamOne.Quizzers)
-
-        let teamTwoOpt =
-            quiz.CurrentQuizzer
-            |> Option.bind (fun q -> q |> quizzerOpt quiz.TeamTwo.Quizzers)
-
-        match teamOneOpt, teamTwoOpt with
-        | None, None -> Error NoCurrentQuizzer
-        | Some quizzer, None -> Ok(quizzer, TeamOne)
-        | None, Some quizzer -> Ok(quizzer, TeamTwo)
-        | Some quizzer1, Some _ -> Ok(quizzer1, TeamOne) //should be an error, really
+        quiz.CurrentQuizzer
+        |> Option.bind (fun quizzer -> quizzer |> RunningQuiz.tryFindQuizzer quiz)
+        |> Option.map (fun (quizzer, team) -> quizzer.Name, team)
+        |> Result.ofOption NoCurrentQuizzer
 
 let validateCompleteQuiz quiz =
     match quiz with

@@ -9,7 +9,8 @@ open Xunit
 let ``Given Question has not been appealed When appeal fails Then record failure with appealer's name`` () =
     let quizzer = "Jim"
     let expectedAppeal = Some quizzer
-    let result = 
+
+    let result =
         result {
 
             let setupCurrentQuizzer quiz =
@@ -19,17 +20,17 @@ let ``Given Question has not been appealed When appeal fails Then record failure
             let initialQuiz =
                 RunningQuiz.newTeamQuiz |> setupCurrentQuizzer
 
-            return! updateQuiz (quizzer, TeamOne) initialQuiz
+            return! updateQuiz (quizzer, Some TeamOne) initialQuiz
         }
-    
+
     match result with
     | Error error -> failwith $"{error}"
-    | Ok (result, _) -> 
+    | Ok (result, _) ->
         Assert.Equal(
-                expectedAppeal,
-                result.Questions[result.CurrentQuestion]
-                    .FailedAppeal
-            )
+            expectedAppeal,
+            result.Questions[result.CurrentQuestion]
+                .FailedAppeal
+        )
 
 [<Fact>]
 let ``When appeal fails Then change Team score`` () =
@@ -43,7 +44,7 @@ let ``When appeal fails Then change Team score`` () =
         let initialQuiz =
             RunningQuiz.newTeamQuiz |> setupCurrentQuizzer
 
-        let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
+        let! result, _ = updateQuiz (quizzer, Some TeamOne) initialQuiz
 
         let expectedAppeal =
             initialQuiz
@@ -85,7 +86,7 @@ let ``Given someone else preciously failed an appeal for this Question When appe
             |> setupCurrentQuizzer
             |> insertQuestion
 
-        let! result, _ = updateQuiz (quizzer, TeamOne) initialQuiz
+        let! result, _ = updateQuiz (quizzer, Some TeamOne) initialQuiz
 
         let expectedAppeal =
             initialQuiz.TeamTwo.Score
@@ -117,6 +118,32 @@ let ``Given the same quizzer preciously failed an appeal for this Question When 
         |> insertQuestion
 
     let result =
-        updateQuiz (quizzer, TeamOne) initialQuiz
+        updateQuiz (quizzer, Some TeamOne) initialQuiz
 
     Assert.Equal((Result.Error(FailAppeal.Error.AppealAlreadyFailed quizzer)), result)
+
+
+[<Fact>]
+let ``Given Quiz is Individuals When appeal fails Then change Individual score`` () =
+    result {
+        let quizzer = "Jim"
+
+        let initialQuiz =
+            RunningQuiz.newIndividualQuiz
+            |> fun quiz -> { quiz with CurrentQuizzer = (Some quizzer) }
+            |> Arrange.withParticipants [ QuizzerState.create quizzer ]
+
+        let! result, _ = updateQuiz (quizzer, None) initialQuiz
+
+        let expectedAppeal =
+            initialQuiz
+            |> RunningQuiz.findQuizzer quizzer
+            |> fun (t,_) -> t.Score |> QuizScore.failAppeal
+
+        let score =
+            result
+            |> RunningQuiz.findQuizzer quizzer
+            |> fun (quizzerState, _) -> quizzerState.Score
+
+        Assert.Equal(expectedAppeal, score)
+    }
