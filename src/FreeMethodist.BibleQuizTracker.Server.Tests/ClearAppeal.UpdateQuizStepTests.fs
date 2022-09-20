@@ -38,7 +38,7 @@ let ``Given Question has  been appealed When appeal clears Then record remove ap
     }
 
 [<Fact>]
-let ``Given someone  preciously failed an appeal for this Question When appeal clears Then revert previous appealer's team score``
+let ``Given someone  previously failed an appeal for this Question When appeal clears Then revert previous appealer's team score``
     ()
     =
     result {
@@ -87,9 +87,8 @@ let ``Given no one failed an appeal for this Question When appeal clears Then Er
                      |> fun q -> { q with FailedAppeal = None }) }
 
     let setupCurrentQuizzer quiz =
-        { quiz with
-            CurrentQuizzer = (Some quizzer) }
-        |> Arrange.withParticipants  [ QuizzerState.create quizzer ]
+        { quiz with CurrentQuizzer = (Some quizzer) }
+        |> Arrange.withParticipants [ QuizzerState.create quizzer ]
 
     let initialQuiz =
         RunningQuiz.newTeamQuiz
@@ -99,3 +98,39 @@ let ``Given no one failed an appeal for this Question When appeal clears Then Er
     let result = updateQuiz initialQuiz
 
     Assert.Equal(Error ClearAppeal.Error.NoFailedAppeal, result)
+
+[<Fact>]
+let ``Given Quiz is Individuals When appeal cleared Then change Individual score`` () =
+    let quizzer = "Jim"
+
+    let initialQuiz =
+        RunningQuiz.newIndividualQuiz
+        |> fun quiz -> { quiz with CurrentQuizzer = (Some quizzer) }
+        |> Arrange.withParticipants [ QuizzerState.create quizzer ]
+        |> fun quiz ->
+            { quiz with
+                Questions =
+                    quiz.Questions
+                    |> Map.add
+                        quiz.CurrentQuestion
+                        (QuestionState.initial
+                         |> fun q -> { q with FailedAppeal = Some quizzer }) }
+
+    let expectedAppeal =
+        initialQuiz
+        |> RunningQuiz.findQuizzer quizzer
+        |> fun (t, _) -> t.Score |> QuizScore.revertAppealFailure
+
+    let result =
+        result {
+
+            let! result, _ = updateQuiz initialQuiz
+
+            return
+                result
+                |> RunningQuiz.findQuizzer quizzer
+                |> fun (quizzerState, _) -> quizzerState.Score
+        }
+
+    result
+    |> Assert.onSuccess (fun score -> Assert.Equal(expectedAppeal, score))

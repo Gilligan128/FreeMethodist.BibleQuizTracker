@@ -8,6 +8,20 @@ type UpdateQuiz = RunningQuiz -> Result<RunningQuiz * TeamPosition option, Clear
 
 type CreateEvents = RunningQuiz * TeamPosition option -> ClearAppeal.Event list
 
+let updateAppealScore quizzer (quiz: RunningQuiz) =
+    let quizzerAndTeamOpt =
+        quizzer |> RunningQuiz.tryFindQuizzer quiz
+
+    quizzerAndTeamOpt
+    |> Option.bind (function
+        | _, Some team ->
+            quiz
+            |> RunningQuiz.updateTeamScore QuizScore.revertAppealFailure team
+            |> Some
+        | quizzer, None ->
+            quiz
+            |> RunningQuiz.updateScoresBasedOnQuizzer QuizScore.revertAppealFailure quizzer.Name)
+
 let updateQuiz: UpdateQuiz =
     fun quiz ->
         result {
@@ -20,7 +34,6 @@ let updateQuiz: UpdateQuiz =
                     | Some failed -> Ok({ original with FailedAppeal = None }, failed)
                     | None -> Error ClearAppeal.Error.NoFailedAppeal
 
-
             let updateCurrentQuestion changedQuestion quiz =
                 changedQuestion
                 |> fun changedQuestion ->
@@ -28,17 +41,6 @@ let updateQuiz: UpdateQuiz =
                         Questions =
                             quiz.Questions
                             |> Map.add quiz.CurrentQuestion changedQuestion }
-
-            let updateRevertingTeamScore teamPositionOpt (quiz: RunningQuiz) =
-                let updateScore (team: QuizTeamState) =
-                    { team with Score = team.Score |> QuizScore.revertAppealFailure }
-
-                match teamPositionOpt with
-                | None -> quiz
-                | Some TeamOne -> { quiz with TeamOne = updateScore quiz.TeamOne
-                                              CompetitionStyle = RunningCompetitionStyle.Team (updateScore quiz.TeamOne, quiz.TeamTwo) }
-                | Some TeamTwo -> { quiz with TeamTwo = updateScore quiz.TeamTwo
-                                              CompetitionStyle = RunningCompetitionStyle.Team (quiz.TeamOne, updateScore quiz.TeamTwo) }
 
             let revertedTeamOpt =
                 revertingAppealer
@@ -48,7 +50,10 @@ let updateQuiz: UpdateQuiz =
             let updatedQuiz =
                 quiz
                 |> updateCurrentQuestion changedQuestion
-                |> updateRevertingTeamScore revertedTeamOpt
+                |> (fun quiz ->
+                    quiz
+                    |> updateAppealScore revertingAppealer
+                    |> Option.defaultValue quiz)
 
             return updatedQuiz, revertedTeamOpt
         }
@@ -70,18 +75,22 @@ let createEvents: CreateEvents =
 let clearAppeal getQuiz saveQuiz : ClearAppeal.Workflow =
     fun command ->
         asyncResult {
-            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError  ClearAppeal.DbError
+            let! quiz =
+                getQuiz command.Quiz
+                |> AsyncResult.mapError ClearAppeal.DbError
 
             let! validQuiz =
                 validateRunningQuiz quiz
-                |> Result.mapError  ClearAppeal.Error.QuizState
+                |> Result.mapError ClearAppeal.Error.QuizState
                 |> AsyncResult.ofResult
 
-            let! updatedQuiz, revertedTeam =
-                updateQuiz validQuiz
-                |> AsyncResult.ofResult
+            let! updatedQuiz, revertedTeam = updateQuiz validQuiz |> AsyncResult.ofResult
 
-            do! updatedQuiz |> Running |> saveQuiz |> AsyncResult.mapError ClearAppeal.Error.DbError 
+            do!
+                updatedQuiz
+                |> Running
+                |> saveQuiz
+                |> AsyncResult.mapError ClearAppeal.Error.DbError
 
             return createEvents (updatedQuiz, revertedTeam)
         }
