@@ -44,8 +44,8 @@ let ``When Quizzer Answers then individual score goes up`` () =
 
     assertSuccess result (fun (updatedQuiz) ->
         let updatedQuizzer, _ =
-            quizzer.Name
-            |> RunningQuiz.findQuizzer updatedQuiz.QuizState
+            updatedQuiz.QuizState
+            |> RunningQuiz.findQuizzer quizzer.Name
 
         Assert.Equal(expectedScore, updatedQuizzer.Score))
 
@@ -84,7 +84,9 @@ let ``When Quizzer Answers then only updates score of answering quizzer`` () =
 
     assertSuccess result (fun (updatedQuiz) ->
         let updatedQuizzer =
-            updatedQuiz.QuizState.TeamOne.Quizzers
+            updatedQuiz.QuizState
+            |> RunningQuiz.getTeam TeamPosition.TeamOne
+            |> fun t -> t.Quizzers
             |> List.find (fun q -> q.Name = nonAnswerer.Name)
 
         Assert.Equal(nonAnswerer.Score, updatedQuizzer.Score))
@@ -186,8 +188,11 @@ let ``Given someone else previously answered correctly  When Quizzer Answers the
         let! result = updateQuiz quizzer.Name initialQuiz
 
         let revertedQuizzerState =
-            result.QuizState.TeamOne.Quizzers
-            |> List.find (QuizzerState.isQuizzer previousAnswerer.Name)
+            result.QuizState
+            |> RunningQuiz.getTeam TeamPosition.TeamOne
+            |> fun t ->
+                t.Quizzers
+                |> List.find (QuizzerState.isQuizzer previousAnswerer.Name)
 
         let expectedScore =
             previousAnswerer.Score
@@ -263,16 +268,17 @@ let ``Given someone else previously answered correctly from same team When Quizz
         result {
             let! result = updateQuiz quizzer.Name initialQuiz
 
-            return result.QuizState.TeamOne.Score
-
-
+            return
+                result.QuizState
+                |> RunningQuiz.getTeam TeamPosition.TeamOne
+                |> fun t -> t.Score
         }
 
-    let expectedScore = initialQuiz |> RunningQuiz.teamOneScore 
+    let expectedScore =
+        initialQuiz |> RunningQuiz.teamOneScore
 
-    match result with
-    | Error errorValue -> failwith $"{errorValue}"
-    | Ok revertedScore -> Assert.Equal(expectedScore,Some revertedScore)
+    result
+    |> Assert.onSuccess (fun revertedScore -> Assert.Equal(expectedScore, Some revertedScore))
 
 [<Fact>]
 let ``Given Individual quiz When quizzer answers correctly then update their score`` () =

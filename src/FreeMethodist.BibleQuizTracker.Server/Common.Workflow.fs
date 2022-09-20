@@ -393,7 +393,7 @@ module RunningQuiz =
                |> List.map (fun q -> (q, TeamTwo))) ]
         |> List.tryFind (fun (q, _) -> QuizzerState.isQuizzer quizzer q)
 
-    let findQuizzer (quiz: RunningQuiz) quizzer =
+    let findQuizzer quizzer (quiz: RunningQuiz) =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
             let quizzer, team =
@@ -491,6 +491,24 @@ module RunningQuiz =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, _) -> Some teamOne.Score
         | RunningCompetitionStyle.Individuals _ -> None
+        
+    let updateTeamScore updateScore teamPosition (quiz: RunningQuiz) =
+        let updateScore (team: QuizTeamState) =
+            { team with Score = team.Score |> updateScore }
+
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+            match teamPosition with
+            | TeamOne ->
+                { quiz with
+                    TeamOne = updateScore quiz.TeamOne
+                    CompetitionStyle = RunningCompetitionStyle.Team(updateScore teamOne, teamTwo) }
+            | TeamTwo ->
+                { quiz with
+                    TeamTwo = updateScore quiz.TeamTwo
+                    CompetitionStyle = RunningCompetitionStyle.Team(teamOne, updateScore teamTwo) }
+        | RunningCompetitionStyle.Individuals _ -> quiz
+
 type DbError =
     | Exception of exn
     | RemoteError of string

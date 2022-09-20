@@ -58,15 +58,20 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
 
         let! quiz = updateQuiz answerer.Name initialQuiz
 
-        let quizzerState =
-            quiz.QuizState.TeamOne.Quizzers
-            |> List.find (fun q -> q.Name = answerer.Name)
+        let quizzerState, _ =
+            quiz.QuizState
+            |> RunningQuiz.findQuizzer answerer.Name
 
         let expectedScore =
             answerer.Score |> QuizScore.revertCorrectAnswer
 
         Assert.Equal(expectedScore, quizzerState.Score)
-        Assert.True(initialQuiz.TeamOne.Score > quiz.QuizState.TeamOne.Score)
+
+        Assert.True(
+            (initialQuiz
+             |> RunningQuiz.getTeamScore TeamPosition.TeamOne) > (quiz.QuizState
+                                                                  |> RunningQuiz.getTeamScore TeamPosition.TeamOne)
+        )
     }
 
 [<Fact>]
@@ -83,9 +88,8 @@ let ``Given Quizzer was recorded answering correctly for question earlier When A
              |> Complete)
 
         let setupQuiz quiz =
-            { quiz with
-                CurrentQuizzer = (Some answerer.Name) }
-            |> Arrange.withParticipants [ answerer ] 
+            { quiz with CurrentQuizzer = (Some answerer.Name) }
+            |> Arrange.withParticipants [ answerer ]
 
         let initialQuiz =
             RunningQuiz.newTeamQuiz
@@ -113,9 +117,8 @@ let ``Given Quizzer was recorded answering incorrectly for an answered question 
          |> Complete)
 
     let initialQuiz =
-        { RunningQuiz.newTeamQuiz with
-            CurrentQuizzer = (Some answerer.Name) }
-        |> Arrange.withParticipants [ answerer ] 
+        { RunningQuiz.newTeamQuiz with CurrentQuizzer = (Some answerer.Name) }
+        |> Arrange.withParticipants [ answerer ]
         |> insertCurrentAnswer previouslyAnswered
 
     let result =
@@ -138,8 +141,7 @@ let ``Given Quizzer was recorded answering incorrectly for an unanswered questio
         ([ answerer.Name ] |> Unanswered |> Complete)
 
     let initialQuiz =
-        { RunningQuiz.newTeamQuiz with
-            CurrentQuizzer = (Some answerer.Name) }
+        { RunningQuiz.newTeamQuiz with CurrentQuizzer = (Some answerer.Name) }
         |> Arrange.withParticipants [ answerer ]
         |> insertCurrentAnswer previouslyUnanswered
 

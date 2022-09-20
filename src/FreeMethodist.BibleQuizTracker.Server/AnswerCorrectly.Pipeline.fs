@@ -77,7 +77,7 @@ let createEvents: CreateEvents =
             | TeamTwo -> quiz.TeamTwo.Score
 
         let answerer, teamUpdatedOpt =
-            RunningQuiz.findQuizzer quizState quizzer
+            RunningQuiz.findQuizzer quizzer quizState
 
         let answererScoreChanged =
             AnswerCorrectly.Event.IndividualScoreChanged
@@ -91,8 +91,7 @@ let createEvents: CreateEvents =
             | NoChange -> []
             | Reverted revertedQuizzer ->
                 let revertedState, revertedTeamOpt =
-                    revertedQuizzer
-                    |> RunningQuiz.findQuizzer quizState
+                    RunningQuiz.findQuizzer revertedQuizzer quizState
 
                 let scoreChanged =
                     { NewScore = revertedState.Score

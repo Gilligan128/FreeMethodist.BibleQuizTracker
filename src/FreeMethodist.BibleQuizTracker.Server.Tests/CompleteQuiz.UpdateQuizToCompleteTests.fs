@@ -16,19 +16,27 @@ let ``When completing a quiz Then quiz is in a Completed state`` () =
     let actualQuiz =
         updateQuizToComplete initialQuiz
 
+    let teamOne =
+        initialQuiz
+        |> RunningQuiz.getTeam TeamPosition.TeamOne
+
+    let teamTwo =
+        initialQuiz
+        |> RunningQuiz.getTeam TeamPosition.TeamTwo
+
     let expectedQuiz: CompletedQuiz =
         { Code = initialQuiz.Code
           CompetitionStyle =
             CompletedCompetitionStyle.Team(
-                { Name = initialQuiz.TeamOne.Name
-                  Score = initialQuiz.TeamOne.Score
+                { Name = teamOne.Name
+                  Score = teamOne.Score
                   Quizzers =
-                    initialQuiz.TeamOne.Quizzers
+                    teamOne.Quizzers
                     |> List.map (fun q -> { Name = q.Name; Score = q.Score }) },
-                { Name = initialQuiz.TeamTwo.Name
-                  Score = initialQuiz.TeamTwo.Score
+                { Name = teamTwo.Name
+                  Score = teamTwo.Score
                   Quizzers =
-                    initialQuiz.TeamTwo.Quizzers
+                    teamTwo.Quizzers
                     |> List.map (fun q -> { Name = q.Name; Score = q.Score }) }
             )
           CompletedQuestions = [] }
