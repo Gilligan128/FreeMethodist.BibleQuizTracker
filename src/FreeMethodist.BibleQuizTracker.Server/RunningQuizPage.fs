@@ -939,9 +939,9 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                 | LoadedCompetitionStyle.Team(teamOne, teamTwo) ->
                     teamView
                         removeQuizzerCap
-                        TeamPosition.TeamOne
+                        TeamPosition.TeamTwo
                         quizzerView
-                        (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
+                        (resolved.TeamTwo, resolved.JumpOrder, resolved.CurrentQuizzer)
                         dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                      quizzerModels 

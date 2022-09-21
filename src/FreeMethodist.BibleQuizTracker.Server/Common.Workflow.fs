@@ -472,7 +472,7 @@ module RunningQuiz =
                     TeamTwo = updateTeam teamTwo
                     CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo) })
 
-    let private updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: RunningQuiz) quizzerStates =
+    let updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: RunningQuiz) quizzerStates =
         let quizzerExistsResult =
             if
                 quizzerStates
