@@ -35,16 +35,23 @@ let init quizCode =
 
 let subOfFunc arg (func: 'a -> unit) : Sub<QuizDetailsMessage> = fun _ -> func arg
 
+let loadRunningQuizzer (quizzer : QuizzerState) =
+   quizzer |> (fun q -> q.Name)
+
 let loadRunningTeam (team: QuizTeamState) : ItemizedTeam =
     { Name = team.Name
-      Quizzers = team.Quizzers |> List.map (fun q -> q.Name) }
+      Quizzers = team.Quizzers |> List.map loadRunningQuizzer }
 
 let private loadRunningQuiz quiz =
     { NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
       QuestionsWithEvents =
         quiz.Questions
         |> Score.createScoreModel
-      CompetitionStyle = ItemizedCompetitionStyle.Team(quiz.TeamOne |> loadRunningTeam, quiz.TeamTwo |> loadRunningTeam) }
+      CompetitionStyle =
+          match quiz.CompetitionStyle with
+          | RunningCompetitionStyle.Team(teamOne, teamTwo) -> ItemizedCompetitionStyle.Team (loadRunningTeam teamOne, loadRunningTeam teamTwo)
+          | RunningCompetitionStyle.Individuals quizzerStates -> quizzerStates |> List.map loadRunningQuizzer |> ItemizedCompetitionStyle.Individual
+    }
 
 let private loadCompletedTeam (team: CompletedTeam) : ItemizedTeam =
     { Name = team.Name

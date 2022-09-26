@@ -21,14 +21,7 @@ let validateRemoval (validateQuiz: Quiz -> Result<RunningQuiz, QuizStateError>) 
                 validateQuiz quiz
                 |> Result.mapError RemoveQuizzer.QuizStateError
 
-            let foundQuizzerOpt =
-                match validQuiz.CompetitionStyle with
-                | RunningCompetitionStyle.Team _ ->
-                    RunningQuiz.tryFindQuizzerAndTeam (validQuiz.TeamOne, validQuiz.TeamTwo) input.Quizzer
-                | RunningCompetitionStyle.Individuals quizzerStates ->
-                    quizzerStates
-                    |> List.tryFind (fun q -> q.Name = input.Quizzer)
-                    |> Option.map (fun quizzer -> quizzer, TeamPosition.TeamOne)
+            let foundQuizzerOpt = validQuiz |> RunningQuiz.tryFindQuizzer2 input.Quizzer
 
             return!
                 foundQuizzerOpt
@@ -80,13 +73,13 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
 
         let newQuiz =
             match quiz.CompetitionStyle with
-            | RunningCompetitionStyle.Team _ ->
+            | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
                 let _, team =
-                    RunningQuiz.findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) input.Quizzer
+                    RunningQuiz.findQuizzerAndTeam (teamOne, teamTwo) input.Quizzer
 
                 match team with
-                | TeamOne -> { quiz with TeamOne = removeFromTeam quiz.TeamOne }
-                | TeamTwo -> { quiz with TeamTwo = removeFromTeam quiz.TeamTwo }
+                | TeamOne -> { quiz with TeamOne = removeFromTeam teamOne }
+                | TeamTwo -> { quiz with TeamTwo = removeFromTeam teamTwo }
             | RunningCompetitionStyle.Individuals _ -> quiz
             |> fun oldQuiz ->
                 { oldQuiz with

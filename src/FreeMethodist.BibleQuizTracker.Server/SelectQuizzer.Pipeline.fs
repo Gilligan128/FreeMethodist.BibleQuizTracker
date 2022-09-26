@@ -20,8 +20,8 @@ let validateSelection: ValidateSelection =
             let quizzers =
                 match validQuiz.CompetitionStyle with
                 | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-                    validQuiz.TeamOne.Quizzers
-                    @ validQuiz.TeamTwo.Quizzers
+                    teamOne.Quizzers
+                    @ teamTwo.Quizzers
                 | RunningCompetitionStyle.Individuals quizzerStates -> quizzerStates
 
             let hasQuizzer =
