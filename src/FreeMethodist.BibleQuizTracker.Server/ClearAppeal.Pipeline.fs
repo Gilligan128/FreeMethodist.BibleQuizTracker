@@ -43,9 +43,9 @@ let updateQuiz: UpdateQuiz =
                             |> Map.add quiz.CurrentQuestion changedQuestion }
 
             let revertedTeamOpt =
-                revertingAppealer
-                |> RunningQuiz.tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo)
-                |> Option.map snd
+                quiz
+                |> RunningQuiz.tryFindQuizzer2 revertingAppealer
+                |> Option.bind snd
 
             let updatedQuiz =
                 quiz

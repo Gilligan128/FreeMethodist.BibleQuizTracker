@@ -68,7 +68,9 @@ module LiveScorePage =
             { LastUpdated = DateTimeOffset.Now
               QuestionState = Current quizState.CurrentQuestion
               CompetitionStyle =
-                LiveScoreCompetitionStyle.Team((loadRunningTeam quizState.TeamOne), (loadRunningTeam quizState.TeamTwo)) }
+                match quizState.CompetitionStyle with
+                | RunningCompetitionStyle.Team (teamOne, teamTwo) -> LiveScoreCompetitionStyle.Team((loadRunningTeam teamOne), (loadRunningTeam teamTwo))
+                | RunningCompetitionStyle.Individuals quizzerStates -> quizzerStates |> List.map loadRunningQuizzer |> LiveScoreCompetitionStyle.Individual }
         | Official quizState ->
             { LastUpdated = DateTimeOffset.Now
               QuestionState = Completed quizState.CompletedQuestions.Length

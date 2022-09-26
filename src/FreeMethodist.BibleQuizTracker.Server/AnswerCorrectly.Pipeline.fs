@@ -70,12 +70,7 @@ let updateQuiz: UpdateQuiz =
 let createEvents: CreateEvents =
     fun quizzer updatedQuiz ->
         let quizState = updatedQuiz.QuizState
-
-        let updatedTeamScore (quiz: RunningQuiz) teamPosition =
-            match teamPosition with
-            | TeamOne -> quiz.TeamOne.Score
-            | TeamTwo -> quiz.TeamTwo.Score
-
+        
         let answerer, teamUpdatedOpt =
             RunningQuiz.findQuizzer quizzer quizState
 
@@ -105,7 +100,7 @@ let createEvents: CreateEvents =
                         (fun teamUpdated teamReverted ->
                             if teamUpdated <> teamReverted then
                                 [ AnswerCorrectly.Event.TeamScoreChanged
-                                      { NewScore = updatedTeamScore quizState teamReverted
+                                      { NewScore = quizState |> RunningQuiz.getTeam teamReverted |> fun t -> t.Score
                                         Team = teamReverted
                                         Quiz = quizState.Code } ]
                             else
@@ -121,7 +116,7 @@ let createEvents: CreateEvents =
             teamUpdatedOpt
             |> Option.map (fun teamUpdated ->
                 [ AnswerCorrectly.Event.TeamScoreChanged
-                      { NewScore = updatedTeamScore quizState teamUpdated
+                      { NewScore = quizState |> RunningQuiz.getTeam teamUpdated |> fun t -> t.Score
                         Team = teamUpdated
                         Quiz = quizState.Code } ])
             |> Option.defaultValue []

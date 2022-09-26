@@ -27,7 +27,10 @@ let updateQuizToComplete (quiz: RunningQuiz) : CompletedQuiz =
 
     { Code = quiz.Code
       CompetitionStyle =
-        CompletedCompetitionStyle.Team((mapRunningTeamToComplete quiz.TeamOne), (mapRunningTeamToComplete quiz.TeamTwo))
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Team(teamOne, teamTwo) -> ((mapRunningTeamToComplete teamOne), (mapRunningTeamToComplete teamTwo)) |> CompletedCompetitionStyle.Team
+        | RunningCompetitionStyle.Individuals quizzerStates -> quizzerStates |> List.map mapRunningQuizzerToComplete |> CompletedCompetitionStyle.Individual  
+        
       CompletedQuestions =
         quiz.Questions
         |> Map.toList

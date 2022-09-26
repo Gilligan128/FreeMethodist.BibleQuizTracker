@@ -215,8 +215,7 @@ module QuizAnswer =
 
     let initial = Incomplete []
 
-    let private CompletedAnswered =
-        Answered >> Complete
+    let private CompletedAnswered = Answered >> Complete
 
     let private withoutAnswerer quizzer = List.except [ quizzer ]
 
@@ -383,9 +382,10 @@ module RunningQuiz =
           CompetitionStyle = RunningCompetitionStyle.Individuals [] }
 
     let getTeam teamPosition (quiz: RunningQuiz) =
-        match teamPosition with
-        | TeamOne -> quiz.TeamOne
-        | TeamTwo -> quiz.TeamTwo
+        match quiz.CompetitionStyle, teamPosition with
+        | RunningCompetitionStyle.Individuals _, _ -> { Name = ""; Score = QuizScore.zero; Quizzers = [] }
+        | RunningCompetitionStyle.Team (teamOne, _), TeamOne -> teamOne
+        | RunningCompetitionStyle.Team (_, teamTwo), TeamTwo -> teamTwo
 
     let getTeamScore teamPosition (quiz: RunningQuiz) = (getTeam teamPosition quiz).Score
 
@@ -410,14 +410,23 @@ module RunningQuiz =
     let findQuizzer quizzer (quiz: RunningQuiz) =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-            let quizzer, team =
-                findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+            let quizzer, team = findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
 
             quizzer, Some team
         | RunningCompetitionStyle.Individuals quizzerStates ->
             quizzerStates
             |> List.find (QuizzerState.isQuizzer quizzer),
             None
+
+    let tryFindQuizzer2 quizzer (quiz: RunningQuiz) =
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+            tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+            |> Option.map (fun (q, team) -> (q, Some team))
+        | RunningCompetitionStyle.Individuals quizzerStates ->
+            quizzerStates
+            |> List.tryFind (QuizzerState.isQuizzer quizzer)
+            |> Option.map (fun q -> q, None)
 
     let tryFindQuizzer (quiz: RunningQuiz) quizzer =
         match quiz.CompetitionStyle with
@@ -457,8 +466,7 @@ module RunningQuiz =
             Score = team.Score |> changeScore }
 
     let private updateTeamAndQuizzerScore changeScore quiz (teamOne, teamTwo) quizzerName =
-        let updateTeam =
-            updateTeam changeScore quizzerName
+        let updateTeam = updateTeam changeScore quizzerName
 
         quizzerName
         |> tryFindQuizzerAndTeam (teamOne, teamTwo)
@@ -496,7 +504,7 @@ module RunningQuiz =
             updateTeamAndQuizzerScore
                 changeScore
                 updatedQuizInfo
-                (updatedQuizInfo.TeamOne, updatedQuizInfo.TeamTwo)
+                (teamOne, teamTwo)
                 quizzerName
         | RunningCompetitionStyle.Individuals quizzerStates ->
             updateIndividualQuizzerScore changeScore quizzerName updatedQuizInfo quizzerStates
@@ -515,7 +523,7 @@ module RunningQuiz =
             match teamPosition with
             | TeamOne ->
                 { quiz with
-                    TeamOne = updateScore quiz.TeamOne
+                    TeamOne = updateScore teamOne
                     CompetitionStyle = RunningCompetitionStyle.Team(updateScore teamOne, teamTwo) }
             | TeamTwo ->
                 { quiz with

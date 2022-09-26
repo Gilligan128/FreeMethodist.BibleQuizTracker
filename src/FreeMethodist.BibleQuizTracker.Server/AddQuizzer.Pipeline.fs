@@ -77,7 +77,7 @@ let addQuizzerToQuiz: AddQuizzerToQuiz =
         | None, RunningCompetitionStyle.Team _ -> quiz
         | Some TeamOne, RunningCompetitionStyle.Team (teamOne, teamTwo) ->
             { quiz with
-                TeamOne = newTeamState quiz.TeamOne
+                TeamOne = newTeamState teamOne
                 CompetitionStyle = RunningCompetitionStyle.Team(newTeamState teamOne, teamTwo) }
         | Some TeamTwo, RunningCompetitionStyle.Team (teamOne, teamTwo) ->
             { quiz with
