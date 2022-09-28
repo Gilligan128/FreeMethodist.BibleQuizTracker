@@ -9,9 +9,9 @@ open Bolero.Html
 module ItemizedScore =
 
     type private itemizedPage = Template<"wwwroot/ItemizedScore.html">
-    
+
     let findQuestionQuizzerState question quizzer = question |> Map.tryFind quizzer
-    
+
     let formatScore score =
         match score with
         | 0 -> "-"
@@ -23,8 +23,9 @@ module ItemizedScore =
         | Some (_, NoFailure) -> "is-hidden"
         | Some (_, AppealFailure) -> ""
 
-    let eventHasQuizzers quizzers event = quizzers |> Seq.contains ( event.Position |> snd ) 
-    
+    let eventHasQuizzers quizzers event =
+        quizzers |> Seq.contains (event.Position |> snd)
+
     let eventOccurred (eventState: EventState) =
         match eventState.AnswerState, eventState.AppealState with
         | AnsweredCorrectly, _ -> true
@@ -60,7 +61,10 @@ module ItemizedScore =
             .Score(
                 quizzer
                 |> findQuestionQuizzerState questionEvents
-                |> Option.map (function (answer, appeal) -> {AnswerState = answer; AppealState = appeal})
+                |> Option.map (function
+                    | (answer, appeal) ->
+                        { AnswerState = answer
+                          AppealState = appeal })
                 |> Option.map scoringBasedOnStyle
                 |> Option.map QuizScore.value
                 |> Option.defaultValue 0
@@ -81,15 +85,17 @@ module ItemizedScore =
                     attr.colspan $"{teamOneColumns}"
                     $"Team {teamOne.Name}"
                 }
+
                 th { " " }
+
                 th {
                     attr.colspan $"{teamTwoColumns}"
-                    $"Team {teamTwo.Name}"  
+                    $"Team {teamTwo.Name}"
                 }
             }
 
             tr {
-                
+
 
                 forEach teamOne.Quizzers
                 <| fun quizzer -> th { quizzer }
@@ -97,12 +103,21 @@ module ItemizedScore =
                 th { "Team Total" }
                 th { "Question" }
                 th { "Team Total" }
+
                 forEach teamTwo.Quizzers
                 <| fun quizzer -> th { quizzer }
             }
         }
 
-    let private individualsHeader (model: Quizzer list) = empty ()
+    let private individualsHeader (model: Quizzer list) =
+        concat {
+            tr {
+                th { "Question" }
+                forEach model <| fun quizzer -> th { quizzer }
+
+            }
+        }
+
 
     let private teamBody
         (questionEvents: QuestionQuizzerEvents, numberOfQuestions)
@@ -137,9 +152,9 @@ module ItemizedScore =
                     else
                         "-"
                 }
-                
+
                 td { text (number |> PositiveNumber.value |> string) }
-                
+
                 td {
                     if teamEventOccurred teamTwo currentQuestionEvents then
                         teamScoreForQuestion questionEvents number teamTwo
@@ -147,55 +162,101 @@ module ItemizedScore =
                     else
                         "-"
                 }
-                
+
                 forEach teamTwo.Quizzers
                 <| quizzerView Score.quizzerTeamStyleScoring questionsAdapted
             }
 
-    let individualsBody quizzers = empty ()
-    
-    
-    let teamTotal questionQuizEvents ((teamOne: ItemizedTeam), (teamTwo: ItemizedTeam)) =
-     
-        let teamScoreNode (team : ItemizedTeam) : Node =
+    let individualsBody (questionEvents: QuestionQuizzerEvents, numberOfQuestions) quizzers =
+        forEach (
+            [ 1..numberOfQuestions ]
+            |> List.map PositiveNumber.numberOrOne
+        )
+        <| fun number ->
+            let currentQuestionEvents =
+                questionEvents
+                |> List.filter (fun q -> q.Position |> fst = number)
+                |> List.map (fun q -> (q.Position |> snd), q.State)
+                |> Map.ofList
+
+            let questionsAdapted =
+                (currentQuestionEvents
+                 |> Map.map (fun k v -> v.AnswerState, v.AppealState))
+
+            tr {
+                td { text (number |> PositiveNumber.value |> string) }
+
+                forEach quizzers
+                <| quizzerView Score.quizzerIndividualStyleScoring questionsAdapted
+
+            }
+
+
+    let private quizzersTotalNode calculateTotalScore quizzers =
+        forEach quizzers
+        <| fun quizzer ->
+            td {
+                text (
+                    quizzer
+                    |> calculateTotalScore
+                    |> QuizScore.value
+                    |> string
+                )
+            }
+
+    let teamTotal
+        (quizzersTotalNode: Quizzer list -> Node)
+        questionQuizEvents
+        ((teamOne: ItemizedTeam), (teamTwo: ItemizedTeam))
+        =
+
+        let teamScoreNode (team: ItemizedTeam) : Node =
             td {
                 attr.``class`` "has-text-weight-bold"
-                
+
                 questionQuizEvents
                 |> Score.calculateTeamScore team.Quizzers
                 |> QuizScore.value
                 |> string
             }
 
-        let quizzersTotalNode quizzers =
-            forEach quizzers
-            <| fun quizzer ->
-                td {
-                    text (
-                        quizzer
-                        |> string
-                    )
-                }
 
         tr {
-           
-
             quizzersTotalNode teamOne.Quizzers
             teamScoreNode teamOne
+
             td {
                 attr.``class`` "has-text-weight-bold"
                 "TOTAL"
             }
+
             teamScoreNode teamTwo
             quizzersTotalNode teamTwo.Quizzers
         }
 
-    let individualsTotal quizzers = empty ()
+    let individualsTotal (quizzersTotalNode: Quizzer list -> Node) quizzers =
+        tr {
+            td {
+                attr.``class`` "has-text-weight-bold"
+                "TOTAL"
+            }
+
+            quizzersTotalNode quizzers
+        }
 
     let render (model: ItemizedScoreModel) dispatch =
         let numberOfQuestions =
             model.NumberOfQuestions
+            |> PositiveNumber.value
 
+        let calculateScore =
+            Score.calculateQuizzerScore Score.quizzerIndividualStyleScoring model.QuestionsWithEvents
+
+        let quizzersTotalNode =
+            quizzersTotalNode calculateScore
+        
+        
+        
         itemizedPage()
             .Header(
                 match model.CompetitionStyle with
@@ -204,14 +265,14 @@ module ItemizedScore =
             )
             .Body(
                 match model.CompetitionStyle with
-                | ItemizedCompetitionStyle.Individual quizzers -> individualsBody quizzers
+                | ItemizedCompetitionStyle.Individual quizzers -> individualsBody (model.QuestionsWithEvents, numberOfQuestions) quizzers
                 | ItemizedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamBody (model.QuestionsWithEvents, (numberOfQuestions |> PositiveNumber.value)) (teamOne, teamTwo)
-            )           
+                    teamBody (model.QuestionsWithEvents, numberOfQuestions) (teamOne, teamTwo)
+            )
             .Total(
                 match model.CompetitionStyle with
-                | ItemizedCompetitionStyle.Individual quizzers -> individualsTotal quizzers
+                | ItemizedCompetitionStyle.Individual quizzers -> individualsTotal quizzersTotalNode quizzers
                 | ItemizedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamTotal model.QuestionsWithEvents (teamOne, teamTwo)
+                    teamTotal quizzersTotalNode model.QuestionsWithEvents (teamOne, teamTwo)
             )
             .Elt()

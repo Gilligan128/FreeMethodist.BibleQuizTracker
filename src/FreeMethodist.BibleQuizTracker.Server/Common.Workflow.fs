@@ -95,7 +95,9 @@ type RunningQuiz =
     { Code: QuizCode
       Questions: Map<PositiveNumber, QuestionState>
       CompetitionStyle: RunningCompetitionStyle
+      [<Obsolete>]
       TeamOne: QuizTeamState
+      [<Obsolete>]
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
       CurrentQuizzer: Quizzer option }

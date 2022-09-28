@@ -16,10 +16,11 @@ module LiveScorePage =
     type Message =
         | Initialize of AsyncOperationStatus<unit, Result<Quiz option, DbError>>
         | OnQuizEvent of AsyncOperationStatus<RunQuizEvent, Result<Quiz option, DbError>>
-    
-    type ExternalMessage = | ErrorMessage of string
-                           | NoMessage
-    
+
+    type ExternalMessage =
+        | ErrorMessage of string
+        | NoMessage
+
     let init quizCode =
         { Code = quizCode
           Scores = NotYetStarted },
@@ -42,7 +43,7 @@ module LiveScorePage =
         { Name = team.Name
           Score = team.Score
           Quizzers = team.Quizzers |> List.map loadRunningQuizzer }
-    
+
     let private loadOfficialTeam (team: OfficialTeam) : LiveScoreTeam =
         { Name = team.Name
           Score = team.Score
@@ -69,8 +70,12 @@ module LiveScorePage =
               QuestionState = Current quizState.CurrentQuestion
               CompetitionStyle =
                 match quizState.CompetitionStyle with
-                | RunningCompetitionStyle.Team (teamOne, teamTwo) -> LiveScoreCompetitionStyle.Team((loadRunningTeam teamOne), (loadRunningTeam teamTwo))
-                | RunningCompetitionStyle.Individuals quizzerStates -> quizzerStates |> List.map loadRunningQuizzer |> LiveScoreCompetitionStyle.Individual }
+                | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+                    LiveScoreCompetitionStyle.Team((loadRunningTeam teamOne), (loadRunningTeam teamTwo))
+                | RunningCompetitionStyle.Individuals quizzerStates ->
+                    quizzerStates
+                    |> List.map loadRunningQuizzer
+                    |> LiveScoreCompetitionStyle.Individual }
         | Official quizState ->
             { LastUpdated = DateTimeOffset.Now
               QuestionState = Completed quizState.CompletedQuestions.Length
@@ -102,13 +107,19 @@ module LiveScorePage =
 
         | Initialize (Finished (Ok (Some quiz))) ->
             let loaded =
-                quiz
-                |> loadFromQuiz
-                |> Resolved
+                quiz |> loadFromQuiz |> Resolved
 
             { model with Scores = loaded }, Cmd.none, NoMessage
-        | Initialize (Finished (Ok None)) -> model, ( Page.Home |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub) , $"Quiz {model.Code} not found" |> ErrorMessage
-        | Initialize (Finished (Error error)) -> model, (Page.Home |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub), error |> mapDbErrorToString |> ErrorMessage
+        | Initialize (Finished (Ok None)) ->
+            model,
+            (Page.Home
+             |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub),
+            $"Quiz {model.Code} not found" |> ErrorMessage
+        | Initialize (Finished (Error error)) ->
+            model,
+            (Page.Home
+             |> fun page -> (fun _ -> navigate page) |> Cmd.ofSub),
+            error |> mapDbErrorToString |> ErrorMessage
         | OnQuizEvent (Started _) ->
             let loadedModelResultCmd =
                 model.Code
@@ -227,7 +238,13 @@ module LiveScorePage =
                                     teamScoreView teamOne ("success")
                                     teamScoreView teamTwo ("danger")
                                 }
-                            | LiveScoreCompetitionStyle.Individual individualStyle -> empty ()
+                            | LiveScoreCompetitionStyle.Individual quizzers ->
+                                div {
+                                    attr.``class`` "column"
+
+                                    forEach quizzers <| quizzerScoreView
+                                    
+                                }
 
                     }
                 }

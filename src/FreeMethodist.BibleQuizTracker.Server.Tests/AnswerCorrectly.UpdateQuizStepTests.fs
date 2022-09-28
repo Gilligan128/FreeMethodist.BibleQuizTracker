@@ -229,11 +229,11 @@ let ``Given someone else previously answered correctly from other team When Quiz
     result {
         let! result = updateQuiz quizzer.Name initialQuiz
 
-        let revertedScore =
-            result.QuizState.TeamTwo.Score
+        let revertedScore = result.QuizState |> RunningQuiz.getTeam TeamPosition.TeamTwo |> fun t -> t.Score
 
         let expectedScore =
-            initialQuiz.TeamTwo.Score
+            initialQuiz
+            |> RunningQuiz.getTeam TeamPosition.TeamTwo |> fun t -> t.Score
             |> QuizScore.revertCorrectAnswer
 
         Assert.Equal(expectedScore, revertedScore)

@@ -992,10 +992,9 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
             .ItemizedScore(
                 ItemizedScore.render
                     { CompetitionStyle =
-                        ItemizedCompetitionStyle.Team(
-                            (mapItemizedTeam resolved.TeamOne),
-                            (mapItemizedTeam resolved.TeamTwo)
-                        )
+                        match resolved.CompetitionStyle with
+                        | LoadedCompetitionStyle.Team (teamOne, teamTwo) -> (mapItemizedTeam teamOne, mapItemizedTeam teamTwo) |> ItemizedCompetitionStyle.Team
+                        | LoadedCompetitionStyle.Individuals quizzers -> quizzers |> List.map (fun q -> q.Name) |> ItemizedCompetitionStyle.Individual
                       NumberOfQuestions = resolved.NumberOfQuestions
                       QuestionsWithEvents = resolved.QuestionScores }
                     dispatch
