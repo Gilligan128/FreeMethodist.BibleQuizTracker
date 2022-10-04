@@ -480,7 +480,7 @@ module RunningQuiz =
             | _, TeamTwo ->
                 { quiz with
                     TeamTwo = updateTeam teamTwo
-                    CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo) })
+                    CompetitionStyle = RunningCompetitionStyle.Team(teamOne, updateTeam teamTwo) })
 
     let updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: RunningQuiz) quizzerStates =
         let quizzerExistsResult =
