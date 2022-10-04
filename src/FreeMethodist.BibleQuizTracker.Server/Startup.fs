@@ -196,6 +196,7 @@ type Startup() =
 
                 endpoints.MapFallbackToBolero(Index.page)
                 |> ignore)
+               
         |> ignore
 
 module Program =

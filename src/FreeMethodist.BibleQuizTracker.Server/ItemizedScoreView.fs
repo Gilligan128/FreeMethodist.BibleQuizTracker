@@ -82,15 +82,17 @@ module ItemizedScore =
         concat {
             tr {
                 th {
+                    attr.``class`` "has-text-right"
                     attr.colspan $"{teamOneColumns}"
-                    $"Team {teamOne.Name}"
+                    $"{teamOne.Name}"
                 }
 
                 th { " " }
 
                 th {
+                    attr.``class`` "has-text-left"
                     attr.colspan $"{teamTwoColumns}"
-                    $"Team {teamTwo.Name}"
+                    $"{teamTwo.Name}"
                 }
             }
 
@@ -100,9 +102,20 @@ module ItemizedScore =
                 forEach teamOne.Quizzers
                 <| fun quizzer -> th { quizzer }
 
-                th { "Team Total" }
-                th { "Question" }
-                th { "Team Total" }
+                th {
+                    attr.``class`` "has-text-right"
+                    "Team Total"
+                }
+
+                th {
+                    attr.``class`` "has-text-centered"
+                    text "Question"
+                }
+
+                th {
+                    attr.``class`` "has-text-left"
+                    "Team Total"
+                }
 
                 forEach teamTwo.Quizzers
                 <| fun quizzer -> th { quizzer }
@@ -112,7 +125,11 @@ module ItemizedScore =
     let private individualsHeader (model: Quizzer list) =
         concat {
             tr {
-                th { "Question" }
+                th {
+                    attr.``class`` "has-text-centered"
+                    "Question"
+                }
+
                 forEach model <| fun quizzer -> th { quizzer }
 
             }
@@ -146,6 +163,8 @@ module ItemizedScore =
                 <| quizzerView Score.quizzerTeamStyleScoring questionsAdapted
 
                 td {
+                    attr.``class`` "has-text-right"
+
                     if teamEventOccurred teamOne currentQuestionEvents then
                         teamScoreForQuestion questionEvents number teamOne
                         |> formatScore
@@ -153,9 +172,14 @@ module ItemizedScore =
                         "-"
                 }
 
-                td { text (number |> PositiveNumber.value |> string) }
+                td {
+                    attr.``class`` "has-text-centered"
+                    text (number |> PositiveNumber.value |> string)
+                }
 
                 td {
+                    attr.``class`` "has-text-left"
+
                     if teamEventOccurred teamTwo currentQuestionEvents then
                         teamScoreForQuestion questionEvents number teamTwo
                         |> formatScore
@@ -210,9 +234,9 @@ module ItemizedScore =
         ((teamOne: ItemizedTeam), (teamTwo: ItemizedTeam))
         =
 
-        let teamScoreNode (team: ItemizedTeam) : Node =
+        let teamScoreNode textjustification (team: ItemizedTeam) : Node =
             td {
-                attr.``class`` "has-text-weight-bold"
+                attr.``class`` $"has-text-weight-bold  has-text-{textjustification}"
 
                 questionQuizEvents
                 |> Score.calculateTeamScore team.Quizzers
@@ -223,14 +247,14 @@ module ItemizedScore =
 
         tr {
             quizzersTotalNode teamOne.Quizzers
-            teamScoreNode teamOne
+            teamScoreNode "right" teamOne
 
             td {
-                attr.``class`` "has-text-weight-bold"
+                attr.``class`` "has-text-weight-bold has-text-centered"
                 "TOTAL"
             }
 
-            teamScoreNode teamTwo
+            teamScoreNode "left" teamTwo
             quizzersTotalNode teamTwo.Quizzers
         }
 
@@ -246,17 +270,16 @@ module ItemizedScore =
 
     let render (model: ItemizedScoreModel) dispatch =
         let numberOfQuestions =
-            model.NumberOfQuestions
-            |> PositiveNumber.value
+            model.NumberOfQuestions |> PositiveNumber.value
 
-        let calculateScore =
-            Score.calculateQuizzerScore Score.quizzerIndividualStyleScoring model.QuestionsWithEvents
+        let quizzersIndividualsTotalNode =
+            quizzersTotalNode (
+                Score.calculateQuizzerScore Score.quizzerIndividualStyleScoring model.QuestionsWithEvents
+            )
 
-        let quizzersTotalNode =
-            quizzersTotalNode calculateScore
-        
-        
-        
+        let quizzersTeamTotalNode =
+            quizzersTotalNode (Score.calculateQuizzerScore Score.quizzerTeamStyleScoring model.QuestionsWithEvents)
+
         itemizedPage()
             .Header(
                 match model.CompetitionStyle with
@@ -265,14 +288,15 @@ module ItemizedScore =
             )
             .Body(
                 match model.CompetitionStyle with
-                | ItemizedCompetitionStyle.Individual quizzers -> individualsBody (model.QuestionsWithEvents, numberOfQuestions) quizzers
+                | ItemizedCompetitionStyle.Individual quizzers ->
+                    individualsBody (model.QuestionsWithEvents, numberOfQuestions) quizzers
                 | ItemizedCompetitionStyle.Team (teamOne, teamTwo) ->
                     teamBody (model.QuestionsWithEvents, numberOfQuestions) (teamOne, teamTwo)
             )
             .Total(
                 match model.CompetitionStyle with
-                | ItemizedCompetitionStyle.Individual quizzers -> individualsTotal quizzersTotalNode quizzers
+                | ItemizedCompetitionStyle.Individual quizzers -> individualsTotal quizzersIndividualsTotalNode quizzers
                 | ItemizedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamTotal quizzersTotalNode model.QuestionsWithEvents (teamOne, teamTwo)
+                    teamTotal quizzersTeamTotalNode model.QuestionsWithEvents (teamOne, teamTwo)
             )
             .Elt()
