@@ -76,21 +76,7 @@
                             <input bind-onchange="${AddQuizzerName}" class="input" placeholder="Text input" type="text">
                         </div>
                     </div>
-                    <div class="field">
-                        <label class="label">Team</label>
-                        <div class="control">
-                            <label class="radio">
-                                <input checked="${AddQuizzerIsTeamOne}" name="answer" onchange="${SetAddQuizzerTeamOne}"
-                                       type="radio">
-                                ${TeamOneName}
-                            </label>
-                            <label class="radio">
-                                <input checked="${AddQuizzerIsTeamTwo}" name="answer" onchange="${SetAddQuizzerTeamTwo}"
-                                       type="radio">
-                                ${TeamTwoName}
-                            </label>
-                        </div>
-                    </div>
+                    ${AddQuizzerTeamView}
                 </section>
                 <footer class="modal-card-foot">
                     <div class="field is-grouped">
@@ -139,6 +125,23 @@
                     <div class="column">
                         ${RemoveButton}
                     </div>
+                </div>
+            </div>
+        </template>
+        <template id="AddQuizzerTeam">
+            <div class="field">
+                <label class="label">Team</label>
+                <div class="control">
+                    <label class="radio">
+                        <input checked="${AddQuizzerIsTeamOne}" name="answer" onchange="${SetAddQuizzerTeamOne}"
+                               type="radio">
+                        ${TeamOneName}
+                    </label>
+                    <label class="radio">
+                        <input checked="${AddQuizzerIsTeamTwo}" name="answer" onchange="${SetAddQuizzerTeamTwo}"
+                               type="radio">
+                        ${TeamTwoName}
+                    </label>
                 </div>
             </div>
         </template>
