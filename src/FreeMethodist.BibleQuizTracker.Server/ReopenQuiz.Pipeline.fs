@@ -40,6 +40,7 @@ let ofNumber value =
 let mapQuestionToRunning (key, value: CompletedQuestion) : PositiveNumber * QuestionState =
     key + 1 |> ofNumber,
     { FailedAppeal = value.FailedAppeal
+      FailedAppeals = value.FailedAppeal |> Option.toList
       AnswerState = QuizAnswer.Complete value.AnswerState }
 
 let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : RunningQuiz =

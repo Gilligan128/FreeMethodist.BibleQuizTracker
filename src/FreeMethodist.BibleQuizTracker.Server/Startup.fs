@@ -34,13 +34,33 @@ type Startup() =
     let resolveTenantName (provider: IServiceProvider) =
         provider.GetRequiredService<IHostEnvironment>()
         |> getTenantName Environment.MachineName
-    
+
+    let isNull value = obj.ReferenceEquals(value, null)
+
     //Versioning
     let backwardsCompatibleToRunningCompetitionStyle quiz =
-                        match quiz with 
-                        | Quiz.Running quiz when obj.ReferenceEquals(quiz.CompetitionStyle, null) -> Running {quiz with CompetitionStyle = RunningCompetitionStyle.Team (quiz.TeamOne, quiz.TeamTwo)} 
-                        | quiz -> quiz
-    
+        match quiz with
+        | Quiz.Running quiz when quiz.CompetitionStyle |> isNull ->
+            Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team(quiz.TeamOne, quiz.TeamTwo) }
+        | quiz -> quiz
+
+    let backwardsCompatibleToFailedAppeals quiz =
+        match quiz with
+        | Quiz.Running quiz ->
+            Running
+                { quiz with
+                    Questions =
+                        quiz.Questions
+                        |> Map.map (fun _ value ->
+                            { value with
+                                FailedAppeals =
+                                    if value.FailedAppeals |> isNull then
+                                        []
+                                    else
+                                        value.FailedAppeals }) }
+
+        | quiz -> quiz
+
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     member this.ConfigureServices(services: IServiceCollection) =
@@ -61,13 +81,15 @@ type Startup() =
 
         let fsharpJsonOptions =
             JsonSerializerOptions()
+
         fsharpJsonOptions.Converters.Add(JsonFSharpConverter(allowNullFields = true))
-        
+
 
         let deserialize (json: string) =
-                        JsonSerializer.Deserialize(json, fsharpJsonOptions)
-                        |> backwardsCompatibleToRunningCompetitionStyle
-        
+            JsonSerializer.Deserialize(json, fsharpJsonOptions)
+            |> backwardsCompatibleToRunningCompetitionStyle
+            |> backwardsCompatibleToFailedAppeals
+
         let getQuiz (provider: IServiceProvider) =
             let localStorage =
                 provider.GetRequiredService<ProtectedLocalStorage>()
@@ -127,8 +149,8 @@ type Startup() =
                     let localStorage =
                         provider.GetRequiredService<ProtectedLocalStorage>()
 
-                 
-                    
+
+
                     let tryGetLocal =
                         Persistence.tryGetQuizFromLocalStorage localStorage deserialize
 
@@ -155,10 +177,13 @@ type Startup() =
                             options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                         .Build())
             )
-            .AddScoped<GetRecentCompletedQuizzes>(Func<IServiceProvider, GetRecentCompletedQuizzes>(fun provider ->
-                let blobClient = provider.GetRequiredService<BlobServiceClient>()
-                fun () -> Persistence.getRecentCompletedQuizzes blobClient (resolveTenantName provider)
-            ))
+            .AddScoped<GetRecentCompletedQuizzes>(
+                Func<IServiceProvider, GetRecentCompletedQuizzes> (fun provider ->
+                    let blobClient =
+                        provider.GetRequiredService<BlobServiceClient>()
+
+                    fun () -> Persistence.getRecentCompletedQuizzes blobClient (resolveTenantName provider))
+            )
         |> ignore
 
         //So that Discriminated unions can be serialized/deserialized
@@ -196,7 +221,7 @@ type Startup() =
 
                 endpoints.MapFallbackToBolero(Index.page)
                 |> ignore)
-               
+
         |> ignore
 
 module Program =

@@ -57,6 +57,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
 
     let unansweredQuestion: QuestionState =
         { FailedAppeal = None
+          FailedAppeals = []
           AnswerState =
             QuizAnswer.Complete
             <| Unanswered unansweredIncorrectAnswerers }
@@ -69,6 +70,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
 
     let answeredQuestion: QuestionState =
         { FailedAppeal = answeredAppealFailure
+          FailedAppeals = []
           AnswerState =
             Answered answeredAnswerState
             |> QuizAnswer.Complete }
@@ -77,6 +79,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
 
     let incompleteQuestion: QuestionState =
         { FailedAppeal = None
+          FailedAppeals = []
           AnswerState = QuizAnswer.Incomplete <| incompleteAnswerers }
 
     let initialQuiz =

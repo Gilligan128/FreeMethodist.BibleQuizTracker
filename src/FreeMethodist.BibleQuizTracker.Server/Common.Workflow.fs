@@ -79,7 +79,9 @@ type RevertedCorrectAnswer =
     | NoChange
 
 type QuestionState =
-    { FailedAppeal: Quizzer option
+    { [<Obsolete>]
+      FailedAppeal: Quizzer option
+      FailedAppeals: Quizzer list
       AnswerState: QuizAnswer }
 
 type QuizTeamState =
@@ -298,6 +300,7 @@ module QuizAnswer =
 module QuestionState =
     let initial =
         { FailedAppeal = None
+          FailedAppeals = []
           AnswerState = QuizAnswer.initial }
 
     let create answer = { initial with AnswerState = answer }
