@@ -37,6 +37,11 @@ let ``Given Question has  been appealed When appeal clears Then record remove ap
         )
     }
 
+let getTeamScore teamPosition quiz =
+    quiz
+    |> RunningQuiz.getTeam teamPosition
+    |> fun t -> t.Score
+
 [<Fact>]
 let ``Given someone  previously failed an appeal for this Question When appeal clears Then revert previous appealer's team score``
     ()
@@ -66,11 +71,13 @@ let ``Given someone  previously failed an appeal for this Question When appeal c
 
         let! result, _ = updateQuiz initialQuiz
 
+
         let expectedAppeal =
-            initialQuiz.TeamTwo.Score
+            initialQuiz
+            |> getTeamScore TeamPosition.TeamTwo
             |> QuizScore.revertAppealFailure
 
-        Assert.Equal(expectedAppeal, result.TeamTwo.Score)
+        Assert.Equal(expectedAppeal, result |> getTeamScore TeamPosition.TeamTwo)
     }
 
 [<Fact>]
