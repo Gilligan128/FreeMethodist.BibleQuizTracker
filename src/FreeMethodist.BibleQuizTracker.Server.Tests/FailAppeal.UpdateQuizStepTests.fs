@@ -89,10 +89,11 @@ let ``Given someone else preciously failed an appeal for this Question When appe
         let! result, _ = updateQuiz (quizzer, Some TeamOne) initialQuiz
 
         let expectedAppeal =
-            initialQuiz.TeamTwo.Score
+            initialQuiz
+            |> RunningQuiz.getTeamScore TeamPosition.TeamTwo 
             |> QuizScore.revertAppealFailure
 
-        Assert.Equal(expectedAppeal, result.TeamTwo.Score)
+        Assert.Equal(expectedAppeal, result |> RunningQuiz.getTeamScore TeamPosition.TeamTwo)
     }
 
 [<Fact>]

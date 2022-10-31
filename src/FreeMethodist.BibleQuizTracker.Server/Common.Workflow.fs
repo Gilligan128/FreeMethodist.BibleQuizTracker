@@ -423,7 +423,7 @@ module RunningQuiz =
     let tryFindQuizzer2 quizzer (quiz: RunningQuiz) =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-            tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+            tryFindQuizzerAndTeam (teamOne, teamTwo) quizzer
             |> Option.map (fun (q, team) -> (q, Some team))
         | RunningCompetitionStyle.Individuals quizzerStates ->
             quizzerStates
@@ -433,7 +433,7 @@ module RunningQuiz =
     let tryFindQuizzer (quiz: RunningQuiz) quizzer =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-            tryFindQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+            tryFindQuizzerAndTeam (teamOne, teamTwo) quizzer
             |> Option.map (fun (q, team) -> (q, Some team))
         | RunningCompetitionStyle.Individuals quizzerStates ->
             quizzerStates
@@ -529,7 +529,7 @@ module RunningQuiz =
                     CompetitionStyle = RunningCompetitionStyle.Team(updateScore teamOne, teamTwo) }
             | TeamTwo ->
                 { quiz with
-                    TeamTwo = updateScore quiz.TeamTwo
+                    TeamTwo = updateScore teamTwo
                     CompetitionStyle = RunningCompetitionStyle.Team(teamOne, updateScore teamTwo) }
         | RunningCompetitionStyle.Individuals _ -> quiz
 
