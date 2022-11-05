@@ -67,7 +67,7 @@ let private loadCompletedQuiz (quiz: CompletedQuiz) =
         |> List.collect (fun (i, v) ->
             Score.createScoreModelForQuestion
                 (i + 1 |> PositiveNumber.numberOrOne)
-                { AnswerState = (Complete v.AnswerState); FailedAppeal = v.FailedAppeal; FailedAppeals = v.FailedAppeal |> Option.toList  })
+                { AnswerState = (Complete v.AnswerState); FailedAppeal = None ; FailedAppeals = v.FailedAppeals })
       CompetitionStyle =
         match quiz.CompetitionStyle with
         | CompletedCompetitionStyle.Team (teamOne, teamTwo) ->

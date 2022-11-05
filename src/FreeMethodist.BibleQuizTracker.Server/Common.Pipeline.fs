@@ -25,8 +25,7 @@ type CompletedCompetitionStyle =
     | Team of CompletedTeam * CompletedTeam
 
 type CompletedQuestion =
-    { FailedAppeal: Quizzer option
-      FailedAppeals: Quizzer list
+    { FailedAppeals: Quizzer list
       AnswerState: CompletedAnswer }
 
 type CompletedQuiz =
