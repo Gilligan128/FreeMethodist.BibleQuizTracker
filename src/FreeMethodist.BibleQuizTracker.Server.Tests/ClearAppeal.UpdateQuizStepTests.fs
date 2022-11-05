@@ -58,7 +58,7 @@ let ``Given someone  previously failed an appeal for this Question When appeal c
                     |> Map.add
                         quiz.CurrentQuestion
                         (QuestionState.initial
-                         |> fun q -> { q with FailedAppeal = Some previousAppealer; FailedAppeals = [previousAppealer] }) }
+                         |> fun q -> { q with FailedAppeals = [previousAppealer] }) }
 
         let setupCurrentQuizzer quiz =
             { quiz with CurrentQuizzer = (Some quizzer) }
@@ -122,7 +122,7 @@ let ``Given Quiz is Individuals When appeal cleared Then change Individual score
                     |> Map.add
                         quiz.CurrentQuestion
                         (QuestionState.initial
-                         |> fun q -> { q with FailedAppeal = Some quizzer; FailedAppeals = [quizzer] }) }
+                         |> fun q -> { q with FailedAppeals = [quizzer] }) }
 
     let expectedAppeal =
         initialQuiz

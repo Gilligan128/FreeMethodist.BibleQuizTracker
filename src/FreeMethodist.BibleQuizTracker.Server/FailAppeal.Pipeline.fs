@@ -30,10 +30,13 @@ let updateQuiz: UpdateQuiz =
                 |> Map.tryFind quiz.CurrentQuestion
                 |> Option.defaultValue QuestionState.initial
                 |> fun original ->
-                    match original.FailedAppeal with
-                    | Some failure when failure = currentQuizzer ->
+                    match original.FailedAppeals, original.FailedAppeal with
+                    | failure :: _,  _ when failure = currentQuizzer ->
                         Error(FailAppeal.Error.AppealAlreadyFailed currentQuizzer)
-                    | _ -> Ok({ original with FailedAppeal = Some currentQuizzer }, original.FailedAppeal)
+                    | _, Some failure when failure = currentQuizzer ->
+                        Error(FailAppeal.Error.AppealAlreadyFailed currentQuizzer)
+                    | failure :: _, _ -> Ok({ original with FailedAppeal = Some currentQuizzer; FailedAppeals = [currentQuizzer] }, Some failure)
+                    | _ -> Ok({ original with FailedAppeal = Some currentQuizzer; FailedAppeals =[currentQuizzer] }, original.FailedAppeal)
 
             let updateCurrentQuestion changedQuestion quiz =
                 changedQuestion
