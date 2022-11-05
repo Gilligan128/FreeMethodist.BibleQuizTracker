@@ -311,7 +311,7 @@ module QuestionState =
         |> fun q -> Some { q with AnswerState = answer }
 
     let failAppeal quizzer question =
-        { question with FailedAppeal = Some quizzer }
+        { question with FailedAppeal = Some quizzer; FailedAppeals = question.FailedAppeals |> List.append [quizzer] }
 
 
 [<RequireQualifiedAccess>]

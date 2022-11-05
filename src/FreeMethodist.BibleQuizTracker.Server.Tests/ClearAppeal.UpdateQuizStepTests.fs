@@ -1,5 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.ClearAppeal.UpdateQuizStepTests
 
+open System
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Pipeline
@@ -30,10 +31,9 @@ let ``Given Question has  been appealed When appeal clears Then record remove ap
 
         let! result, _ = updateQuiz initialQuiz
 
-        Assert.Equal(
-            None,
+        Assert.Empty(
             result.Questions[result.CurrentQuestion]
-                .FailedAppeal
+                .FailedAppeals
         )
     }
 
@@ -42,6 +42,7 @@ let getTeamScore teamPosition quiz =
     |> RunningQuiz.getTeam teamPosition
     |> fun t -> t.Score
 
+[<Obsolete>]
 [<Fact>]
 let ``Given someone  previously failed an appeal for this Question When appeal clears Then revert previous appealer's team score``
     ()
@@ -57,7 +58,7 @@ let ``Given someone  previously failed an appeal for this Question When appeal c
                     |> Map.add
                         quiz.CurrentQuestion
                         (QuestionState.initial
-                         |> fun q -> { q with FailedAppeal = Some previousAppealer }) }
+                         |> fun q -> { q with FailedAppeal = Some previousAppealer; FailedAppeals = [previousAppealer] }) }
 
         let setupCurrentQuizzer quiz =
             { quiz with CurrentQuizzer = (Some quizzer) }
@@ -79,7 +80,7 @@ let ``Given someone  previously failed an appeal for this Question When appeal c
 
         Assert.Equal(expectedAppeal, result |> getTeamScore TeamPosition.TeamTwo)
     }
-
+    
 [<Fact>]
 let ``Given no one failed an appeal for this Question When appeal clears Then Error`` () =
     let quizzer = "Jim"
@@ -91,7 +92,7 @@ let ``Given no one failed an appeal for this Question When appeal clears Then Er
                 |> Map.add
                     quiz.CurrentQuestion
                     (QuestionState.initial
-                     |> fun q -> { q with FailedAppeal = None }) }
+                     |> fun q -> { q with FailedAppeal = None; FailedAppeals = [] }) }
 
     let setupCurrentQuizzer quiz =
         { quiz with CurrentQuizzer = (Some quizzer) }
@@ -121,7 +122,7 @@ let ``Given Quiz is Individuals When appeal cleared Then change Individual score
                     |> Map.add
                         quiz.CurrentQuestion
                         (QuestionState.initial
-                         |> fun q -> { q with FailedAppeal = Some quizzer }) }
+                         |> fun q -> { q with FailedAppeal = Some quizzer; FailedAppeals = [quizzer] }) }
 
     let expectedAppeal =
         initialQuiz
