@@ -114,6 +114,9 @@ let getAppealState appeal quizzer =
     | Some appealer when appealer = quizzer -> AppealFailure
     | Some _ -> NoFailure
 
+let getAppealStateNew appeals quizzer =
+    if appeals |> List.contains quizzer then  AppealFailure else NoFailure
+
 let private getAnswerState quizAnswer (quizzerState: QuizzerState) =
     let quizzerWasIncorrect =
         List.contains quizzerState.Name

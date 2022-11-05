@@ -100,13 +100,13 @@ let ``Given existing questions When completing a quiz Then all questions are com
         actualQuiz.CompletedQuestions
 
     let expectedQuestions =
-        [ { FailedAppeal = None
+        [ { 
             FailedAppeals = []
             AnswerState = Unanswered unansweredIncorrectAnswerers }
-          { FailedAppeal = answeredAppealFailure
+          { 
             FailedAppeals = ["Jina"]
             AnswerState = Answered answeredAnswerState }
-          { FailedAppeal = None
+          { 
             FailedAppeals = []
             AnswerState = Unanswered incompleteAnswerers } ]
 
