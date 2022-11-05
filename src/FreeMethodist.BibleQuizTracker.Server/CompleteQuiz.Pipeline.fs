@@ -18,6 +18,7 @@ let private mapRunningTeamToComplete (team: QuizTeamState) : CompletedTeam =
 
 let private mapRunningQuestionToComplete (question: QuestionState) : CompletedQuestion =
     { FailedAppeal = question.FailedAppeal
+      FailedAppeals = question.FailedAppeals
       AnswerState =
         match question.AnswerState with
         | Incomplete attempts -> Unanswered attempts

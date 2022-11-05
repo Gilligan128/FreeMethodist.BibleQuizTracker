@@ -70,7 +70,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
 
     let answeredQuestion: QuestionState =
         { FailedAppeal = answeredAppealFailure
-          FailedAppeals = []
+          FailedAppeals = ["Jina"]
           AnswerState =
             Answered answeredAnswerState
             |> QuizAnswer.Complete }
@@ -101,10 +101,13 @@ let ``Given existing questions When completing a quiz Then all questions are com
 
     let expectedQuestions =
         [ { FailedAppeal = None
+            FailedAppeals = []
             AnswerState = Unanswered unansweredIncorrectAnswerers }
           { FailedAppeal = answeredAppealFailure
+            FailedAppeals = ["Jina"]
             AnswerState = Answered answeredAnswerState }
           { FailedAppeal = None
+            FailedAppeals = []
             AnswerState = Unanswered incompleteAnswerers } ]
 
     Assert.Equal(expectedQuestions.Length, actualQuestions.Length)

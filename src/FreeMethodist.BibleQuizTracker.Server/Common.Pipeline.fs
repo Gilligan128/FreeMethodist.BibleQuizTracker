@@ -1,5 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open Elmish
@@ -25,6 +26,7 @@ type CompletedCompetitionStyle =
 
 type CompletedQuestion =
     { FailedAppeal: Quizzer option
+      FailedAppeals: Quizzer list
       AnswerState: CompletedAnswer }
 
 type CompletedQuiz =
