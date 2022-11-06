@@ -41,7 +41,8 @@ type Startup() =
     let backwardsCompatibleToRunningCompetitionStyle quiz =
         match quiz with
         | Quiz.Running quiz when quiz.CompetitionStyle |> isNull ->
-            Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team({ Score = QuizScore.zero; Quizzers = []; Name = "" }, quiz.TeamTwo) }
+            let initialTeam = { Score = QuizScore.zero; Quizzers = []; Name = "" }
+            Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team(initialTeam, initialTeam) }
         | quiz -> quiz
 
     let backwardsCompatibleToFailedAppeals quiz =

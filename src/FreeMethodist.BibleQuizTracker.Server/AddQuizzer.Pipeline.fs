@@ -80,7 +80,6 @@ let addQuizzerToQuiz: AddQuizzerToQuiz =
                 CompetitionStyle = RunningCompetitionStyle.Team(newTeamState teamOne, teamTwo) }
         | Some TeamTwo, RunningCompetitionStyle.Team (teamOne, teamTwo) ->
             { quiz with
-                TeamTwo = newTeamState teamTwo
                 CompetitionStyle = RunningCompetitionStyle.Team(teamOne, newTeamState teamTwo) }
         | _, RunningCompetitionStyle.Individuals quizzerStates ->
             { quiz with

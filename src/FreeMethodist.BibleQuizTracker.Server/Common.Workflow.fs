@@ -97,8 +97,6 @@ type RunningQuiz =
     { Code: QuizCode
       Questions: Map<PositiveNumber, QuestionState>
       CompetitionStyle: RunningCompetitionStyle
-      [<Obsolete>]
-      TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
       CurrentQuizzer: Quizzer option }
 
@@ -348,10 +346,6 @@ module QuizTeamState =
 module RunningQuiz =
     let newTeamQuiz =
         { Code = "Example"
-          TeamTwo =
-            { Name = "RIGHT"
-              Score = QuizScore.zero
-              Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
           Questions = Map.empty
@@ -367,10 +361,6 @@ module RunningQuiz =
 
     let newIndividualQuiz =
         { Code = "Example"
-          TeamTwo =
-            { Name = ""
-              Score = QuizScore.zero
-              Quizzers = [] }
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
           Questions = Map.empty
@@ -471,7 +461,6 @@ module RunningQuiz =
                     CompetitionStyle = RunningCompetitionStyle.Team(updateTeam teamOne, teamTwo) }
             | _, TeamTwo ->
                 { quiz with
-                    TeamTwo = updateTeam teamTwo
                     CompetitionStyle = RunningCompetitionStyle.Team(teamOne, updateTeam teamTwo) })
 
     let updateIndividualQuizzerScore changeScore quizzerName (updatedQuizInfo: RunningQuiz) quizzerStates =
@@ -520,7 +509,6 @@ module RunningQuiz =
                     CompetitionStyle = RunningCompetitionStyle.Team(updateScore teamOne, teamTwo) }
             | TeamTwo ->
                 { quiz with
-                    TeamTwo = updateScore teamTwo
                     CompetitionStyle = RunningCompetitionStyle.Team(teamOne, updateScore teamTwo) }
         | RunningCompetitionStyle.Individuals _ -> quiz
 

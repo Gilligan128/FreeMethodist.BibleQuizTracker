@@ -10,9 +10,7 @@ module Arrange =
             let teamOne =
                 { teamOne with Quizzers = quizzers }
 
-            { quiz with
-                CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo)
-            }
+            { quiz with CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo) }
         | RunningCompetitionStyle.Individuals _ ->
             { quiz with CompetitionStyle = RunningCompetitionStyle.Individuals quizzers }
 
@@ -22,8 +20,6 @@ module Arrange =
             let teamTwo =
                 { teamTwo with Quizzers = quizzers }
 
-            { quiz with
-                CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo)
-                TeamTwo = teamTwo }
+            { quiz with CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo) }
         | RunningCompetitionStyle.Individuals _ ->
             { quiz with CompetitionStyle = RunningCompetitionStyle.Individuals quizzers }

@@ -36,8 +36,6 @@ let initExample quizCode =
     Running
         { Code = quizCode
           CompetitionStyle = RunningCompetitionStyle.Team (teamOne, teamTwo)
-          TeamTwo =
-            teamTwo
           CurrentQuestion =
             (PositiveNumber.one
              |> PositiveNumber.increment
