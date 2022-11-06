@@ -92,7 +92,7 @@ let ``Given no one failed an appeal for this Question When appeal clears Then Er
                 |> Map.add
                     quiz.CurrentQuestion
                     (QuestionState.initial
-                     |> fun q -> { q with FailedAppeal = None; FailedAppeals = [] }) }
+                     |> fun q -> { q with  FailedAppeals = [] }) }
 
     let setupCurrentQuizzer quiz =
         { quiz with CurrentQuizzer = (Some quizzer) }

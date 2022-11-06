@@ -79,8 +79,7 @@ type RevertedCorrectAnswer =
     | NoChange
 
 type QuestionState =
-    { [<Obsolete>]
-      FailedAppeal: Quizzer option
+    { 
       FailedAppeals: Quizzer list
       AnswerState: QuizAnswer }
 
@@ -295,7 +294,7 @@ module QuizAnswer =
 [<RequireQualifiedAccess>]
 module QuestionState =
     let initial =
-        { FailedAppeal = None
+        { 
           FailedAppeals = []
           AnswerState = QuizAnswer.initial }
 
@@ -307,7 +306,7 @@ module QuestionState =
         |> fun q -> Some { q with AnswerState = answer }
 
     let failAppeal quizzer question =
-        { question with FailedAppeal = Some quizzer; FailedAppeals = question.FailedAppeals |> List.append [quizzer] }
+        { question with FailedAppeals = question.FailedAppeals |> List.append [quizzer] }
 
 
 [<RequireQualifiedAccess>]

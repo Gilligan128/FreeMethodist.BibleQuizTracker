@@ -56,8 +56,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
         [ "Juni" ]
 
     let unansweredQuestion: QuestionState =
-        { FailedAppeal = None
-          FailedAppeals = []
+        { FailedAppeals = []
           AnswerState =
             QuizAnswer.Complete
             <| Unanswered unansweredIncorrectAnswerers }
@@ -66,11 +65,8 @@ let ``Given existing questions When completing a quiz Then all questions are com
         { IncorrectAnswerers = [ "Jim" ]
           Answerer = "Jim" }
 
-    let answeredAppealFailure = Some "Jina"
-
     let answeredQuestion: QuestionState =
-        { FailedAppeal = answeredAppealFailure
-          FailedAppeals = ["Jina"]
+        { FailedAppeals = ["Jina"]
           AnswerState =
             Answered answeredAnswerState
             |> QuizAnswer.Complete }
@@ -78,8 +74,7 @@ let ``Given existing questions When completing a quiz Then all questions are com
     let incompleteAnswerers = [ "Juni" ]
 
     let incompleteQuestion: QuestionState =
-        { FailedAppeal = None
-          FailedAppeals = []
+        { FailedAppeals = []
           AnswerState = QuizAnswer.Incomplete <| incompleteAnswerers }
 
     let initialQuiz =

@@ -33,8 +33,8 @@ let updateQuiz: UpdateQuiz =
                     match original.FailedAppeals with
                     | failure :: _ when failure = currentQuizzer ->
                         Error(FailAppeal.Error.AppealAlreadyFailed currentQuizzer)
-                    | failure :: _ -> Ok({ original with FailedAppeal = Some currentQuizzer; FailedAppeals = [currentQuizzer] }, Some failure)
-                    | _ -> Ok({ original with FailedAppeal = Some currentQuizzer; FailedAppeals =[currentQuizzer] }, None)
+                    | failure :: _ -> Ok({ original with FailedAppeals = [currentQuizzer] }, Some failure)
+                    | _ -> Ok({ original with  FailedAppeals =[currentQuizzer] }, None)
 
             let updateCurrentQuestion changedQuestion quiz =
                 changedQuestion

@@ -31,7 +31,7 @@ let updateQuiz: UpdateQuiz =
                 |> Option.defaultValue QuestionState.initial
                 |> fun original ->
                     match original.FailedAppeals with
-                    | failure :: _ -> Ok({ original with FailedAppeal = None; FailedAppeals = [] }, failure)
+                    | failure :: _ -> Ok({ original with FailedAppeals = [] }, failure)
                     | [] -> Error ClearAppeal.Error.NoFailedAppeal
 
             let updateCurrentQuestion changedQuestion quiz =

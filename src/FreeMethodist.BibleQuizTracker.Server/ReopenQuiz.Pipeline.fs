@@ -39,30 +39,22 @@ let ofNumber value =
 
 let mapQuestionToRunning (key, value: CompletedQuestion) : PositiveNumber * QuestionState =
     key + 1 |> ofNumber,
-    { FailedAppeal = None
-      FailedAppeals = value.FailedAppeals
+    { FailedAppeals = value.FailedAppeals
       AnswerState = QuizAnswer.Complete value.AnswerState }
 
 let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : RunningQuiz =
-    let emptyTeam =
-        { Name = ""
-          Score = QuizScore.zero
-          Quizzers = [] }
-
     match quiz with
     | Choice1Of2 completed ->
-        let teamOne, teamTwo, competitionStyle =
+        let competitionStyle =
             match completed.CompetitionStyle with
             | CompletedCompetitionStyle.Individual quizzers ->
-                emptyTeam,
-                emptyTeam,
                 quizzers
                 |> List.map mapCompletedQuizzerToRunning
                 |> RunningCompetitionStyle.Individuals
             | CompletedCompetitionStyle.Team (teamOne, teamTwo) ->
                 let runningTeamOne, runningTeamTwo = (mapCompletedTeamToRunning teamOne), (mapCompletedTeamToRunning teamTwo)
                 let competitionStyle = (runningTeamOne, runningTeamTwo) |> RunningCompetitionStyle.Team
-                runningTeamOne, runningTeamTwo, competitionStyle
+                competitionStyle
 
         { Code = completed.Code
           CompetitionStyle = competitionStyle
@@ -74,15 +66,15 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
             |> List.map mapQuestionToRunning
             |> Map.ofList }
     | Choice2Of2 official ->
-        let teamOne, teamTwo, competitionStyle =
+        let competitionStyle =
             match official.CompetitionStyle with
             | OfficialCompetitionStyle.Individual quizzers ->
                 let competitionStyle = quizzers |> List.map mapCompletedQuizzerToRunning |> RunningCompetitionStyle.Individuals
-                emptyTeam, emptyTeam, competitionStyle
+                competitionStyle
             | OfficialCompetitionStyle.Team (one, two) ->
                 let runningTeamOne, runningTeamTwo = (one |> mapOfficialToRunning, two |> mapOfficialToRunning)
                 let competitionStyle = (runningTeamOne, runningTeamTwo) |> RunningCompetitionStyle.Team
-                runningTeamOne, runningTeamTwo, competitionStyle
+                competitionStyle
 
         { Code = official.Code
           CompetitionStyle = competitionStyle
