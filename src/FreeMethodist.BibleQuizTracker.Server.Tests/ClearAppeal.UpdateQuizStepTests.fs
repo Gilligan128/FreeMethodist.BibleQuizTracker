@@ -42,7 +42,7 @@ let getTeamScore teamPosition quiz =
     |> RunningQuiz.getTeam teamPosition
     |> fun t -> t.Score
 
-[<Obsolete>]
+
 [<Fact>]
 let ``Given someone  previously failed an appeal for this Question When appeal clears Then revert previous appealer's team score``
     ()
@@ -80,6 +80,48 @@ let ``Given someone  previously failed an appeal for this Question When appeal c
 
         Assert.Equal(expectedAppeal, result |> getTeamScore TeamPosition.TeamTwo)
     }
+    
+    
+[<Fact>]
+let ``Given two quizzers  previously failed an appeal for this Question When appeal clears Then revert both appealer's team scores``
+    ()
+    =
+    result {
+        let quizzer = "Jim"
+        let previousAppealer1 = "Previous1"
+        let previousAppealer2 = "Previous2"
+
+        let insertQuestion quiz =
+            { quiz with
+                Questions =
+                    quiz.Questions
+                    |> Map.add
+                        quiz.CurrentQuestion
+                        (QuestionState.initial
+                         |> fun q -> { q with FailedAppeals = [previousAppealer1; previousAppealer2] }) }
+
+        let setupCurrentQuizzer quiz =
+            { quiz with CurrentQuizzer = (Some quizzer) }
+            |> Arrange.withParticipants [ QuizzerState.create quizzer ]
+            |> Arrange.withTeamTwoParticipants ([ previousAppealer1; previousAppealer2 ] |> List.map QuizzerState.create) 
+
+        let initialQuiz =
+            RunningQuiz.newTeamQuiz
+            |> setupCurrentQuizzer
+            |> insertQuestion
+
+        let! result, _ = updateQuiz initialQuiz
+
+
+        let expectedAppeal =
+            initialQuiz
+            |> getTeamScore TeamPosition.TeamTwo
+            |> QuizScore.revertAppealFailure
+            |> QuizScore.revertAppealFailure 
+
+        Assert.Equal(expectedAppeal, result |> getTeamScore TeamPosition.TeamTwo)
+    }
+    
     
 [<Fact>]
 let ``Given no one failed an appeal for this Question When appeal clears Then Error`` () =

@@ -5,11 +5,9 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
-type UpdateQuiz =
-    Quizzer * TeamPosition option -> RunningQuiz -> Result<RunningQuiz * (Quizzer * TeamPosition option) option, FailAppeal.Error>
+type UpdateQuiz = Quizzer * TeamPosition option -> RunningQuiz -> Result<RunningQuiz, FailAppeal.Error>
 
-type CreateEvents =
-    Quizzer * TeamPosition option -> (Quizzer * TeamPosition option) option -> RunningQuiz -> FailAppeal.Event list
+type CreateEvents = Quizzer * TeamPosition option -> RunningQuiz -> FailAppeal.Event list
 
 let updateAppealScore updateScore (quizzer, teamOpt) quiz =
     match teamOpt with
@@ -25,16 +23,21 @@ let updateAppealScore updateScore (quizzer, teamOpt) quiz =
 let updateQuiz: UpdateQuiz =
     fun (currentQuizzer, teamPositionOpt) quiz ->
         result {
-            let! changedQuestion, revertingAppealer =
+            let! changedQuestion =
                 quiz.Questions
                 |> Map.tryFind quiz.CurrentQuestion
                 |> Option.defaultValue QuestionState.initial
                 |> fun original ->
-                    match original.FailedAppeals with
-                    | failure :: _ when failure = currentQuizzer ->
+                    if original.FailedAppeals
+                       |> List.contains currentQuizzer then
                         Error(FailAppeal.Error.AppealAlreadyFailed currentQuizzer)
-                    | failure :: _ -> Ok({ original with FailedAppeals = [currentQuizzer] }, Some failure)
-                    | _ -> Ok({ original with  FailedAppeals =[currentQuizzer] }, None)
+                    else
+                        Ok(
+                            { original with
+                                FailedAppeals =
+                                    original.FailedAppeals
+                                    |> List.append [ currentQuizzer ] }
+                        )
 
             let updateCurrentQuestion changedQuestion quiz =
                 changedQuestion
@@ -44,25 +47,12 @@ let updateQuiz: UpdateQuiz =
                             quiz.Questions
                             |> Map.add quiz.CurrentQuestion changedQuestion }
 
-            let revertedQuizzerTeamOpt =
-                revertingAppealer
-                |> Option.bind (RunningQuiz.tryFindQuizzer quiz)
-
             let updatedQuiz =
                 quiz
                 |> updateCurrentQuestion changedQuestion
                 |> updateAppealScore QuizScore.failAppeal (currentQuizzer, teamPositionOpt)
-                |> fun quiz ->
-                    revertedQuizzerTeamOpt
-                    |> Option.map (fun (quizzer, teamPosition) ->
-                        quiz
-                        |> updateAppealScore QuizScore.revertAppealFailure (quizzer.Name, teamPosition))
-                    |> Option.defaultValue quiz
 
-            return
-                updatedQuiz,
-                revertedQuizzerTeamOpt
-                |> Option.map (fun (quizzerState, teamOpt) -> quizzerState.Name, teamOpt)
+            return updatedQuiz
         }
 
 let private createScoreChangeEvents (quizzer, teamOpt) (quiz: RunningQuiz) =
@@ -87,17 +77,12 @@ let private createScoreChangeEvents (quizzer, teamOpt) (quiz: RunningQuiz) =
                 Question = quiz.CurrentQuestion } ]
 
 let createEvents: CreateEvents =
-    fun (failingQuizzer, failingTeamOpt) revertedQuizzerTeamOpt quiz ->
+    fun (failingQuizzer, failingTeamOpt) quiz ->
         let failingEvents =
             quiz
             |> createScoreChangeEvents (failingQuizzer, failingTeamOpt)
 
-        let revertedEvents =
-            revertedQuizzerTeamOpt
-            |> Option.map (fun quizzerAndTeam -> createScoreChangeEvents quizzerAndTeam quiz)
-            |> Option.defaultValue []
-
-        failingEvents @ revertedEvents
+        failingEvents
 
 let failAppeal getQuiz saveQuiz : FailAppeal.Workflow =
     fun command ->
@@ -116,7 +101,7 @@ let failAppeal getQuiz saveQuiz : FailAppeal.Workflow =
                 |> AsyncResult.ofResult
                 |> AsyncResult.mapError FailAppeal.Error.NoCurrentQuizzer
 
-            let! updatedQuiz, revertedQuizzerTeam =
+            let! updatedQuiz =
                 updateQuiz quizzerAndTeam validQuiz
                 |> AsyncResult.ofResult
 
@@ -126,5 +111,5 @@ let failAppeal getQuiz saveQuiz : FailAppeal.Workflow =
                 |> saveQuiz
                 |> AsyncResult.mapError FailAppeal.Error.DbError
 
-            return createEvents quizzerAndTeam revertedQuizzerTeam updatedQuiz
+            return createEvents quizzerAndTeam updatedQuiz
         }

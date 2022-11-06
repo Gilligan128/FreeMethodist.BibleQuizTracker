@@ -35,8 +35,6 @@ type LoadedCompetitionStyle =
 type LoadedModel =
     { JoiningQuizzer: string
       CompetitionStyle: LoadedCompetitionStyle
-      TeamOne: TeamModel
-      TeamTwo: TeamModel
       JumpOrder: string list
       CurrentQuestion: int
       JumpState: JumpState
@@ -86,8 +84,6 @@ type ExternalMessage =
 let public emptyModel =
     { JoiningQuizzer = ""
       CompetitionStyle = Individuals []
-      TeamOne = { Name = ""; Score = 0; Quizzers = [] }
-      TeamTwo = { Name = ""; Score = 0; Quizzers = [] }
       JumpOrder = []
       CurrentQuestion = 1
       JumpState = Unlocked
@@ -926,7 +922,7 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                         removeQuizzerCap
                         TeamPosition.TeamOne
                         quizzerView
-                        (resolved.TeamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
+                        (teamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
                         dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
@@ -939,7 +935,7 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                         removeQuizzerCap
                         TeamPosition.TeamTwo
                         quizzerView
-                        (resolved.TeamTwo, resolved.JumpOrder, resolved.CurrentQuizzer)
+                        (teamTwo, resolved.JumpOrder, resolved.CurrentQuizzer)
                         dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
@@ -958,15 +954,14 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
                 | Locked -> "Unlock"
                 | Unlocked -> "Lock"
             )
-
             .AddQuizzerTeamView(
                 match resolved.CompetitionStyle with
                 | Individuals _ -> Html.empty ()
-                | Team _ ->
+                | Team (teamOne, teamTwo) ->
                     quizPage
                         .AddQuizzerTeam()
-                        .TeamOneName(resolved.TeamOne.Name)
-                        .TeamTwoName(resolved.TeamTwo.Name)
+                        .TeamOneName(teamOne.Name)
+                        .TeamTwoName(teamTwo.Name)
                         .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
                         .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
                         .AddQuizzerIsTeamOne(isTeam resolved true false)

@@ -4,9 +4,9 @@ open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
-type UpdateQuiz = RunningQuiz -> Result<RunningQuiz * TeamPosition option, ClearAppeal.Error>
+type UpdateQuiz = RunningQuiz -> Result<RunningQuiz * TeamPosition list, ClearAppeal.Error>
 
-type CreateEvents = RunningQuiz * TeamPosition option -> ClearAppeal.Event list
+type CreateEvents = RunningQuiz * TeamPosition list -> ClearAppeal.Event list
 
 let updateAppealScore quizzer (quiz: RunningQuiz) =
     let quizzerAndTeamOpt =
@@ -25,14 +25,14 @@ let updateAppealScore quizzer (quiz: RunningQuiz) =
 let updateQuiz: UpdateQuiz =
     fun quiz ->
         result {
-            let! changedQuestion, revertingAppealer =
+            let! changedQuestion, revertingAppealers =
                 quiz.Questions
                 |> Map.tryFind quiz.CurrentQuestion
                 |> Option.defaultValue QuestionState.initial
                 |> fun original ->
                     match original.FailedAppeals with
-                    | failure :: _ -> Ok({ original with FailedAppeals = [] }, failure)
                     | [] -> Error ClearAppeal.Error.NoFailedAppeal
+                    | failure -> Ok({ original with FailedAppeals = [] }, failure)
 
             let updateCurrentQuestion changedQuestion quiz =
                 changedQuestion
@@ -42,33 +42,39 @@ let updateQuiz: UpdateQuiz =
                             quiz.Questions
                             |> Map.add quiz.CurrentQuestion changedQuestion }
 
-            let revertedTeamOpt =
-                quiz
-                |> RunningQuiz.tryFindQuizzer2 revertingAppealer
-                |> Option.bind snd
+            let revertedTeams =
+                revertingAppealers
+                |> List.choose (fun quizzer ->
+                    quiz
+                    |> RunningQuiz.tryFindQuizzer2 quizzer
+                    |> Option.bind snd)
+                |> List.distinct
 
             let updatedQuiz =
                 quiz
                 |> updateCurrentQuestion changedQuestion
                 |> (fun quiz ->
-                    quiz
-                    |> updateAppealScore revertingAppealer
-                    |> Option.defaultValue quiz)
+                    revertingAppealers
+                    |> List.fold
+                        (fun quiz quizzer ->
+                            quiz
+                            |> updateAppealScore quizzer
+                            |> Option.defaultValue quiz)
+                        quiz)
 
-            return updatedQuiz, revertedTeamOpt
+            return updatedQuiz, revertedTeams
         }
 
 let createEvents: CreateEvents =
-    fun (quiz, revertedTeamOpt) ->
+    fun (quiz, revertedTeams) ->
 
         let revertedEvents =
-            revertedTeamOpt
-            |> Option.map (fun team ->
-                [ ClearAppeal.Event.TeamScoreChanged
-                      { Quiz = quiz.Code
-                        Team = team
-                        NewScore = quiz |> RunningQuiz.getTeamScore team } ])
-            |> Option.defaultValue []
+            revertedTeams
+            |> List.map (fun team ->
+                ClearAppeal.Event.TeamScoreChanged
+                    { Quiz = quiz.Code
+                      Team = team
+                      NewScore = quiz |> RunningQuiz.getTeamScore team })
 
         revertedEvents
 

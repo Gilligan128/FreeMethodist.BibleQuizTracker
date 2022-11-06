@@ -41,7 +41,11 @@ type Startup() =
     let backwardsCompatibleToRunningCompetitionStyle quiz =
         match quiz with
         | Quiz.Running quiz when quiz.CompetitionStyle |> isNull ->
-            let initialTeam = { Score = QuizScore.zero; Quizzers = []; Name = "" }
+            let initialTeam =
+                { Score = QuizScore.zero
+                  Quizzers = []
+                  Name = "" }
+
             Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team(initialTeam, initialTeam) }
         | quiz -> quiz
 
@@ -59,7 +63,18 @@ type Startup() =
                                         []
                                     else
                                         value.FailedAppeals }) }
-
+        | Quiz.Completed quiz ->
+            Completed
+                { quiz with
+                    CompletedQuestions =
+                        quiz.CompletedQuestions
+                        |> List.map (fun value ->
+                            { value with
+                                FailedAppeals =
+                                    if value.FailedAppeals |> isNull then
+                                        []
+                                    else
+                                        value.FailedAppeals }) }
         | quiz -> quiz
 
     // This method gets called by the runtime. Use this method to add services to the container.
