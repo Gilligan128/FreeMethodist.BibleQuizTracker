@@ -139,7 +139,7 @@ let private refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerSta
         |> getAnswerState currentQuestion.AnswerState
       AppealState =
         quizzer.Name
-        |> getAppealState currentQuestion.FailedAppeal }
+        |> getAppealStateNew currentQuestion.FailedAppeals }
 
 let private refreshTeam (currentQuestion: QuestionState) (team: QuizTeamState) : TeamModel =
     { Name = team.Name

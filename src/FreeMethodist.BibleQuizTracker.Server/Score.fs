@@ -65,11 +65,6 @@ module Score =
     let createScoreModelForQuestion questionNumber (questionState: QuestionState) : QuestionQuizzerEvents =
         let incorrectAnswer quizzer = (quizzer, AnsweredIncorrectly)
 
-        let quizzerFailedAppeal failedAppeal quizzer =
-            match failedAppeal with
-            | None -> false
-            | Some q -> q = quizzer
-
         let answersWithoutAppeals =
             match questionState.AnswerState with
             | Incomplete quizzers -> quizzers |> List.map incorrectAnswer
@@ -78,33 +73,44 @@ module Score =
                 @ (question.IncorrectAnswerers
                    |> List.map incorrectAnswer)
             | Complete (Unanswered question) -> question |> List.map incorrectAnswer
+            |> List.map (fun (q, a) ->
+                q,
+                { AnswerState = a
+                  AppealState = NoFailure })
 
-        let answersWithAppealQuizzer =
-            match questionState.FailedAppeal with
-            | None -> answersWithoutAppeals
-            | Some quizzer when
-                not
-                    (
-                        answersWithoutAppeals
-                        |> List.map fst
-                        |> List.exists (fun q -> q = quizzer)
-                    )
-                ->
-                answersWithoutAppeals
-                @ [ (quizzer, DidNotAnswer) ]
-            | Some _ -> answersWithoutAppeals
+        let appealsWithoutAnswers: (Quizzer * EventState) list =
+            questionState.FailedAppeals
+            |> List.map (fun q ->
+                q,
+                { AnswerState = DidNotAnswer
+                  AppealState = AppealState.AppealFailure })
+
+        let answersWithAppeals =
+            answersWithoutAppeals @ appealsWithoutAnswers
+            |> List.groupBy (fun e -> e |> fst)
+            |> List.map (fun (quizzer, eventStates) ->
+                let merged =
+                    eventStates
+                    |> List.map snd
+                    |> List.fold
+                        (fun e1 e2 ->
+                            { AnswerState =
+                                match e1.AnswerState, e2.AnswerState with
+                                | DidNotAnswer, other -> other
+                                | other, _ -> other
+                              AppealState =
+                                match e1.AppealState, e2.AppealState with
+                                | NoFailure, other -> other
+                                | other, _ -> other })
+                        { AnswerState = DidNotAnswer
+                          AppealState = NoFailure }
+                quizzer, merged)
 
         let questionQuizzerEvents =
-            answersWithAppealQuizzer
-            |> List.map (fun (quizzer, answer) ->
+            answersWithAppeals
+            |> List.map (fun (quizzer, eventState) ->
                 { Position = (questionNumber, quizzer)
-                  State =
-                    { AnswerState = answer
-                      AppealState =
-                        (if quizzerFailedAppeal questionState.FailedAppeal quizzer then
-                             AppealFailure
-                         else
-                             NoFailure) } })
+                  State = eventState })
 
         questionQuizzerEvents
 
@@ -122,27 +128,27 @@ module Score =
             | scores ->
                 scores
                 |> Seq.reduce (fun runningScore current -> runningScore |> QuizScore.add current)
-    
+
     let eventsForQuestion questionNumber questions =
         questions
         |> Seq.filter (fun event -> (event.Position |> fst) = questionNumber)
-    
+
     let eventsForQuizzers quizzers questions =
         questions
-        |> Seq.filter  (fun event -> quizzers |> Seq.contains (event.Position |> snd) )
-    
+        |> Seq.filter (fun event -> quizzers |> Seq.contains (event.Position |> snd))
+
     let calculate scoring events =
         events
         |> Seq.map (fun event -> event.State)
         |> Seq.map scoring
         |> sumScores
-    
+
     let calculateTeamScore quizzersOnTeam questions =
         questions
         |> eventsForQuizzers quizzersOnTeam
         |> calculate teamScoring
-    
+
     let calculateQuizzerScore (scoringBasedOnStyle: EventState -> QuizScore) questions quizzer =
         questions
-        |> eventsForQuizzers [quizzer]
+        |> eventsForQuizzers [ quizzer ]
         |> calculate scoringBasedOnStyle
