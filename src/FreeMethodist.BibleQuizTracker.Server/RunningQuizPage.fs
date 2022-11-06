@@ -169,7 +169,6 @@ let private refreshModel (quiz: RunningQuiz) =
                     (refreshTeam currentQuestion)
                     (refreshQuizzer currentQuestion)
                     quiz.CompetitionStyle
-            TeamOne = quiz.TeamOne |> refreshTeam currentQuestion
             TeamTwo = quiz.TeamTwo |> refreshTeam currentQuestion
             CurrentQuestion = PositiveNumber.value quiz.CurrentQuestion
             CurrentQuizzer = quiz.CurrentQuizzer

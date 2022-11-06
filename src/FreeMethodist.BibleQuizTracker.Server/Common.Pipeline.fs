@@ -76,10 +76,6 @@ module Quiz =
                 { Code = unvalidatedQuiz.Code
                   CompetitionStyle =
                     RunningCompetitionStyle.Individuals []
-                  TeamOne =
-                    { Name = ""
-                      Score = QuizScore.zero
-                      Quizzers = [] }
                   TeamTwo =
                     { Name = ""
                       Score = QuizScore.zero
@@ -101,10 +97,6 @@ module Quiz =
                           Score = QuizScore.zero
                           Quizzers = [] }
                     )
-                  TeamOne =
-                    { Name = teams.TeamOneName
-                      Score = QuizScore.zero
-                      Quizzers = [] }
                   TeamTwo =
                     { Name = teams.TeamTwoName
                       Score = QuizScore.zero

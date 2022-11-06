@@ -7,8 +7,7 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 type ValidateRemoval = Quiz -> RemoveQuizzer.Data -> Result<RunningQuiz, RemoveQuizzer.Error>
 
-type RemoveQuizzerFromQuiz =
-    RemoveQuizzer.Data -> RunningQuiz -> Jump seq -> RunningQuiz * CurrentQuizzerChanged option
+type RemoveQuizzerFromQuiz = RemoveQuizzer.Data -> RunningQuiz -> Jump seq -> RunningQuiz * CurrentQuizzerChanged option
 
 type CreateEvent = QuizCode -> RemoveQuizzer.Data -> QuizzerNoLongerParticipating
 type CreateEvents = QuizCode -> RemoveQuizzer.Data -> CurrentQuizzerChanged option -> RemoveQuizzer.Event list
@@ -21,7 +20,9 @@ let validateRemoval (validateQuiz: Quiz -> Result<RunningQuiz, QuizStateError>) 
                 validateQuiz quiz
                 |> Result.mapError RemoveQuizzer.QuizStateError
 
-            let foundQuizzerOpt = validQuiz |> RunningQuiz.tryFindQuizzer2 input.Quizzer
+            let foundQuizzerOpt =
+                validQuiz
+                |> RunningQuiz.tryFindQuizzer2 input.Quizzer
 
             return!
                 foundQuizzerOpt
@@ -72,18 +73,7 @@ let removeQuizzerFromQuiz: RemoveQuizzerFromQuiz =
             |> Option.bind (nextCurrentQuizzer input.Quizzer)
 
         let newQuiz =
-            match quiz.CompetitionStyle with
-            | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-                let _, team =
-                    RunningQuiz.findQuizzerAndTeam (teamOne, teamTwo) input.Quizzer
-
-                match team with
-                | TeamOne -> { quiz with TeamOne = removeFromTeam teamOne }
-                | TeamTwo -> { quiz with TeamTwo = removeFromTeam teamTwo }
-            | RunningCompetitionStyle.Individuals _ -> quiz
-            |> fun oldQuiz ->
-                { oldQuiz with
-                    CompetitionStyle = removeFromCompetitionStyle removeFromTeam oldQuiz.CompetitionStyle input.Quizzer }
+            { quiz with CompetitionStyle = removeFromCompetitionStyle removeFromTeam quiz.CompetitionStyle input.Quizzer }
             |> fun oldQuiz -> { oldQuiz with CurrentQuizzer = replaceCurrent }
 
         let currentQuizzerChanged =

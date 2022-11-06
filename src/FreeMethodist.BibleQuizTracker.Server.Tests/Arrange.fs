@@ -12,7 +12,7 @@ module Arrange =
 
             { quiz with
                 CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo)
-                TeamOne = teamOne }
+            }
         | RunningCompetitionStyle.Individuals _ ->
             { quiz with CompetitionStyle = RunningCompetitionStyle.Individuals quizzers }
 

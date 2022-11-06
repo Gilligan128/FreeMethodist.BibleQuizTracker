@@ -36,8 +36,6 @@ let initExample quizCode =
     Running
         { Code = quizCode
           CompetitionStyle = RunningCompetitionStyle.Team (teamOne, teamTwo)
-          TeamOne =
-            teamOne
           TeamTwo =
             teamTwo
           CurrentQuestion =

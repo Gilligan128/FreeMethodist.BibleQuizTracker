@@ -66,7 +66,6 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
 
         { Code = completed.Code
           CompetitionStyle = competitionStyle
-          TeamOne = teamOne
           TeamTwo = teamTwo
           CurrentQuestion = (ofNumber completed.CompletedQuestions.Length)
           CurrentQuizzer = None
@@ -88,7 +87,6 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
 
         { Code = official.Code
           CompetitionStyle = competitionStyle
-          TeamOne = teamOne
           TeamTwo = teamTwo
           CurrentQuestion = official.CompletedQuestions.Length |> ofNumber
           CurrentQuizzer = None

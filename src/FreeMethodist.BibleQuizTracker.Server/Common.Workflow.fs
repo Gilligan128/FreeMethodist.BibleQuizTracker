@@ -98,8 +98,6 @@ type RunningQuiz =
       Questions: Map<PositiveNumber, QuestionState>
       CompetitionStyle: RunningCompetitionStyle
       [<Obsolete>]
-      TeamOne: QuizTeamState
-      [<Obsolete>]
       TeamTwo: QuizTeamState
       CurrentQuestion: QuestionNumber
       CurrentQuizzer: Quizzer option }
@@ -350,10 +348,6 @@ module QuizTeamState =
 module RunningQuiz =
     let newTeamQuiz =
         { Code = "Example"
-          TeamOne =
-            { Name = "LEFT"
-              Score = QuizScore.zero
-              Quizzers = [] }
           TeamTwo =
             { Name = "RIGHT"
               Score = QuizScore.zero
@@ -373,10 +367,6 @@ module RunningQuiz =
 
     let newIndividualQuiz =
         { Code = "Example"
-          TeamOne =
-            { Name = ""
-              Score = QuizScore.zero
-              Quizzers = [] }
           TeamTwo =
             { Name = ""
               Score = QuizScore.zero
@@ -415,7 +405,7 @@ module RunningQuiz =
     let findQuizzer quizzer (quiz: RunningQuiz) =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-            let quizzer, team = findQuizzerAndTeam (quiz.TeamOne, quiz.TeamTwo) quizzer
+            let quizzer, team = findQuizzerAndTeam (teamOne, teamOne) quizzer
 
             quizzer, Some team
         | RunningCompetitionStyle.Individuals quizzerStates ->
@@ -470,7 +460,7 @@ module RunningQuiz =
                 |> updateAnsweringQuizzer changeScore quizzerName
             Score = team.Score |> changeScore }
 
-    let private updateTeamAndQuizzerScore changeScore quiz (teamOne, teamTwo) quizzerName =
+    let private updateTeamAndQuizzerScore changeScore (quiz: RunningQuiz ) (teamOne, teamTwo) quizzerName =
         let updateTeam = updateTeam changeScore quizzerName
 
         quizzerName
@@ -478,7 +468,6 @@ module RunningQuiz =
         |> Option.map (function
             | _, TeamOne ->
                 { quiz with
-                    TeamOne = updateTeam teamOne
                     CompetitionStyle = RunningCompetitionStyle.Team(updateTeam teamOne, teamTwo) }
             | _, TeamTwo ->
                 { quiz with
@@ -528,7 +517,6 @@ module RunningQuiz =
             match teamPosition with
             | TeamOne ->
                 { quiz with
-                    TeamOne = updateScore teamOne
                     CompetitionStyle = RunningCompetitionStyle.Team(updateScore teamOne, teamTwo) }
             | TeamTwo ->
                 { quiz with
