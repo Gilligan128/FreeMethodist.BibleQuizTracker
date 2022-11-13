@@ -394,7 +394,7 @@ module RunningQuiz =
     let findQuizzer quizzer (quiz: RunningQuiz) =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-            let quizzer, team = findQuizzerAndTeam (teamOne, teamOne) quizzer
+            let quizzer, team = findQuizzerAndTeam (teamOne, teamTwo) quizzer
 
             quizzer, Some team
         | RunningCompetitionStyle.Individuals quizzerStates ->
