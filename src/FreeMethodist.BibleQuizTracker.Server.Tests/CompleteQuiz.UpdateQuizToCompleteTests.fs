@@ -2,6 +2,7 @@
 
 
 
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
@@ -56,7 +57,8 @@ let ``Given existing questions When completing a quiz Then all questions are com
         [ "Juni" ]
 
     let unansweredQuestion: QuestionState =
-        { FailedAppeals = []
+        { Prejumps = []
+          FailedAppeals = []
           AnswerState =
             QuizAnswer.Complete
             <| Unanswered unansweredIncorrectAnswerers }
@@ -66,7 +68,8 @@ let ``Given existing questions When completing a quiz Then all questions are com
           Answerer = "Jim" }
 
     let answeredQuestion: QuestionState =
-        { FailedAppeals = ["Jina"]
+        { Prejumps = []
+          FailedAppeals = ["Jina"]
           AnswerState =
             Answered answeredAnswerState
             |> QuizAnswer.Complete }
@@ -74,7 +77,8 @@ let ``Given existing questions When completing a quiz Then all questions are com
     let incompleteAnswerers = [ "Juni" ]
 
     let incompleteQuestion: QuestionState =
-        { FailedAppeals = []
+        { Prejumps = []
+          FailedAppeals = []
           AnswerState = QuizAnswer.Incomplete <| incompleteAnswerers }
 
     let initialQuiz =

@@ -5,6 +5,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Versioning
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
@@ -35,48 +36,7 @@ type Startup() =
         provider.GetRequiredService<IHostEnvironment>()
         |> getTenantName Environment.MachineName
 
-    let isNull value = obj.ReferenceEquals(value, null)
-
-    //Versioning
-    let backwardsCompatibleToRunningCompetitionStyle quiz =
-        match quiz with
-        | Quiz.Running quiz when quiz.CompetitionStyle |> isNull ->
-            let initialTeam =
-                { Score = QuizScore.zero
-                  Quizzers = []
-                  Name = "" }
-
-            Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team(initialTeam, initialTeam) }
-        | quiz -> quiz
-
-    let backwardsCompatibleToFailedAppeals quiz =
-        match quiz with
-        | Quiz.Running quiz ->
-            Running
-                { quiz with
-                    Questions =
-                        quiz.Questions
-                        |> Map.map (fun _ value ->
-                            { value with
-                                FailedAppeals =
-                                    if value.FailedAppeals |> isNull then
-                                        []
-                                    else
-                                        value.FailedAppeals }) }
-        | Quiz.Completed quiz ->
-            Completed
-                { quiz with
-                    CompletedQuestions =
-                        quiz.CompletedQuestions
-                        |> List.map (fun value ->
-                            { value with
-                                FailedAppeals =
-                                    if value.FailedAppeals |> isNull then
-                                        []
-                                    else
-                                        value.FailedAppeals }) }
-        | quiz -> quiz
-
+  
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     member this.ConfigureServices(services: IServiceCollection) =
@@ -103,8 +63,7 @@ type Startup() =
 
         let deserialize (json: string) =
             JsonSerializer.Deserialize(json, fsharpJsonOptions)
-            |> backwardsCompatibleToRunningCompetitionStyle
-            |> backwardsCompatibleToFailedAppeals
+            |> QuizVersioning.applyBackwardsCompatibility
 
         let getQuiz (provider: IServiceProvider) =
             let localStorage =
