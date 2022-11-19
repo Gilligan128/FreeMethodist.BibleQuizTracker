@@ -14,7 +14,6 @@
         <Compile Include="RunQuiz.Workflows.fs" />
         <Compile Include="CreateQuiz.Workflow.fs" />
         <Compile Include="Capabilities.fs" />
-        <Compile Include="MarkMisprejump.Workflow.fs" />
         <Compile Include="Common.Pipeline.fs" />
         <Compile Include="Score.fs" />
         <Compile Include="Persistence.fs" />
@@ -29,6 +28,7 @@
         <Compile Include="CreateQuiz.Pipeline.fs" />
         <Compile Include="CompleteQuiz.Pipeline.fs" />
         <Compile Include="ReopenQuiz.Pipeline.fs" />
+        <Compile Include="Prejump.Pipeline.fs" />
         <Compile Include="QuizHub.fs" />
         <Compile Include="JumpPipeline.fs" />
         <Compile Include="Common.Page.fs" />

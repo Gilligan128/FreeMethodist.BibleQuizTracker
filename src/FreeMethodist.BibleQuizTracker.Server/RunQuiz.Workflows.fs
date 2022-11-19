@@ -149,3 +149,11 @@ module ReopenQuiz =
 
     type Event = QuizStateChanged of QuizStateChanged
     type Workflow = Command -> AsyncResult<Event list, Error>
+    
+[<RequireQualifiedAccess>]
+module Prejump =
+    type Command = { Quizzer : Quizzer; Question: PositiveNumber }
+    type Error = | DbError of DbError
+                 | RemoteError of string
+    type Event = | Prejump of QuizCode
+    type Workflow = Command -> AsyncResult<Event list, Error>          

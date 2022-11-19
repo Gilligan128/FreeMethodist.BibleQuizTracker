@@ -26,6 +26,7 @@
         <Compile Include="CompleteQuiz.UpdateQuizToCompleteTests.fs" />
         <Compile Include="PersistenceCharacterization.fs" />
         <Compile Include="Program.fs" />
+        <Compile Include="Prejump.UpdateQuiz.Tests.fs" />
     </ItemGroup>
 
     <ItemGroup>

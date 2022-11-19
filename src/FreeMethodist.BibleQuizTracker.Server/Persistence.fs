@@ -263,6 +263,7 @@ let saveNewQuizToBlob
             let uploadOptions =
                 BlobUploadOptions(
                     Conditions = BlobRequestConditions(IfNoneMatch = ETag("*")),
+                    
                     Tags =
                         ([ "Code", quizCode
                            "State", mapState quiz ]
@@ -373,6 +374,9 @@ let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
         else
             getFromBlob quizCode
 
+let trimQuizPrefixes (name : string) =
+    name.Replace("quizzes/", "").Replace("quiz-", "")
+                
 let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) (tenantName : string) =
     asyncResult {
         let blobContainerClient =
@@ -386,8 +390,7 @@ let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) (tenantName
             let results =
                 blobContainerClient.FindBlobsByTags(expression)
                 |> Seq.map (fun item -> item.BlobName)
-                |> Seq.map (fun name -> name.Replace("quizzes/", ""))
-                |> Seq.map (fun name -> name.Replace("quiz-", ""))
+                |> Seq.map trimQuizPrefixes
                 |> Seq.toList
 
             return results
