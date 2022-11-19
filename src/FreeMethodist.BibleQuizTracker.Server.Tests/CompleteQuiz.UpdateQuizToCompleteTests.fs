@@ -99,13 +99,16 @@ let ``Given existing questions When completing a quiz Then all questions are com
         actualQuiz.CompletedQuestions
 
     let expectedQuestions =
-        [ { 
+        [ {
+            Prejumps = []
             FailedAppeals = []
             AnswerState = Unanswered unansweredIncorrectAnswerers }
-          { 
+          {
+            Prejumps = []
             FailedAppeals = ["Jina"]
             AnswerState = Answered answeredAnswerState }
-          { 
+          {
+            Prejumps = []
             FailedAppeals = []
             AnswerState = Unanswered incompleteAnswerers } ]
 
