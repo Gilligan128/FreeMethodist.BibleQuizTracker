@@ -25,6 +25,7 @@
         <Compile Include="ClearAppeal.UpdateQuizStepTests.fs" />
         <Compile Include="CompleteQuiz.UpdateQuizToCompleteTests.fs" />
         <Compile Include="Prejump.UpdateQuiz.Tests.fs" />
+        <Compile Include="UpdatesQuizScore.Tests.fs" />
         <Compile Include="PersistenceCharacterization.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>

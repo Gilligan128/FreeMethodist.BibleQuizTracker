@@ -104,6 +104,7 @@ module Score =
                                 | other, _ -> other })
                         { AnswerState = DidNotAnswer
                           AppealState = NoFailure }
+
                 quizzer, merged)
 
         let questionQuizzerEvents =
@@ -152,3 +153,19 @@ module Score =
         questions
         |> eventsForQuizzers [ quizzer ]
         |> calculate scoringBasedOnStyle
+
+    let private updateTeamScores calculateQuizzerScore team =
+        { team with
+            Quizzers =
+                team.Quizzers
+                |> List.map (fun quizzer -> { quizzer with Score = calculateQuizzerScore quizzer.Name }) }
+
+    let updateQuizScores (quiz: RunningQuiz) =
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Individuals quizzerStates -> quiz
+        | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
+            let scoreModel =
+                createScoreModel quiz.Questions
+            let calcQuizzerScore = calculateQuizzerScore quizzerTeamStyleScoring scoreModel
+            let updateTeamScores = updateTeamScores calcQuizzerScore
+            { quiz with CompetitionStyle = RunningCompetitionStyle.Team(teamOne |> updateTeamScores, teamTwo |> updateTeamScores) }

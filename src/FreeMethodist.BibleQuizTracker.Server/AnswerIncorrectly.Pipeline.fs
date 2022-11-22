@@ -44,7 +44,7 @@ let updateQuiz: UpdateQuiz =
                     CurrentQuizzer = None
                     Questions = RunningQuiz.changeCurrentAnswer quiz changedQuestion }
                 |> revertScoressBasedOnQuizzerIfNecessary revertedCorrectAnswer
-
+            
             return
                 { QuizState = quizState
                   RevertedAnswer = revertedCorrectAnswer }
