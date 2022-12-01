@@ -153,19 +153,25 @@ module Score =
         questions
         |> eventsForQuizzers [ quizzer ]
         |> calculate scoringBasedOnStyle
-
-    let private updateTeamScores calculateQuizzerScore team =
+    
+    let updateQuizzerScores calculateQuizzerScore quizzers : QuizzerState list =
+        quizzers
+        |> List.map (fun quizzer -> { quizzer with Score = calculateQuizzerScore quizzer.Name })
+    
+    let private updateTeamScores calculateQuizzerScore calculateTeamScore team =
         { team with
-            Quizzers =
-                team.Quizzers
-                |> List.map (fun quizzer -> { quizzer with Score = calculateQuizzerScore quizzer.Name }) }
+           Score = team.Quizzers |> List.map (fun quizzer -> quizzer.Name) |>  calculateTeamScore
+           Quizzers = updateQuizzerScores calculateQuizzerScore team.Quizzers }
 
     let updateQuizScores (quiz: RunningQuiz) =
-        match quiz.CompetitionStyle with
-        | RunningCompetitionStyle.Individuals quizzerStates -> quiz
-        | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
-            let scoreModel =
+        let scoreModel =
                 createScoreModel quiz.Questions
+        match quiz.CompetitionStyle with
+        | RunningCompetitionStyle.Individuals quizzerStates ->
+            let calcQuizzerScore = calculateQuizzerScore quizzerIndividualStyleScoring scoreModel
+            {quiz with CompetitionStyle = RunningCompetitionStyle.Individuals (updateQuizzerScores calcQuizzerScore quizzerStates)}
+        | RunningCompetitionStyle.Team (teamOne, teamTwo) -> 
             let calcQuizzerScore = calculateQuizzerScore quizzerTeamStyleScoring scoreModel
-            let updateTeamScores = updateTeamScores calcQuizzerScore
+            let calcTeamScore quizzers = scoreModel |> calculateTeamScore quizzers
+            let updateTeamScores = updateTeamScores calcQuizzerScore calcTeamScore
             { quiz with CompetitionStyle = RunningCompetitionStyle.Team(teamOne |> updateTeamScores, teamTwo |> updateTeamScores) }
