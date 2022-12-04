@@ -12,6 +12,23 @@ let updateCurrentQuestion updater quiz =
                 |> Option.defaultValue QuestionState.initial
                 |> fun question -> question |> updater |> Some) }
 
+let private removeTeammatePrejumps quiz currentQuizzer question =
+    let teamPosition =
+        quiz
+        |> RunningQuiz.tryFindQuizzer2 currentQuizzer
+        |> Option.bind snd
+
+    let teammatesOpt =
+        teamPosition
+        |> Option.map (fun teamPosition ->
+            quiz
+            |> RunningQuiz.getTeam teamPosition
+            |> fun team -> team.Quizzers |> List.map (fun q -> q.Name))
+
+    teammatesOpt
+    |> Option.map (fun teammates -> { question with Prejumps = question.Prejumps |> List.except teammates })
+    |> Option.defaultValue question
+
 let updateQuizWithCurrentQuizzerPrejump (quiz: RunningQuiz) =
     let currentQuizzerResult =
         quiz.CurrentQuizzer
@@ -20,11 +37,9 @@ let updateQuizWithCurrentQuizzerPrejump (quiz: RunningQuiz) =
     currentQuizzerResult
     |> Result.map (fun currentQuizzer ->
         quiz
+        |> updateCurrentQuestion (removeTeammatePrejumps quiz currentQuizzer)
         |> updateCurrentQuestion (fun question ->
             { question with
                 Prejumps =
                     question.Prejumps @ [ currentQuizzer ]
-                    |> List.distinct })
-//        |> updateCurrentQuestion (fun question ->
-//            match quiz.CompetitionStyle with
-//            | Team(teamOne, teamTwo) -> quiz.CompetitionStyle))
+                    |> List.distinct }))
