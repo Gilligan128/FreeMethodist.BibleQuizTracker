@@ -52,17 +52,17 @@ let newTeamState name scoreModel (originalTeamState: QuizTeamState) =
     { originalTeamState with
         Quizzers =
             originalTeamState.Quizzers
-            @ [ newQuizzer Score.quizzerTeamStyleScoring name scoreModel ] }
+            @ [ newQuizzer Score.quizzerTeamStyleScoringOld name scoreModel ] }
     |> fun teamstate ->
         { teamstate with
             Score =
                 scoreModel
                 |> Score.eventsForQuizzers [ name ]
-                |> Score.calculate Score.teamScoring }
+                |> Score.calculate Score.teamScoringOld }
 
 let newIndividualRoster scoreModel name quizzers =
     quizzers
-    @ [ newQuizzer Score.quizzerIndividualStyleScoring name scoreModel ]
+    @ [ newQuizzer Score.quizzerIndividualStyleScoringOld name scoreModel ]
 
 
 let addQuizzerToQuiz: AddQuizzerToQuiz =

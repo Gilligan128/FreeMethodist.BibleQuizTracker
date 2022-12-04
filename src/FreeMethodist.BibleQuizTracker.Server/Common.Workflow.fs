@@ -183,12 +183,17 @@ module QuizScore =
     let ofQuestions questionCount = QuizScore(questionCount * 20)
 
     let correctAnswer (QuizScore value) = QuizScore(value + 20)
+    
+    let correctAnswerValue = QuizScore(20)
+    
     let revertCorrectAnswer (QuizScore value) = QuizScore(value - 20)
 
     let failAppeal (QuizScore value) = QuizScore(value - 20)
 
     let revertAppealFailure (QuizScore value) = QuizScore(value + 20)
-
+    
+    let misPrejump = QuizScore(-10)
+    
     let toString (QuizScore value) = string value
 
     let add (score1: QuizScore) (score2: QuizScore) =

@@ -40,14 +40,15 @@ module ItemizedScore =
             q
             |> (Option.defaultValue
                     { AnswerState = AnsweredIncorrectly
-                      AppealState = NoFailure })
+                      AppealState = NoFailure
+                      JumpState = None })
             |> eventOccurred)
 
     let teamScoreForQuestion questions questionNumber (team: ItemizedTeam) =
         questions
         |> Score.eventsForQuestion questionNumber
         |> Score.eventsForQuizzers team.Quizzers
-        |> Score.calculate Score.teamScoring
+        |> Score.calculate Score.teamScoringOld
         |> QuizScore.value
 
     let quizzerView scoringBasedOnStyle questionEvents quizzer =
@@ -64,7 +65,8 @@ module ItemizedScore =
                 |> Option.map (function
                     | (answer, appeal) ->
                         { AnswerState = answer
-                          AppealState = appeal })
+                          AppealState = appeal
+                          JumpState = None })
                 |> Option.map scoringBasedOnStyle
                 |> Option.map QuizScore.value
                 |> Option.defaultValue 0
@@ -160,7 +162,7 @@ module ItemizedScore =
             tr {
 
                 forEach teamOne.Quizzers
-                <| quizzerView Score.quizzerTeamStyleScoring questionsAdapted
+                <| quizzerView Score.quizzerTeamStyleScoringOld questionsAdapted
 
                 td {
                     attr.``class`` "has-text-right"
@@ -188,7 +190,7 @@ module ItemizedScore =
                 }
 
                 forEach teamTwo.Quizzers
-                <| quizzerView Score.quizzerTeamStyleScoring questionsAdapted
+                <| quizzerView Score.quizzerTeamStyleScoringOld questionsAdapted
             }
 
     let individualsBody (questionEvents: QuestionQuizzerEvents, numberOfQuestions) quizzers =
@@ -211,7 +213,7 @@ module ItemizedScore =
                 td { text (number |> PositiveNumber.value |> string) }
 
                 forEach quizzers
-                <| quizzerView Score.quizzerIndividualStyleScoring questionsAdapted
+                <| quizzerView Score.quizzerIndividualStyleScoringOld questionsAdapted
 
             }
 
@@ -274,11 +276,11 @@ module ItemizedScore =
 
         let quizzersIndividualsTotalNode =
             quizzersTotalNode (
-                Score.calculateQuizzerScore Score.quizzerIndividualStyleScoring model.QuestionsWithEvents
+                Score.calculateQuizzerScore Score.quizzerIndividualStyleScoringOld model.QuestionsWithEvents
             )
 
         let quizzersTeamTotalNode =
-            quizzersTotalNode (Score.calculateQuizzerScore Score.quizzerTeamStyleScoring model.QuestionsWithEvents)
+            quizzersTotalNode (Score.calculateQuizzerScore Score.quizzerTeamStyleScoringOld model.QuestionsWithEvents)
 
         itemizedPage()
             .Header(

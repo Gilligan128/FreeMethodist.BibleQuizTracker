@@ -61,7 +61,7 @@ let updateQuiz: UpdateQuiz =
                             |> updateAppealScore quizzer
                             |> Option.defaultValue quiz)
                         quiz)
-
+            
             return updatedQuiz, revertedTeams
         }
 
