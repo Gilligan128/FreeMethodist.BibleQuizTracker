@@ -12,7 +12,6 @@ type QuizRoomState =
     | Open
     | Closed
 
-
 type CompletedQuizzer = { Name: Quizzer; Score: QuizScore }
 
 type CompletedTeam =

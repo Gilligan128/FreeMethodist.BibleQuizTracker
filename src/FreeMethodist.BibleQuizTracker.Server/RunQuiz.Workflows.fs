@@ -152,8 +152,10 @@ module ReopenQuiz =
     
 [<RequireQualifiedAccess>]
 module Prejump =
-    type Command = { Quizzer : Quizzer; Question: PositiveNumber }
+    type Command = Unit
     type Error = | DbError of DbError
                  | RemoteError of string
+                 | NoCurrentQuizzer of NoCurrentQuizzer
     type Event = | Prejump of QuizCode
-    type Workflow = Command -> AsyncResult<Event list, Error>          
+    type Workflow = Command -> AsyncResult<Event list, Error>
+
