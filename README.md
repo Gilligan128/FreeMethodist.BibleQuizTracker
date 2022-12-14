@@ -39,12 +39,12 @@ Overall theme here is "do what it takes to get accurate, visible, and persistent
 - [x] Quizmaster can track and record all pertinent scoring info for a Team quiz. 
   - includes adding Quizzers to a quiz.
   - does not include Quizzer being able to "jump"
-- [ ] Tournament Directors, and Regional directors can collect scores after a quiz is done
-- [ ] Spectators can see live scores for a quiz.
-- [ ] Quizzers can participate and "jump" in quizzes.
-- [ ] We extend all existing functionality for Individual quizzes.
+- [x] Tournament Directors, and Regional directors can collect scores after a quiz is done
+- [x] Spectators can see live scores for a quiz.
+- [X] We extend all existing functionality for Individual quizzes.
 - [x] Quizmasters can see the history of a quiz.
-- [ ] Quizzers can track "fun" quizzes, scoring how they see fit and not being limited in jumpers.
+- [ ] Quizzes have tournament information so that it is easy to find the scores needed.
+- [ ] Quizzers can join and jump in quizzes.
 
 ## Technical Roadmap
 This is more about the technical challenges we are likely to encounter, and setting up architecture to solve them.
@@ -54,6 +54,7 @@ This is more about the technical challenges we are likely to encounter, and sett
   - I intend to solve this by making "jumps" a separate blob container from quizzes so that jumps don't override each other.
 - [ ] Differing latencies among quizzers won't affect jump order
   - This requires either clock syncing between server-client or collecting latency of each user and using that in jump order calculations.
+
 # Deployment
 Application url: https://freemethodist-bible-quizzing.azurewebsites.net
 
@@ -74,6 +75,8 @@ Testing and dependency management: https://fsharpforfunandprofit.com/posts/depen
 Following the Workflows - Pipelines pattern here: https://www.amazon.com/Domain-Modeling-Made-Functional-Domain-Driven/dp/1680502549
 
 We are also following the "external message" pattern to dispatch updates to parent components, guided by [this article](https://medium.com/@MangelMaxime/my-tips-for-working-with-elmish-ab8d193d52fd).
+
+We are applying [Capability design](https://fsharpforfunandprofit.com/cap/) for actions, so that we have a consistent model for enabling/disabling actions and potentially dealing with user auth.
 
 # Project Structure
 F# only supports unidirectional dependencies, in file location order. 
