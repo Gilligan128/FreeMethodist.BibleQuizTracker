@@ -1,7 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tests.AddQuizzerComponentTests
 
 open Elmish
-open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
+open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage

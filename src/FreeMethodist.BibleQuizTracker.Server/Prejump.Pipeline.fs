@@ -3,7 +3,7 @@
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
-let updateCurrentQuestion updater quiz =
+let private updateCurrentQuestion updater quiz =
     { quiz with
         Questions =
             quiz.Questions
@@ -43,3 +43,4 @@ let updateQuizWithCurrentQuizzerPrejump (quiz: RunningQuiz) =
                 Prejumps =
                     question.Prejumps @ [ currentQuizzer ]
                     |> List.distinct }))
+

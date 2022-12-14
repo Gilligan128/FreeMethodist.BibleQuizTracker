@@ -12,6 +12,8 @@ open FreeMethodist.BibleQuizTracker.Server.Routing
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 
+//leaky abstraction here where we render links at the same abstraction level as our "biz logic functions"
+//I think we want to transform the functions into links as necessary from strong types.
 type QuizControlCapabilityProvider =
     { CompleteQuiz: Quiz -> CompleteQuizCap option
       ReopenQuiz: Quiz -> ReopenQuizCap option

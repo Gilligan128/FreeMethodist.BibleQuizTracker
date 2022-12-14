@@ -7,7 +7,7 @@ open Bolero
 open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
-open FreeMethodist.BibleQuizTracker.Server.Capabilities.Capabilities
+open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
