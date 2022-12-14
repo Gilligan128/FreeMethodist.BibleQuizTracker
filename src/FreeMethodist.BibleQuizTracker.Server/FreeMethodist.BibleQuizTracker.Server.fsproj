@@ -32,7 +32,9 @@
         <Compile Include="Prejump.Pipeline.fs" />
         <Compile Include="QuizHub.fs" />
         <Compile Include="JumpPipeline.fs" />
+        <Compile Include="Capabilities.Pipeline.fs" />
         <Compile Include="Common.Page.fs" />
+        <Compile Include="Page.Workflow.fs" />
         <Compile Include="LiveScoreModel.fs" />
         <Compile Include="Html.fs" />
         <Compile Include="CompletedQuizzesModel.fs" />

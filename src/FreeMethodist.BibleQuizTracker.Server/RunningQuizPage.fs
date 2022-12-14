@@ -92,26 +92,17 @@ let public emptyModel =
       NumberOfQuestions = PositiveNumber.one
       QuestionScores = [] }
 
-let tee sideEffect =
-    fun x ->
-        do sideEffect x
-        x
-
-
 let mapLoaded mapper model =
     match model with
     | NotYetStarted _ -> model
     | InProgress _ -> model
     | Resolved loaded -> Resolved(mapper loaded)
 
-let getAppealState appeal quizzer =
-    match appeal with
-    | None -> NoFailure
-    | Some appealer when appealer = quizzer -> AppealFailure
-    | Some _ -> NoFailure
-
 let getAppealStateNew appeals quizzer =
-    if appeals |> List.contains quizzer then  AppealFailure else NoFailure
+    if appeals |> List.contains quizzer then
+        AppealFailure
+    else
+        NoFailure
 
 let private getAnswerState quizAnswer (quizzerState: QuizzerState) =
     let quizzerWasIncorrect =
@@ -241,10 +232,49 @@ let mapWorkflowErrors mapWorkflowSpecificError error =
     | WorkflowError.DbError error -> error |> mapDbErrorToString
     | WorkflowError.Workflow workflowError -> workflowError |> mapWorkflowSpecificError
 
-let mapToAsyncOperationCmd asyncOperation resultAsync =
+let private mapToAsyncOperationCmd asyncOperation resultAsync =
     resultAsync
     |> Async.map (fun result -> asyncOperation (Finished result))
     |> Cmd.OfAsync.result
+
+let private reloadQuizAsync getQuizAsync asyncTask =
+    asyncResult {
+        do! asyncTask
+
+        let! quiz =
+            getQuizAsync ()
+            |> AsyncResult.mapError WorkflowError.DbError
+
+        return quiz
+    }
+
+let private publishRunQuizEvent publishQuizEvent quiz (event: RunQuizEvent) =
+    publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
+
+let private publishEvents publishRunQuizEvent events =
+    events
+    |> List.map (publishRunQuizEvent)
+    |> Async.Parallel
+    |> Async.Ignore
+
+let private publishWorkflowEventsAsync publishEvents events =
+    asyncResult {
+        let! runQuizEvents = events
+
+        do!
+            runQuizEvents
+            |> publishEvents
+            |> AsyncResult.ofAsync
+    }
+    |> AsyncResult.mapError WorkflowError.Workflow
+
+let startWorkflow getQuiz publishEvents message transformToRunQuizEvent workflow =
+    workflow
+    |> AsyncResult.map (List.map transformToRunQuizEvent)
+    |> publishWorkflowEventsAsync publishEvents
+    |> reloadQuizAsync getQuiz
+    |> mapToAsyncOperationCmd message
+
 
 let update
     connectAndHandle
@@ -264,54 +294,21 @@ let update
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.ErrorMessage error
 
-    let publishRunQuizEvent quiz (event: RunQuizEvent) =
-        publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quiz event
+    let publishRunQuizEvent quizCode (event: RunQuizEvent) =
+        publishQuizEvent (nameof hubStub.SendRunQuizEventOccurred) quizCode event
 
-    let publishEvents events =
+    let publishEvents =
+        publishEvents (publishRunQuizEvent model.Code)
+    
+    let getQuiz =
+        fun () -> getQuizAsync model.Code
 
-        events
-        |> List.map (publishRunQuizEvent quizCode)
-        |> Async.Parallel
-        |> Async.Ignore
+    let startWorkflow message mapToEvent workflow =
+        startWorkflow getQuiz publishEvents message mapToEvent workflow
 
-    let matchOptionalCommand cmdOpt =
-        match cmdOpt with
-        | None -> model, Cmd.none, NoMessage
-        | Some cmd -> model, cmd, NoMessage
-
-    let publishWorkflowEventsAsync events =
-        asyncResult {
-            let! runQuizEvents = events
-
-            do!
-                runQuizEvents
-                |> publishEvents
-                |> AsyncResult.ofAsync
-        }
-        |> AsyncResult.mapError WorkflowError.Workflow
-
-    let reloadQuizAsync asyncTask =
-        asyncResult {
-            do! asyncTask
-
-            let! quiz =
-                quizCode
-                |> getQuizAsync
-                |> AsyncResult.mapError WorkflowError.DbError
-
-            return quiz
-        }
-
-    let mapToAsyncOperationCmd asyncOperation resultAsync =
-        resultAsync
-        |> Async.map (fun result -> asyncOperation (Finished result))
-        |> Cmd.OfAsync.result
-
-    let noMessage = NoMessage
-
-    let refreshQuizOrError mapWorkflowSpecificErrors result =
+    let finishWorkflow mapWorkflowSpecificErrors result =
         match result with
-        | Ok (Running quiz) -> { model with Info = refreshModel quiz }, Cmd.none, noMessage
+        | Ok (Running quiz) -> { model with Info = refreshModel quiz }, Cmd.none, NoMessage
         | Ok (Quiz.Completed _)
         | Ok (Official _) ->
             model,
@@ -329,6 +326,12 @@ let update
              | NotYetStarted _ -> None
              | InProgress _ -> None
              | Resolved loaded -> loaded.CurrentQuizzer)
+
+    let matchOptionalCommand cmdOpt =
+        let cmd =
+            cmdOpt |> Option.defaultValue Cmd.none
+
+        model, cmd, NoMessage
 
     let (addQuizzer,
          removeQuizzer,
@@ -382,17 +385,17 @@ let update
                 |> (Message.InitializeQuizAndConnections << Finished))
             |> Cmd.OfAsync.result
 
-        { model with Info = InProgress }, loadCmd, noMessage
+        { model with Info = InProgress }, loadCmd, NoMessage
     | OnQuizEvent (Started _) ->
         let getQuizToRefreshCmd =
             getQuizAsync quizCode
             |> Async.map (Finished >> OnQuizEvent)
             |> Cmd.OfAsync.result
 
-        model, getQuizToRefreshCmd, noMessage
+        model, getQuizToRefreshCmd, NoMessage
     | OnQuizEvent (Finished (Ok quiz)) ->
         match quiz with
-        | Quiz.Running quiz -> { model with Info = refreshModel quiz }, Cmd.none, noMessage
+        | Quiz.Running quiz -> { model with Info = refreshModel quiz }, Cmd.none, NoMessage
         | Quiz.Completed _
         | Official _ ->
             model,
@@ -410,7 +413,7 @@ let update
         let mapToQuizEvent event =
             event |> RunQuizEvent.CurrentQuestionChanged
 
-        let workflowResultOpt =
+        let startCmd =
             changeCurrentQuestion
             |> Option.map (fun workflow ->
                 asyncResult {
@@ -425,32 +428,26 @@ let update
                             { Quiz = quizCode
                               Data = { Question = newQuestion } }
                         |> AsyncResult.mapError ChangeQuestionError.QuizError
-                })
+                }
+                |> AsyncResult.map List.singleton
+                |> startWorkflow ChangeCurrentQuestion mapToQuizEvent)
+            |> Option.defaultValue Cmd.none
 
-        workflowResultOpt
-        |> Option.map (fun result ->
-            result
-            |> AsyncResult.map mapToQuizEvent
-            |> AsyncResult.map List.singleton
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd ChangeCurrentQuestion)
-        |> matchOptionalCommand
+        model, startCmd, NoMessage
     | ChangeCurrentQuestion (Finished result) ->
         let mapChangeQuestionError error =
             match error with
             | ChangeQuestionError.FormError er -> er
             | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
 
-        result
-        |> refreshQuizOrError mapChangeQuestionError
+        result |> finishWorkflow mapChangeQuestionError
     | Message.AddQuizzer Cancel ->
         { model with
             Info =
                 model.Info
                 |> mapLoaded (fun loaded -> { loaded with AddQuizzer = Inert }) },
         Cmd.none,
-        noMessage
+        NoMessage
     | Message.AddQuizzer Start ->
         { model with
             Info =
@@ -462,7 +459,7 @@ let update
                             | Inert -> Active("", TeamOne)
                             | Active (name, team) -> Active(name, team) }) },
         Cmd.none,
-        noMessage
+        NoMessage
     | AddQuizzer (SetName name) ->
         { model with
             Info =
@@ -474,7 +471,7 @@ let update
                             | Inert -> Inert
                             | Active (_, team) -> Active(name, team) }) },
         Cmd.none,
-        noMessage
+        NoMessage
     | AddQuizzer (SetTeam teamPosition) ->
         { model with
             Info =
@@ -486,7 +483,7 @@ let update
                             | Inert -> Inert
                             | Active (name, _) -> Active(name, teamPosition) }) },
         Cmd.none,
-        noMessage
+        NoMessage
     | AddQuizzer (Submit (Started _)) ->
         let addQuizzerState model =
             match model with
@@ -502,15 +499,15 @@ let update
                 { Quiz = quizCode
                   Data = { Name = name; Team = Some team } }
 
-            addQuizzer
-            |> Option.map (fun workflow ->
-                workflow inputCommand
-                |> AsyncResult.map mapQuizEvent
-                |> AsyncResult.map List.singleton
-                |> publishWorkflowEventsAsync
-                |> reloadQuizAsync
-                |> mapToAsyncOperationCmd (AddQuizzerMessage.Submit >> Message.AddQuizzer))
-            |> matchOptionalCommand
+            let startedCmd =
+                addQuizzer
+                |> Option.map (fun workflow ->
+                    workflow inputCommand
+                    |> AsyncResult.map List.singleton
+                    |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer) mapQuizEvent)
+                |> Option.defaultValue Cmd.none
+
+            model, startedCmd, NoMessage
         | AddQuizzerModel.Inert ->
             model, Cmd.none, ExternalMessage.ErrorMessage "How are you even submitting from an inert AddQuizzer state?"
     | AddQuizzer (Submit (Finished result)) ->
@@ -521,7 +518,7 @@ let update
             | AddQuizzer.DbError dbError -> dbError |> mapDbErrorToString
 
         let model, cmd, externalMsg =
-            result |> refreshQuizOrError mapAddQuizzerError
+            result |> finishWorkflow mapAddQuizzerError
 
         { model with
             Info =
@@ -539,11 +536,9 @@ let update
         removeQuizzer
         |> Option.map (fun workflow ->
             cap ()
-            |> AsyncResult.map (List.map transformToRunQuizEvent)
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd RemoveQuizzer)
-        |> matchOptionalCommand
+            |> startWorkflow RemoveQuizzer transformToRunQuizEvent)
+        |> Option.defaultValue Cmd.none
+        |> fun cmd -> model, cmd, NoMessage
     | RemoveQuizzer (Finished result) ->
         let mapRemoveError error =
             match error with
@@ -551,23 +546,22 @@ let update
             | RemoveQuizzer.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is already not participating"
             | RemoveQuizzer.DbError dbError -> dbError |> mapDbErrorToString
 
-        result |> refreshQuizOrError mapRemoveError
+        result |> finishWorkflow mapRemoveError
     | SelectQuizzer (Started name) ->
         let command: SelectQuizzer.Command =
             { Quiz = quizCode
               Data = { Quizzer = name } }
 
+        let transformEvent event = CurrentQuizzerChanged event
+
         selectQuizzer
         |> Option.map (fun workflow ->
             command
             |> workflow
-            |> AsyncResult.map CurrentQuizzerChanged
             |> AsyncResult.map List.singleton
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd SelectQuizzer)
-        |> matchOptionalCommand
-
+            |> startWorkflow SelectQuizzer transformEvent)
+        |> Option.defaultValue Cmd.none
+        |> fun cmd -> model, cmd, NoMessage
     | SelectQuizzer (Finished result) ->
         let mapSelectError error =
             match error with
@@ -604,15 +598,12 @@ let update
             answerCorrectly
             |> Option.map (fun workflow -> workflow { Data = (); Quiz = quizCode })
 
-
         workflowOpt
         |> Option.map (fun result ->
             result
-            |> AsyncResult.map (List.map mapEvent)
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd AnswerCorrectly)
-        |> matchOptionalCommand
+            |> startWorkflow AnswerCorrectly mapEvent)
+        |> Option.defaultValue Cmd.none
+        |> fun cmd -> model, cmd, NoMessage
     | AnswerCorrectly (Finished result) ->
         let mapWorkflowSpecificErrors workflowError =
             match workflowError with
@@ -624,8 +615,7 @@ let update
                 $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
             | AnswerCorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString
 
-        result
-        |> refreshQuizOrError mapWorkflowSpecificErrors
+        result |> finishWorkflow mapWorkflowSpecificErrors
 
     | AnswerIncorrectly (Started _) ->
         let mapEvent event =
@@ -637,10 +627,7 @@ let update
         answerIncorrectly
         |> Option.map (fun workflow ->
             workflow { Quiz = quizCode; Data = () }
-            |> AsyncResult.map (List.map mapEvent)
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd AnswerIncorrectly)
+            |> startWorkflow AnswerIncorrectly mapEvent)
         |> matchOptionalCommand
     | AnswerIncorrectly (Finished result) ->
         let mapIncorrectError error =
@@ -652,7 +639,7 @@ let update
                 $"Quizzer {quizzer} already answered question {questionNumber |> PositiveNumber.value} incorrectly"
             | AnswerIncorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString
 
-        result |> refreshQuizOrError mapIncorrectError
+        result |> finishWorkflow mapIncorrectError
     | FailAppeal (Started _) ->
         let mapEvent event =
             match event with
@@ -662,10 +649,7 @@ let update
         failAppeal
         |> Option.map (fun workflow ->
             workflow { Quiz = quizCode; Data = () }
-            |> AsyncResult.map (List.map mapEvent)
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd FailAppeal)
+            |> startWorkflow FailAppeal mapEvent)
         |> matchOptionalCommand
     | FailAppeal (Finished quiz) ->
         let mapFailError error =
@@ -675,7 +659,7 @@ let update
             | FailAppeal.Error.NoCurrentQuizzer _ -> "No current quizzer"
             | FailAppeal.Error.DbError error -> error |> mapDbErrorToString
 
-        quiz |> refreshQuizOrError mapFailError
+        quiz |> finishWorkflow mapFailError
     | ClearAppeal (Started _) ->
         let mapEvent event =
             match event with
@@ -684,10 +668,7 @@ let update
         clearAppeal
         |> Option.map (fun workflow ->
             workflow { Quiz = quizCode; Data = () }
-            |> AsyncResult.map (List.map mapEvent)
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd ClearAppeal)
+            |> startWorkflow ClearAppeal mapEvent)
         |> matchOptionalCommand
     | ClearAppeal (Finished quiz) ->
         let mapAppealError error =
@@ -696,20 +677,16 @@ let update
             | ClearAppeal.Error.NoFailedAppeal _ -> "There is no failed appeal to clear"
             | ClearAppeal.Error.DbError dbError -> dbError |> mapDbErrorToString
 
-        quiz |> refreshQuizOrError mapAppealError
+        quiz |> finishWorkflow mapAppealError
     | CompleteQuiz (Started _) ->
         let mapQuizEvent event =
             match event with
             | CompleteQuiz.Event.QuizStateChanged e -> RunQuizEvent.QuizStateChanged e
-
-
+            
         completeQuiz
         |> Option.map (fun workflow ->
             workflow quizCode
-            |> AsyncResult.map (List.map mapQuizEvent)
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd CompleteQuiz)
+            |> startWorkflow CompleteQuiz mapQuizEvent)
         |> matchOptionalCommand
     | CompleteQuiz (Finished (Ok quiz)) ->
         let newCmd =
@@ -738,10 +715,7 @@ let update
         reopenQuiz
         |> Option.map (fun workflow ->
             workflow quizCode
-            |> AsyncResult.map (List.map mapQuizEvent)
-            |> publishWorkflowEventsAsync
-            |> reloadQuizAsync
-            |> mapToAsyncOperationCmd ReopenQuiz)
+            |> startWorkflow ReopenQuiz mapQuizEvent)
         |> matchOptionalCommand
     | ReopenQuiz (Finished result) ->
         let mapErrors error =
@@ -749,7 +723,7 @@ let update
             | ReopenQuiz.Error.DbError dbError -> mapDbErrorToString dbError
             | ReopenQuiz.QuizState quizStateError -> mapQuizStateErrorToString quizStateError
 
-        result |> refreshQuizOrError mapErrors
+        result |> finishWorkflow mapErrors
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 

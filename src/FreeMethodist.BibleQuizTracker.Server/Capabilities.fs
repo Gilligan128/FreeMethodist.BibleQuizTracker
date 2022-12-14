@@ -18,3 +18,4 @@ type RunQuizCapabilityProvider =
       CompleteQuiz: User -> CompleteQuiz.Workflow option
       ReopenQuiz: User -> ReopenQuiz.Workflow option }
 
+type ProvideCapabilitiesForQuiz = RunningQuiz -> RunQuizCapabilityProvider
