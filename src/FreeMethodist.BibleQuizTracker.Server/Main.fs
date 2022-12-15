@@ -6,6 +6,7 @@ open Bolero
 open Bolero.Html
 open Bolero.Remoting.Client
 open Bolero.Templating.Client
+open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
 open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel

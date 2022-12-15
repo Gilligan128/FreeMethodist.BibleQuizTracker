@@ -186,7 +186,8 @@ let private refreshModel (quiz: RunningQuiz) =
             JumpOrder = [ "Jim"; "Juni"; "John" ]
             JumpState = Unlocked
             NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
-            QuestionScores = quiz.Questions |> Score.createScoreModel }
+            QuestionScores = quiz.Questions |> Score.createScoreModel
+            }
 
     stateMatchedModel
 
