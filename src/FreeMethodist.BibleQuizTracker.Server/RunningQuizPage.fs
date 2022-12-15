@@ -254,48 +254,6 @@ let private getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvi
     completeQuiz,
     reopenQuiz
 
-let private getAvailableQuizCapabilities (capabilityProvider: RunQuizCapabilityForQuizProvider) quiz user =
-    let addQuizzer =
-        capabilityProvider.AddQuizzer quiz user
-
-    let removeQuizzer =
-        capabilityProvider.RemoveQuizzer quiz user
-
-    let answerCorrectly =
-        capabilityProvider.AnswerCorrectly quiz user
-
-    let answerIncorrectly =
-        capabilityProvider.AnswerIncorrectly quiz user
-
-    let failAppeal =
-        capabilityProvider.FailAppeal quiz user
-
-    let clearAppeal =
-        capabilityProvider.ClearAppeal quiz user
-
-    let selectQuizzer =
-        capabilityProvider.SelectQuizzer quiz user
-
-    let changeCurrentQuestion =
-        capabilityProvider.ChangeCurrentQuestion quiz user
-
-    let completeQuiz =
-        capabilityProvider.CompleteQuiz quiz user
-
-    let reopenQuiz =
-        capabilityProvider.ReopenQuiz quiz user
-
-    addQuizzer,
-    removeQuizzer,
-    answerCorrectly,
-    answerIncorrectly,
-    failAppeal,
-    clearAppeal,
-    selectQuizzer,
-    changeCurrentQuestion,
-    completeQuiz,
-    reopenQuiz
-
 let subOfFunc arg (func: 'a -> unit) : Sub<Message> = fun _ -> func arg
 
 let notFoundMessage quizCode =
@@ -368,13 +326,12 @@ let update
     : Model * Cmd<Message> * ExternalMessage =
     let quizCode = getCodeFromModel model
     let user = getUserFromModel model
-    
+
     let provideCapabilities =
         provideCapabilitiesModel capabilityForQuizProvider user
-    
+
     let refreshModel quiz =
-        refreshModel provideCapabilities quiz
-        |> Resolved
+        refreshModel provideCapabilities quiz |> Resolved
 
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.ErrorMessage error
@@ -499,7 +456,9 @@ let update
             event |> RunQuizEvent.CurrentQuestionChanged
 
         let startCmd =
-            changeCurrentQuestion
+            model.Info
+            |> Deferred.toOption
+            |> Option.bind (fun model -> model.Capabilities.ChangeCurrentQuestion)
             |> Option.map (fun workflow ->
                 asyncResult {
                     let! newQuestion =
@@ -509,9 +468,7 @@ let update
                         |> AsyncResult.ofResult
 
                     return!
-                        workflow
-                            { Quiz = quizCode
-                              Data = { Question = newQuestion } }
+                        workflow { Question = newQuestion }
                         |> AsyncResult.mapError ChangeQuestionError.QuizError
                 }
                 |> AsyncResult.map List.singleton
