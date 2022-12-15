@@ -168,7 +168,19 @@ let refreshCompetitionStyle refreshTeam refreshQuizzer competitionStyle =
         |> List.map refreshQuizzer
         |> LoadedCompetitionStyle.Individuals
 
-let private refreshModel (quiz: RunningQuiz) =
+let provideCapabilitiesModel (capabilityProvider: RunQuizCapabilityForQuizProvider) user quiz =
+    { AddQuizzer = capabilityProvider.AddQuizzer quiz user
+      AnswerCorrectly = capabilityProvider.AnswerCorrectly quiz user
+      AnswerIncorrectly = capabilityProvider.AnswerIncorrectly quiz user
+      RemoveQuizzer = capabilityProvider.RemoveQuizzer quiz user
+      FailAppeal = capabilityProvider.FailAppeal quiz user
+      ClearAppeal = capabilityProvider.ClearAppeal quiz user
+      ChangeCurrentQuestion = capabilityProvider.ChangeCurrentQuestion quiz user
+      SelectQuizzer = capabilityProvider.SelectQuizzer quiz user
+      CompleteQuiz = capabilityProvider.CompleteQuiz quiz user
+      ReopenQuiz = capabilityProvider.ReopenQuiz quiz user }
+
+let private refreshModel capabilitiesProvider (quiz: RunningQuiz) =
     let currentQuestion =
         quiz.Questions.TryFind(quiz.CurrentQuestion)
         |> Option.defaultValue QuestionState.initial
@@ -187,7 +199,7 @@ let private refreshModel (quiz: RunningQuiz) =
             JumpState = Unlocked
             NumberOfQuestions = quiz.Questions |> Map.keys |> Seq.max
             QuestionScores = quiz.Questions |> Score.createScoreModel
-            }
+            Capabilities = capabilitiesProvider quiz }
 
     stateMatchedModel
 
@@ -241,7 +253,7 @@ let private getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvi
     changeCurrentQuestion,
     completeQuiz,
     reopenQuiz
-    
+
 let private getAvailableQuizCapabilities (capabilityProvider: RunQuizCapabilityForQuizProvider) quiz user =
     let addQuizzer =
         capabilityProvider.AddQuizzer quiz user
@@ -250,16 +262,16 @@ let private getAvailableQuizCapabilities (capabilityProvider: RunQuizCapabilityF
         capabilityProvider.RemoveQuizzer quiz user
 
     let answerCorrectly =
-        capabilityProvider.AnswerCorrectly quiz user 
+        capabilityProvider.AnswerCorrectly quiz user
 
     let answerIncorrectly =
-        capabilityProvider.AnswerIncorrectly quiz user 
+        capabilityProvider.AnswerIncorrectly quiz user
 
     let failAppeal =
-        capabilityProvider.FailAppeal quiz user 
+        capabilityProvider.FailAppeal quiz user
 
     let clearAppeal =
-        capabilityProvider.ClearAppeal quiz user 
+        capabilityProvider.ClearAppeal quiz user
 
     let selectQuizzer =
         capabilityProvider.SelectQuizzer quiz user
@@ -350,14 +362,19 @@ let update
     (tryGetQuiz: TryGetQuiz)
     navigate
     capabilityProvider
-    capabilityForQuizProvider
+    (capabilityForQuizProvider: RunQuizCapabilityForQuizProvider)
     msg
     (model: Model)
     : Model * Cmd<Message> * ExternalMessage =
     let quizCode = getCodeFromModel model
     let user = getUserFromModel model
-
-    let refreshModel quiz = refreshModel quiz |> Resolved
+    
+    let provideCapabilities =
+        provideCapabilitiesModel capabilityForQuizProvider user
+    
+    let refreshModel quiz =
+        refreshModel provideCapabilities quiz
+        |> Resolved
 
     let updateResultWithExternalError error =
         model, Cmd.none, ExternalMessage.ErrorMessage error
