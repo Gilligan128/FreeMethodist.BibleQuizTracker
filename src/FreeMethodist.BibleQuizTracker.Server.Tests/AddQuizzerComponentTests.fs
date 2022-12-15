@@ -35,8 +35,20 @@ let capabilitiesProvider: RunQuizCapabilityProvider =
       CompleteQuiz = fun _ -> None
       ReopenQuiz = fun _ -> None }
 
+let capabilitiesForQuizProvider: RunQuizCapabilityForQuizProvider =
+    { AddQuizzer = fun _ _-> None
+      RemoveQuizzer = fun _ _-> None
+      AnswerCorrectly = fun _ _ -> None
+      AnswerIncorrectly = fun _ _ -> None
+      FailAppeal = fun _ _ -> None
+      ClearAppeal = fun _ _ -> None
+      SelectQuizzer = fun _ _ -> None
+      ChangeCurrentQuestion = fun _ _-> None
+      CompleteQuiz = fun _ _ -> None
+      ReopenQuiz = fun _ _ -> None }
+
 let sut =
-    update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore capabilitiesProvider
+    update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore capabilitiesProvider capabilitiesForQuizProvider
 
 let mapToLoaded model =
     match model.Info with

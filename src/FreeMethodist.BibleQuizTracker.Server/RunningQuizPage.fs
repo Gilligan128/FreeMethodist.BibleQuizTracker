@@ -241,6 +241,48 @@ let private getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvi
     changeCurrentQuestion,
     completeQuiz,
     reopenQuiz
+    
+let private getAvailableQuizCapabilities (capabilityProvider: RunQuizCapabilityForQuizProvider) quiz user =
+    let addQuizzer =
+        capabilityProvider.AddQuizzer quiz user
+
+    let removeQuizzer =
+        capabilityProvider.RemoveQuizzer quiz user
+
+    let answerCorrectly =
+        capabilityProvider.AnswerCorrectly quiz user 
+
+    let answerIncorrectly =
+        capabilityProvider.AnswerIncorrectly quiz user 
+
+    let failAppeal =
+        capabilityProvider.FailAppeal quiz user 
+
+    let clearAppeal =
+        capabilityProvider.ClearAppeal quiz user 
+
+    let selectQuizzer =
+        capabilityProvider.SelectQuizzer quiz user
+
+    let changeCurrentQuestion =
+        capabilityProvider.ChangeCurrentQuestion quiz user
+
+    let completeQuiz =
+        capabilityProvider.CompleteQuiz quiz user
+
+    let reopenQuiz =
+        capabilityProvider.ReopenQuiz quiz user
+
+    addQuizzer,
+    removeQuizzer,
+    answerCorrectly,
+    answerIncorrectly,
+    failAppeal,
+    clearAppeal,
+    selectQuizzer,
+    changeCurrentQuestion,
+    completeQuiz,
+    reopenQuiz
 
 let subOfFunc arg (func: 'a -> unit) : Sub<Message> = fun _ -> func arg
 
@@ -308,6 +350,7 @@ let update
     (tryGetQuiz: TryGetQuiz)
     navigate
     capabilityProvider
+    capabilityForQuizProvider
     msg
     (model: Model)
     : Model * Cmd<Message> * ExternalMessage =

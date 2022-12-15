@@ -105,6 +105,7 @@ let update
     (hubConnection: HubConnection)
     (navigate: Page -> unit)
     capabilitiesProvider
+    capabilitiesForQuizProvider
     quizControlCapProvider
     getCompletedQuizzes
     (message: Message)
@@ -199,6 +200,7 @@ let update
                     tryGetQuiz
                     navigate
                     capabilitiesProvider
+                    capabilitiesForQuizProvider
                     quizMsg
                     quizModel
 
@@ -509,7 +511,12 @@ type MyApp() =
             runQuizCapabilities
                 { SaveQuiz = this.SaveQuizAsync
                   GetQuiz = this.GetQuizAsync }
-
+        
+        let availableCapabilitiesForQuiz =
+            runQuizCapabilitiesForQuiz
+                { SaveQuiz = this.SaveQuizAsync
+                  GetQuiz = this.GetQuizAsync }
+        
         let navigate toPage =
             this.NavigationManager.NavigateTo
             <| router.Link toPage
@@ -529,6 +536,7 @@ type MyApp() =
                 hubConnection
                 navigate
                 availableCapabilities
+                availableCapabilitiesForQuiz
                 availableQuizControlCapabilities
                 this.GetRecentCompletedQuizzes
 
