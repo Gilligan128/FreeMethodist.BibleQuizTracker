@@ -32,6 +32,18 @@ type LoadedCompetitionStyle =
     | Team of TeamModel * TeamModel
     | Individuals of QuizzerModel list
 
+type RunQuizCapabilities =
+    { AnswerCorrectly: (unit -> AsyncResult<AnswerCorrectly.Event list, AnswerCorrectly.Error>) option
+      AnswerIncorrectly: (unit -> AsyncResult<AnswerIncorrectly.Event list, AnswerIncorrectly.Error>) option
+      AddQuizzer: (AddQuizzer.Data -> AsyncResult<QuizzerParticipating, AddQuizzer.Error>) option
+      RemoveQuizzer: (RemoveQuizzer.Data -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>) option
+      FailAppeal: (unit -> AsyncResult<FailAppeal.Event list, FailAppeal.Error>) option
+      ClearAppeal: (unit -> AsyncResult<ClearAppeal.Event list, ClearAppeal.Error>) option
+      ChangeCurrentQuestion: (ChangeCurrentQuestion.QuestionData -> AsyncResult<CurrentQuestionChanged, ChangeCurrentQuestion.Error>) option
+      SelectQuizzer: (SelectQuizzer.Input -> AsyncResult<CurrentQuizzerChanged, SelectQuizzer.Error>) option
+      CompleteQuiz: (unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>) option
+      ReopenQuiz: (unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>) option }
+
 type LoadedModel =
     { JoiningQuizzer: string
       CompetitionStyle: LoadedCompetitionStyle
@@ -41,7 +53,8 @@ type LoadedModel =
       AddQuizzer: AddQuizzerModel
       CurrentQuizzer: Quizzer option
       NumberOfQuestions: PositiveNumber
-      QuestionScores: QuestionQuizzerEvents }
+      QuestionScores: QuestionQuizzerEvents
+      Capabilities: RunQuizCapabilities }
 
 type Model =
     { Code: QuizCode
@@ -90,7 +103,18 @@ let public emptyModel =
       AddQuizzer = Inert
       CurrentQuizzer = None
       NumberOfQuestions = PositiveNumber.one
-      QuestionScores = [] }
+      QuestionScores = []
+      Capabilities =
+        { AnswerCorrectly = None
+          AnswerIncorrectly = None
+          AddQuizzer = None
+          RemoveQuizzer = None
+          FailAppeal = None
+          ClearAppeal = None
+          ChangeCurrentQuestion = None
+          SelectQuizzer = None
+          CompleteQuiz = None
+          ReopenQuiz = None } }
 
 let mapLoaded mapper model =
     match model with
@@ -299,7 +323,7 @@ let update
 
     let publishEvents =
         publishEvents (publishRunQuizEvent model.Code)
-    
+
     let getQuiz =
         fun () -> getQuizAsync model.Code
 
@@ -599,9 +623,7 @@ let update
             |> Option.map (fun workflow -> workflow { Data = (); Quiz = quizCode })
 
         workflowOpt
-        |> Option.map (fun result ->
-            result
-            |> startWorkflow AnswerCorrectly mapEvent)
+        |> Option.map (fun result -> result |> startWorkflow AnswerCorrectly mapEvent)
         |> Option.defaultValue Cmd.none
         |> fun cmd -> model, cmd, NoMessage
     | AnswerCorrectly (Finished result) ->
@@ -682,7 +704,7 @@ let update
         let mapQuizEvent event =
             match event with
             | CompleteQuiz.Event.QuizStateChanged e -> RunQuizEvent.QuizStateChanged e
-            
+
         completeQuiz
         |> Option.map (fun workflow ->
             workflow quizCode
