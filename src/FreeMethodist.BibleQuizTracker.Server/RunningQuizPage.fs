@@ -319,7 +319,6 @@ let update
     (getQuizAsync: GetQuiz)
     (tryGetQuiz: TryGetQuiz)
     navigate
-    capabilityProvider
     (capabilityForQuizProvider: RunQuizCapabilityForQuizProvider)
     msg
     (model: Model)
@@ -875,7 +874,7 @@ let sideViewSplit (individualsView: QuizzerModel list -> Node) index quizzerMode
     |> Option.defaultValue []
     |> individualsView
 
-let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Message>) =
+let render linkToQuiz  (model: Model) (dispatch: Dispatch<Message>) =
 
     let isTeam model teamOneValue teamTwoValue =
         match model.AddQuizzer with
@@ -887,25 +886,12 @@ let render linkToQuiz capabilityProvider (model: Model) (dispatch: Dispatch<Mess
     | Deferred.NotYetStarted -> p { $"Quiz {model.Code} has not yet been loaded" }
     | InProgress -> p { $"Quiz {model.Code} is loading..." }
     | Resolved resolved ->
-        let (addQuizzer,
-             removeQuizzer,
-             answerCorrectly,
-             answerIncorrectly,
-             failAppeal,
-             clearAppeal,
-             selectQuizzer,
-             changeCurrentQuestion,
-             completeQuiz,
-             reopenQuiz) =
-            getAvailableCapabilities capabilityProvider model.User resolved.CurrentQuizzer
 
         let removeQuizzerCap quizzer =
-            removeQuizzer
+            resolved.Capabilities.RemoveQuizzer
             |> Option.map (fun remove ->
                 fun () ->
-                    remove
-                        { Quiz = model.Code
-                          Data = { Quizzer = quizzer } })
+                    remove { Quizzer = quizzer } )
 
         let quizzerView =
             quizzerView removeQuizzerCap dispatch resolved.CurrentQuizzer

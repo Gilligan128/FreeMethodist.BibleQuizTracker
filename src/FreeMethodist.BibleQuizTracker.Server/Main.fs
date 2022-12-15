@@ -104,7 +104,6 @@ let update
     spectateQuiz
     (hubConnection: HubConnection)
     (navigate: Page -> unit)
-    capabilitiesProvider
     capabilitiesForQuizProvider
     quizControlCapProvider
     getCompletedQuizzes
@@ -199,7 +198,6 @@ let update
                     getQuizAsync
                     tryGetQuiz
                     navigate
-                    capabilitiesProvider
                     capabilitiesForQuizProvider
                     quizMsg
                     quizModel
@@ -357,7 +355,7 @@ let menuItem (model: Model) (page: Page) (text: string) =
 let linkToQuizPage (router: Router<Page, Model, Message>) =
     fun quizCode -> router.Link <| Page.QuizSpectate quizCode
 
-let view capabilityProvider model dispatch =
+let view  model dispatch =
     Main()
         .Menu(
             concat {
@@ -377,7 +375,7 @@ let view capabilityProvider model dispatch =
                     match model.Quiz with
                     | None -> Node.Empty()
                     | Some quizModel ->
-                        RunningQuizPage.render (linkToQuizPage router) capabilityProvider quizModel (fun quizMsg ->
+                        RunningQuizPage.render (linkToQuizPage router) quizModel (fun quizMsg ->
                             dispatch (QuizMessage quizMsg))
                 | QuizLiveScore (quizCode, pageModel) ->
                     let model =
@@ -506,12 +504,7 @@ type MyApp() =
             Page.QuizRun quizCode
             |> router.getRoute
             |> this.NavigationManager.NavigateTo
-
-        let availableCapabilities =
-            runQuizCapabilities
-                { SaveQuiz = this.SaveQuizAsync
-                  GetQuiz = this.GetQuizAsync }
-        
+     
         let availableCapabilitiesForQuiz =
             runQuizCapabilitiesForQuiz
                 { SaveQuiz = this.SaveQuizAsync
@@ -535,14 +528,9 @@ type MyApp() =
                 spectateQUiz
                 hubConnection
                 navigate
-                availableCapabilities
                 availableCapabilitiesForQuiz
                 availableQuizControlCapabilities
                 this.GetRecentCompletedQuizzes
-
-
-        let view model dispatch =
-            view availableCapabilities model dispatch
 
         Program.mkProgram
             (fun _ ->

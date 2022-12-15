@@ -48,7 +48,7 @@ let capabilitiesForQuizProvider: RunQuizCapabilityForQuizProvider =
       ReopenQuiz = fun _ _ -> None }
 
 let sut =
-    update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore capabilitiesProvider capabilitiesForQuizProvider
+    update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore  capabilitiesForQuizProvider
 
 let mapToLoaded model =
     match model.Info with
