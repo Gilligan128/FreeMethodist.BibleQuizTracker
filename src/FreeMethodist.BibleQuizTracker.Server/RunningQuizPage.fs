@@ -374,19 +374,7 @@ let update
             cmdOpt |> Option.defaultValue Cmd.none
 
         model, cmd, NoMessage
-
-    let (addQuizzer,
-         removeQuizzer,
-         answerCorrectly,
-         answerIncorrectly,
-         failAppeal,
-         clearAppeal,
-         selectQuizzer,
-         changeCurrentQuestion,
-         completeQuiz,
-         reopenQuiz) =
-        getAvailableCapabilities capabilityProvider user currentQuizzerOpt
-
+        
     match msg with
     | Message.InitializeQuizAndConnections (Finished result) ->
         match result with
@@ -537,14 +525,13 @@ let update
         | AddQuizzerModel.Active (name, team) ->
             let mapQuizEvent event = event |> QuizzerParticipating
 
-            let inputCommand: AddQuizzer.Command =
-                { Quiz = quizCode
-                  Data = { Name = name; Team = Some team } }
-
             let startedCmd =
-                addQuizzer
+                model.Info
+                |> Deferred.toOption
+                |> Option.bind (fun model -> model.Capabilities.AddQuizzer)
+                |> Option.map (fun cap -> cap { Name = name; Team = Some team })
                 |> Option.map (fun workflow ->
-                    workflow inputCommand
+                    workflow
                     |> AsyncResult.map List.singleton
                     |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer) mapQuizEvent)
                 |> Option.defaultValue Cmd.none
@@ -575,11 +562,8 @@ let update
             | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
             | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
 
-        removeQuizzer
-        |> Option.map (fun workflow ->
-            cap ()
-            |> startWorkflow RemoveQuizzer transformToRunQuizEvent)
-        |> Option.defaultValue Cmd.none
+        cap ()
+        |> startWorkflow RemoveQuizzer transformToRunQuizEvent
         |> fun cmd -> model, cmd, NoMessage
     | RemoveQuizzer (Finished result) ->
         let mapRemoveError error =
@@ -590,16 +574,14 @@ let update
 
         result |> finishWorkflow mapRemoveError
     | SelectQuizzer (Started name) ->
-        let command: SelectQuizzer.Command =
-            { Quiz = quizCode
-              Data = { Quizzer = name } }
-
         let transformEvent event = CurrentQuizzerChanged event
 
-        selectQuizzer
+        model.Info
+        |> Deferred.toOption
+        |> Option.bind (fun model -> model.Capabilities.SelectQuizzer)
+        |> Option.map (fun workflow -> workflow { Quizzer = name })
         |> Option.map (fun workflow ->
-            command
-            |> workflow
+            workflow
             |> AsyncResult.map List.singleton
             |> startWorkflow SelectQuizzer transformEvent)
         |> Option.defaultValue Cmd.none
@@ -636,11 +618,10 @@ let update
             | AnswerCorrectly.IndividualScoreChanged e -> IndividualScoreChanged e
             | AnswerCorrectly.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
-        let workflowOpt =
-            answerCorrectly
-            |> Option.map (fun workflow -> workflow { Data = (); Quiz = quizCode })
-
-        workflowOpt
+        model.Info
+        |> Deferred.toOption
+        |> Option.bind (fun model -> model.Capabilities.AnswerCorrectly)
+        |> Option.map (fun workflow -> workflow ())
         |> Option.map (fun result -> result |> startWorkflow AnswerCorrectly mapEvent)
         |> Option.defaultValue Cmd.none
         |> fun cmd -> model, cmd, NoMessage
@@ -664,9 +645,12 @@ let update
             | AnswerIncorrectly.Event.IndividualScoreChanged e -> RunQuizEvent.IndividualScoreChanged e
             | AnswerIncorrectly.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
-        answerIncorrectly
+        model.Info
+        |> Deferred.toOption
+        |> Option.bind (fun model -> model.Capabilities.AnswerIncorrectly)
+        |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (fun workflow ->
-            workflow { Quiz = quizCode; Data = () }
+            workflow
             |> startWorkflow AnswerIncorrectly mapEvent)
         |> matchOptionalCommand
     | AnswerIncorrectly (Finished result) ->
@@ -686,10 +670,11 @@ let update
             | FailAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
             | FailAppeal.Event.IndividualScoreChanged e -> RunQuizEvent.IndividualScoreChanged e
 
-        failAppeal
-        |> Option.map (fun workflow ->
-            workflow { Quiz = quizCode; Data = () }
-            |> startWorkflow FailAppeal mapEvent)
+        model.Info
+        |> Deferred.toOption
+        |> Option.bind (fun model -> model.Capabilities.FailAppeal)
+        |> Option.map (fun workflowCap -> workflowCap ())
+        |> Option.map (fun workflow -> workflow |> startWorkflow FailAppeal mapEvent)
         |> matchOptionalCommand
     | FailAppeal (Finished quiz) ->
         let mapFailError error =
@@ -705,9 +690,12 @@ let update
             match event with
             | ClearAppeal.Event.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
 
-        clearAppeal
+        model.Info
+        |> Deferred.toOption
+        |> Option.bind (fun model -> model.Capabilities.ClearAppeal)
+        |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (fun workflow ->
-            workflow { Quiz = quizCode; Data = () }
+            workflow
             |> startWorkflow ClearAppeal mapEvent)
         |> matchOptionalCommand
     | ClearAppeal (Finished quiz) ->
@@ -723,9 +711,12 @@ let update
             match event with
             | CompleteQuiz.Event.QuizStateChanged e -> RunQuizEvent.QuizStateChanged e
 
-        completeQuiz
+        model.Info
+        |> Deferred.toOption
+        |> Option.bind (fun model -> model.Capabilities.CompleteQuiz)
+        |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (fun workflow ->
-            workflow quizCode
+            workflow 
             |> startWorkflow CompleteQuiz mapQuizEvent)
         |> matchOptionalCommand
     | CompleteQuiz (Finished (Ok quiz)) ->
@@ -752,9 +743,12 @@ let update
             match event with
             | ReopenQuiz.Event.QuizStateChanged e -> RunQuizEvent.QuizStateChanged e
 
-        reopenQuiz
+        model.Info
+        |> Deferred.toOption
+        |> Option.bind (fun model -> model.Capabilities.ReopenQuiz)
+        |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (fun workflow ->
-            workflow quizCode
+            workflow 
             |> startWorkflow ReopenQuiz mapQuizEvent)
         |> matchOptionalCommand
     | ReopenQuiz (Finished result) ->
