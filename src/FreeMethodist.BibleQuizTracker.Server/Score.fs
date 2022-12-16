@@ -59,23 +59,13 @@ module Score =
         match jumpState, answerState with
         | (Some Prejump), AnsweredIncorrectly when numberOfMisPrejumps >= 4 -> QuizScore.misPrejump
         | _, _ -> QuizScore.zero
-
-    let quizzerTeamStyleScoringOld eventState =
-        eventState
-        |> fun eventState -> answerScore eventState.AnswerState
-
-    let quizzerIndividualStyleScoringOld eventState =
+        
+    let teamScoring eventState =
         eventState
         |> fun eventState ->
-            answerScore eventState.AnswerState
-            |> QuizScore.add (appealScore eventState.AppealState)
-
-    let teamScoringOld eventState =
-        eventState
-        |> fun eventState ->
-            answerScore eventState.AnswerState
-            |> QuizScore.add (appealScore eventState.AppealState)
-
+            answerScore eventState.Events.AnswerState
+            |> QuizScore.add (appealScore eventState.Events.AppealState)
+    
     let quizzerTeamStyleScoring eventState =
         eventState
         |> fun eventState -> answerScore eventState.Events.AnswerState
@@ -140,15 +130,6 @@ module Score =
         |> Map.toList
         |> List.collect snd
 
-    let sumScores scores =
-        scores
-        |> List.ofSeq
-        |> function
-            | [] -> QuizScore.zero
-            | scores ->
-                scores
-                |> Seq.reduce (fun runningScore current -> runningScore |> QuizScore.add current)
-
     let eventsForQuestion questionNumber questions =
         questions
         |> Seq.filter (fun event -> (event.Position |> fst) = questionNumber)
@@ -156,12 +137,6 @@ module Score =
     let eventsForQuizzers quizzers questions =
         questions
         |> Seq.filter (fun event -> quizzers |> Seq.contains (event.Position |> snd))
-
-    let calculate scoring events =
-        events
-        |> Seq.map (fun event -> event.State)
-        |> Seq.map scoring
-        |> sumScores
 
     let private misPrejumptIncrease event =
         event.JumpState
@@ -171,7 +146,16 @@ module Score =
             | _, _ -> 0)
         |> Option.defaultValue 0
 
-    let calculateWithmisprejumps scoring events =
+    let private sumScores scores =
+        scores
+        |> List.ofSeq
+        |> function
+            | [] -> QuizScore.zero
+            | scores ->
+                scores
+                |> Seq.reduce (fun runningScore current -> runningScore |> QuizScore.add current)
+
+    let calculate scoring events =
         let scannedEvents =
             events
             |> Seq.map (fun event -> event.State)
@@ -195,9 +179,9 @@ module Score =
     let calculateTeamScore quizzersOnTeam questions =
         questions
         |> eventsForQuizzers quizzersOnTeam
-        |> calculate teamScoringOld
+        |> calculate teamScoring
 
-    let calculateQuizzerScore (scoringBasedOnStyle: EventState -> QuizScore) questions quizzer =
+    let calculateQuizzerScore scoringBasedOnStyle questions quizzer =
         questions
         |> eventsForQuizzers [ quizzer ]
         |> calculate scoringBasedOnStyle
@@ -221,14 +205,14 @@ module Score =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Individuals quizzerStates ->
             let calcQuizzerScore =
-                calculateQuizzerScore quizzerIndividualStyleScoringOld scoreModel
+                calculateQuizzerScore quizzerIndividualStyleScoring scoreModel
 
             { quiz with
                 CompetitionStyle =
                     RunningCompetitionStyle.Individuals(updateQuizzerScores calcQuizzerScore quizzerStates) }
         | RunningCompetitionStyle.Team (teamOne, teamTwo) ->
             let calcQuizzerScore =
-                calculateQuizzerScore quizzerTeamStyleScoringOld scoreModel
+                calculateQuizzerScore quizzerTeamStyleScoring scoreModel
 
             let calcTeamScore quizzers =
                 scoreModel |> calculateTeamScore quizzers
