@@ -156,6 +156,9 @@ module Prejump =
     type Error = | DbError of DbError
                  | RemoteError of string
                  | NoCurrentQuizzer of NoCurrentQuizzer
-    type Event = | Prejump of QuizCode
+    type QuizzerPrejumped = { Quiz : QuizCode; Quizzer : Quizzer }
+    type Event = | Prejump of QuizzerPrejumped
+                 | TeamScoreChanged of TeamScoreChanged
+                 | IndividualScoreChanged of IndividualScoreChanged
     type Workflow = Command -> AsyncResult<Event list, Error>
 
