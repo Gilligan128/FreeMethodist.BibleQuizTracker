@@ -1,8 +1,12 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Capabilities_Pipeline
 
+open System.Collections.Generic
 open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
+open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Pipeline
 
 type Dependencies =
     { GetQuiz: GetQuiz
@@ -20,7 +24,8 @@ let private onlyForQuizzer currentQuizzer originalCap =
         |> Option.bind (fun _ -> originalCap)
 
 let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
-    let runQuizWorkflowEngine = runQuizWorklfowEngine dependencies.GetQuiz dependencies.SaveQuiz
+    let runQuizWorkflowEngine workflow mapErrors =
+        runQuizWorklfowEngine dependencies.GetQuiz dependencies.SaveQuiz workflow mapErrors
     
     let addQuizzer (quiz : RunningQuiz) user =
         let originalCap input =
@@ -58,7 +63,7 @@ let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
 
     let failAppealCap (quiz : RunningQuiz) user =
         let originalCap () =
-            FailAppeal.Pipeline.failAppeal dependencies.GetQuiz dependencies.SaveQuiz {Quiz = quiz.Code; Data = ()}
+             runQuizWorkflowEngine failAppealPureWorkflow FailAppeal.Error.DbError {Quiz = quiz.Code; Data = ()}
 
         originalCap
         |> Some
@@ -69,8 +74,8 @@ let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
         let quizStateEnabled =
             quiz.CurrentQuizzer
             |> Option.map (fun currentQuizzer -> if quiz.Questions[quiz.CurrentQuestion].FailedAppeals |> List.contains currentQuizzer then Some currentQuizzer else None)
-        let originalCap () =
-            ClearAppeal.Pipeline.clearAppeal runQuizWorkflowEngine {Quiz = quiz.Code; Data = ()}
+        let originalCap () =  runQuizWorkflowEngine clearAppealPureWorkflow ClearAppeal.Error.DbError {Quiz = quiz.Code; Data = ()}
+           
         quizStateEnabled
         |> Option.map (fun _ -> originalCap)
         |> onlyQuizmastersAndScorekeepers user
