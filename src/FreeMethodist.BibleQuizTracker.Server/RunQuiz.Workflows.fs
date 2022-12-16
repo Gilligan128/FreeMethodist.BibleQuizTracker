@@ -156,6 +156,7 @@ module Prejump =
     type Error = | DbError of DbError
                  | RemoteError of string
                  | NoCurrentQuizzer of NoCurrentQuizzer
+                 | WrongQuizState of QuizStateError
     type QuizzerPrejumped = { Quiz : QuizCode; Quizzer : Quizzer }
     type Event = | Prejump of QuizzerPrejumped
                  | TeamScoreChanged of TeamScoreChanged

@@ -7,6 +7,7 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.ClearAppeal.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.FailAppeal.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Prejump_Pipeline
 
 type Dependencies =
     { GetQuiz: GetQuiz
@@ -107,7 +108,7 @@ let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
         |> onlyQuizmastersAndScorekeepers user
     
     let prejumpCap (quiz: RunningQuiz) user =
-        fun () -> AsyncResult.retn []
+        fun () -> (runQuizWorkflowEngine prejumpWorkflow Prejump.Error.DbError) { Quiz = quiz.Code; Data = () }
         |> Some
         |> onlyQuizmastersAndScorekeepers user
     
