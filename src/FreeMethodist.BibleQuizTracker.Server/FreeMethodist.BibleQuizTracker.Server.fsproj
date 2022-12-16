@@ -16,6 +16,7 @@
         <Compile Include="CreateQuiz.Workflow.fs" />
         <Compile Include="Capabilities.fs" />
         <Compile Include="Common.Pipeline.fs" />
+        <Compile Include="ScoreEvents.fs" />
         <Compile Include="Score.fs" />
         <Compile Include="Persistence.fs" />
         <Compile Include="ChangeCurrentQuestion.Pipeline.fs" />

@@ -44,3 +44,11 @@ let updateQuizWithCurrentQuizzerPrejump (quiz: RunningQuiz) =
                     question.Prejumps @ [ currentQuizzer ]
                     |> List.distinct }))
 
+let prejumpWorkflow quiz _ =
+    quiz
+        |> updateQuizWithCurrentQuizzerPrejump
+        |> Result.map Score.updateQuizScores
+       
+        
+        
+     
