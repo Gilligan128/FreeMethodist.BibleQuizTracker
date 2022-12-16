@@ -1,10 +1,12 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 
+open System
+open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open Elmish
-
+open System.Linq
 
 //Domain Model
 
@@ -72,10 +74,9 @@ module Quiz =
     let start (unvalidatedQuiz: UnvalidatedQuiz) =
         match unvalidatedQuiz.CompetitionStyle with
         | CompetitionStyle.Individual ->
-             Running
+            Running
                 { Code = unvalidatedQuiz.Code
-                  CompetitionStyle =
-                    RunningCompetitionStyle.Individuals []
+                  CompetitionStyle = RunningCompetitionStyle.Individuals []
                   CurrentQuizzer = None
                   CurrentQuestion = PositiveNumber.one
                   Questions =
@@ -98,7 +99,7 @@ module Quiz =
                   Questions =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial }
-       |> Ok
+        |> Ok
 
     let getCode quiz =
         match quiz with
@@ -175,7 +176,7 @@ let changeCurrentQuestionInQuiz question quiz =
                 q
                 |> (Option.defaultValue QuestionState.initial)
                 |> Some) }
-    
+
 //Workflow Running
 let runQuizWorklfowEngine getQuiz saveQuiz pureWorkflow mapDbError (command: WithinQuizCommand<'b>) =
     asyncResult {
@@ -193,3 +194,6 @@ let runQuizWorklfowEngine getQuiz saveQuiz pureWorkflow mapDbError (command: Wit
 
         return events
     }
+
+
+
