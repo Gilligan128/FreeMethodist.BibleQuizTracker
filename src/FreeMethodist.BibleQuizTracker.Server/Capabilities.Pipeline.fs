@@ -20,6 +20,8 @@ let private onlyForQuizzer currentQuizzer originalCap =
         |> Option.bind (fun _ -> originalCap)
 
 let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
+    let runQuizWorkflowEngine = runQuizWorklfowEngine dependencies.GetQuiz dependencies.SaveQuiz
+    
     let addQuizzer (quiz : RunningQuiz) user =
         let originalCap input =
             AddQuizzer_Pipeline.addQuizzerAsync dependencies.GetQuiz dependencies.SaveQuiz { Quiz = quiz.Code; Data = input }
@@ -68,7 +70,7 @@ let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
             quiz.CurrentQuizzer
             |> Option.map (fun currentQuizzer -> if quiz.Questions[quiz.CurrentQuestion].FailedAppeals |> List.contains currentQuizzer then Some currentQuizzer else None)
         let originalCap () =
-            ClearAppeal.Pipeline.clearAppeal dependencies.GetQuiz dependencies.SaveQuiz {Quiz = quiz.Code; Data = ()}
+            ClearAppeal.Pipeline.clearAppeal runQuizWorkflowEngine {Quiz = quiz.Code; Data = ()}
         quizStateEnabled
         |> Option.map (fun _ -> originalCap)
         |> onlyQuizmastersAndScorekeepers user

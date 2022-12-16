@@ -61,7 +61,7 @@ let updateQuiz: UpdateQuiz =
                             |> updateAppealScore quizzer
                             |> Option.defaultValue quiz)
                         quiz)
-            
+
             return updatedQuiz, revertedTeams
         }
 
@@ -78,25 +78,23 @@ let createEvents: CreateEvents =
 
         revertedEvents
 
-let clearAppeal getQuiz saveQuiz : ClearAppeal.Workflow =
+
+let clearAppealPureWorkflow quiz _ =
+    asyncResult {
+        let! validQuiz =
+            validateRunningQuiz quiz
+            |> Result.mapError ClearAppeal.Error.QuizState
+            |> AsyncResult.ofResult
+
+        let! updatedQuiz, revertedTeam = updateQuiz validQuiz |> AsyncResult.ofResult
+
+        let events =
+            createEvents (updatedQuiz, revertedTeam)
+
+        return updatedQuiz, events
+    }
+
+let clearAppeal runQuizWorklfowEngine : ClearAppeal.Workflow =
     fun command ->
-        asyncResult {
-            let! quiz =
-                getQuiz command.Quiz
-                |> AsyncResult.mapError ClearAppeal.DbError
-
-            let! validQuiz =
-                validateRunningQuiz quiz
-                |> Result.mapError ClearAppeal.Error.QuizState
-                |> AsyncResult.ofResult
-
-            let! updatedQuiz, revertedTeam = updateQuiz validQuiz |> AsyncResult.ofResult
-
-            do!
-                updatedQuiz
-                |> Running
-                |> saveQuiz
-                |> AsyncResult.mapError ClearAppeal.Error.DbError
-
-            return createEvents (updatedQuiz, revertedTeam)
-        }
+        command
+        |> runQuizWorklfowEngine clearAppealPureWorkflow ClearAppeal.DbError

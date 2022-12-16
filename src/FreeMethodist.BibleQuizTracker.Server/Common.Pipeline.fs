@@ -161,8 +161,6 @@ let validateRunningQuiz: ValidateQuizIsRunning =
         | Quiz.Completed c -> Error(WrongQuizState(c.GetType()))
         | Quiz.Official o -> Error(WrongQuizState(o.GetType()))
 
-//Score calculation
-
 //Changing current question
 let changeCurrentQuestionInQuiz question quiz =
     { quiz with
@@ -177,3 +175,21 @@ let changeCurrentQuestionInQuiz question quiz =
                 q
                 |> (Option.defaultValue QuestionState.initial)
                 |> Some) }
+    
+//Workflow Running
+let runQuizWorklfowEngine getQuiz saveQuiz pureWorkflow mapDbError (command: WithinQuizCommand<'a>) =
+    asyncResult {
+        let! quiz =
+            getQuiz command.Quiz
+            |> AsyncResult.mapError mapDbError
+
+        let! quiz, events = pureWorkflow quiz command.Data
+
+        do!
+            quiz
+            |> Running
+            |> saveQuiz
+            |> AsyncResult.mapError mapDbError
+
+        return events
+    }
