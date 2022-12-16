@@ -32,7 +32,8 @@ let capabilitiesForQuizProvider: RunQuizCapabilityForQuizProvider =
       SelectQuizzer = fun _ _ -> None
       ChangeCurrentQuestion = fun _ _-> None
       CompleteQuiz = fun _ _ -> None
-      ReopenQuiz = fun _ _ -> None }
+      ReopenQuiz = fun _ _ -> None
+      Prejump = fun _ _ -> None }
 
 let sut =
     update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore  capabilitiesForQuizProvider
