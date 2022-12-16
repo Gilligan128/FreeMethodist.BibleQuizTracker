@@ -2,6 +2,7 @@
 
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.ScoreEvents
 
 let private updateCurrentQuestion updater quiz =
     { quiz with
@@ -45,10 +46,22 @@ let updateQuizWithCurrentQuizzerPrejump (quiz: RunningQuiz) =
                     |> List.distinct }))
 
 let prejumpWorkflow quiz _ =
-    quiz
-        |> updateQuizWithCurrentQuizzerPrejump
-        |> Result.map Score.updateQuizScores
-       
-        
-        
-     
+    result {
+        let! updatedQuiz =
+            quiz
+            |> updateQuizWithCurrentQuizzerPrejump
+            |> Result.map Score.updateQuizScores
+
+        let events =
+            updatedQuiz
+            |> createScoreEvents quiz
+            |> List.map (fun event ->
+                match event with
+                | ScoreEvent.TeamScoreChanged teamScoreChanged -> Prejump.Event.TeamScoreChanged teamScoreChanged
+                | ScoreEvent.IndividualScoreChanged individualScoreChanged -> Prejump.Event.IndividualScoreChanged individualScoreChanged)
+            |> List.append [ (Prejump.Event.Prejump { Quiz = quiz.Code; Quizzer = (updatedQuiz.CurrentQuizzer |> Option.defaultValue "") }) ]
+
+
+        return updatedQuiz, events
+    }
+    |> AsyncResult.ofResult
