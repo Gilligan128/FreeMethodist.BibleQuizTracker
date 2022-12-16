@@ -84,32 +84,24 @@ let createEvents: CreateEvents =
 
         failingEvents
 
-let failAppeal getQuiz saveQuiz : FailAppeal.Workflow =
-    fun command ->
-        asyncResult {
-            let! quiz =
-                getQuiz command.Quiz
-                |> AsyncResult.mapError FailAppeal.DbError
-
-            let! validQuiz =
+let failAppealPureWorkflow quiz _ =
+    asyncResult {
+         let! validQuiz =
                 validateRunningQuiz quiz
                 |> Result.mapError FailAppeal.Error.QuizState
                 |> AsyncResult.ofResult
 
-            let! quizzerAndTeam =
+         let! quizzerAndTeam =
                 validateCurrentQuizzerWithTeam validQuiz
                 |> AsyncResult.ofResult
                 |> AsyncResult.mapError FailAppeal.Error.NoCurrentQuizzer
 
-            let! updatedQuiz =
+         let! updatedQuiz =
                 updateQuiz quizzerAndTeam validQuiz
                 |> AsyncResult.ofResult
+         let events = createEvents quizzerAndTeam updatedQuiz
+         return updatedQuiz, events
+    }
 
-            do!
-                updatedQuiz
-                |> Running
-                |> saveQuiz
-                |> AsyncResult.mapError FailAppeal.Error.DbError
-
-            return createEvents quizzerAndTeam updatedQuiz
-        }
+let failAppeal workflowEngine : FailAppeal.Workflow =
+    workflowEngine failAppealPureWorkflow FailAppeal.Error.DbError

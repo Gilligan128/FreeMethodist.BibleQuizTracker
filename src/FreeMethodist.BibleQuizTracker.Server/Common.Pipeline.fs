@@ -177,7 +177,7 @@ let changeCurrentQuestionInQuiz question quiz =
                 |> Some) }
     
 //Workflow Running
-let runQuizWorklfowEngine getQuiz saveQuiz pureWorkflow mapDbError (command: WithinQuizCommand<'a>) =
+let runQuizWorklfowEngine getQuiz saveQuiz pureWorkflow mapDbError (command: WithinQuizCommand<'b>) =
     asyncResult {
         let! quiz =
             getQuiz command.Quiz
