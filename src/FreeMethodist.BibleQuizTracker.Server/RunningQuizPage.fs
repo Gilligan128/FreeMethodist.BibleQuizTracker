@@ -42,7 +42,8 @@ type RunQuizCapabilities =
       ChangeCurrentQuestion: (ChangeCurrentQuestion.QuestionData -> AsyncResult<CurrentQuestionChanged, ChangeCurrentQuestion.Error>) option
       SelectQuizzer: (SelectQuizzer.Input -> AsyncResult<CurrentQuizzerChanged, SelectQuizzer.Error>) option
       CompleteQuiz: (unit -> AsyncResult<CompleteQuiz.Event list, CompleteQuiz.Error>) option
-      ReopenQuiz: (unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>) option }
+      ReopenQuiz: (unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>) option
+      Prejump: PrejumpCap option }
 
 type LoadedModel =
     { JoiningQuizzer: string
@@ -88,6 +89,7 @@ type Message =
     | ClearAppeal of AsyncOperationStatus<unit, WorkflowResult<ClearAppeal.Error>>
     | CompleteQuiz of AsyncOperationStatus<unit, WorkflowResult<CompleteQuiz.Error>>
     | ReopenQuiz of AsyncOperationStatus<unit, WorkflowResult<ReopenQuiz.Error>>
+    | Prjump of AsyncOperationStatus<unit, WorkflowResult<Prejump.Error>>
 
 
 type ExternalMessage =
@@ -114,7 +116,8 @@ let public emptyModel =
           ChangeCurrentQuestion = None
           SelectQuizzer = None
           CompleteQuiz = None
-          ReopenQuiz = None } }
+          ReopenQuiz = None
+          Prejump = None } }
 
 let mapLoaded mapper model =
     match model with
@@ -168,7 +171,7 @@ let refreshCompetitionStyle refreshTeam refreshQuizzer competitionStyle =
         |> List.map refreshQuizzer
         |> LoadedCompetitionStyle.Individuals
 
-let provideCapabilitiesModel (capabilityProvider: RunQuizCapabilityForQuizProvider) user quiz =
+let provideCapabilitiesModel (capabilityProvider: RunQuizCapabilityForQuizProvider) user quiz : RunQuizCapabilities =
     { AddQuizzer = capabilityProvider.AddQuizzer quiz user
       AnswerCorrectly = capabilityProvider.AnswerCorrectly quiz user
       AnswerIncorrectly = capabilityProvider.AnswerIncorrectly quiz user
@@ -178,7 +181,8 @@ let provideCapabilitiesModel (capabilityProvider: RunQuizCapabilityForQuizProvid
       ChangeCurrentQuestion = capabilityProvider.ChangeCurrentQuestion quiz user
       SelectQuizzer = capabilityProvider.SelectQuizzer quiz user
       CompleteQuiz = capabilityProvider.CompleteQuiz quiz user
-      ReopenQuiz = capabilityProvider.ReopenQuiz quiz user }
+      ReopenQuiz = capabilityProvider.ReopenQuiz quiz user
+      Prejump = capabilityProvider.Prejump quiz user}
 
 let private refreshModel capabilitiesProvider (quiz: RunningQuiz) =
     let currentQuestion =
@@ -211,48 +215,6 @@ let init user quizCode previousQuizCode =
 
 let private hubStub =
     Unchecked.defaultof<QuizHub.Hub>
-
-let private getAvailableCapabilities (capabilityProvider: RunQuizCapabilityProvider) user currentQuizzerOpt =
-    let addQuizzer =
-        capabilityProvider.AddQuizzer user
-
-    let removeQuizzer =
-        capabilityProvider.RemoveQuizzer user
-
-    let answerCorrectly =
-        capabilityProvider.AnswerCorrectly user currentQuizzerOpt
-
-    let answerIncorrectly =
-        capabilityProvider.AnswerIncorrectly user currentQuizzerOpt
-
-    let failAppeal =
-        capabilityProvider.FailAppeal user currentQuizzerOpt
-
-    let clearAppeal =
-        capabilityProvider.ClearAppeal user currentQuizzerOpt
-
-    let selectQuizzer =
-        capabilityProvider.SelectQuizzer user
-
-    let changeCurrentQuestion =
-        capabilityProvider.ChangeCurrentQuestion user
-
-    let completeQuiz =
-        capabilityProvider.CompleteQuiz user
-
-    let reopenQuiz =
-        capabilityProvider.ReopenQuiz user
-
-    addQuizzer,
-    removeQuizzer,
-    answerCorrectly,
-    answerIncorrectly,
-    failAppeal,
-    clearAppeal,
-    selectQuizzer,
-    changeCurrentQuestion,
-    completeQuiz,
-    reopenQuiz
 
 let subOfFunc arg (func: 'a -> unit) : Sub<Message> = fun _ -> func arg
 

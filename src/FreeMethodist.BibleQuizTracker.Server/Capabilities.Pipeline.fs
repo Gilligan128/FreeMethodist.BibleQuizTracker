@@ -98,7 +98,12 @@ let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
         fun () -> ReopenQuiz.Pipeline.reopenQuiz dependencies.GetQuiz dependencies.SaveQuiz quiz.Code
         |> Some
         |> onlyQuizmastersAndScorekeepers user
-
+    
+    let prejumpCap (quiz: RunningQuiz) user =
+        fun () -> AsyncResult.retn []
+        |> Some
+        |> onlyQuizmastersAndScorekeepers user
+    
     { AddQuizzer = addQuizzer
       RemoveQuizzer = removeQuizzer
       AnswerCorrectly = answerCorrectly
@@ -108,4 +113,5 @@ let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
       ChangeCurrentQuestion = changeCurrentQuestionCap
       SelectQuizzer = selectQuizzerCap
       CompleteQuiz = completeQuizCap
-      ReopenQuiz = reopenQuizCap }
+      ReopenQuiz = reopenQuizCap
+      Prejump = prejumpCap }

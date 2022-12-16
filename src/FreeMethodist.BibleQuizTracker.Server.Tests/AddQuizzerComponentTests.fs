@@ -22,19 +22,6 @@ let tryGetQuizAsync code =
     |> Some
     |> AsyncResult.retn
 
-
-let capabilitiesProvider: RunQuizCapabilityProvider =
-    { AddQuizzer = fun _ -> Some(fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<QuizzerParticipating>)
-      RemoveQuizzer = fun _ -> Some(fun _ -> AsyncResult.ofSuccess [])
-      AnswerCorrectly = fun _ _ -> Some(fun _ -> AsyncResult.ofSuccess [])
-      AnswerIncorrectly = fun _ _ -> Some(fun _ -> AsyncResult.ofSuccess [])
-      FailAppeal = fun _ _ -> Some(fun _ -> AsyncResult.ofSuccess [])
-      ClearAppeal = fun _ _ -> Some(fun _ -> AsyncResult.ofSuccess [])
-      SelectQuizzer = fun _ -> Some(fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<CurrentQuizzerChanged>)
-      ChangeCurrentQuestion = fun _ -> Some(fun _ -> AsyncResult.ofSuccess Unchecked.defaultof<CurrentQuestionChanged>)
-      CompleteQuiz = fun _ -> None
-      ReopenQuiz = fun _ -> None }
-
 let capabilitiesForQuizProvider: RunQuizCapabilityForQuizProvider =
     { AddQuizzer = fun _ _-> None
       RemoveQuizzer = fun _ _-> None
