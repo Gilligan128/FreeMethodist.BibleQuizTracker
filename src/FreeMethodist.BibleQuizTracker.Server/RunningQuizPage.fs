@@ -78,10 +78,10 @@ type ChangeQuestionError =
 type Message =
     | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz option, DbError>>
     | OnQuizEvent of AsyncOperationStatus<unit, Result<Quiz, DbError>>
-    | ChangeCurrentQuestion of AsyncOperationStatus<int, WorkflowResult<ChangeQuestionError>>
+    | ChangeCurrentQuestion of AsyncOperationStatus<int, WorkflowResult<string>>
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of
-        AsyncOperationStatus<(unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>), WorkflowResult<RemoveQuizzer.Error>>
+        AsyncOperationStatus<unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>, WorkflowResult<RemoveQuizzer.Error>>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
     | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
@@ -89,7 +89,8 @@ type Message =
     | ClearAppeal of AsyncOperationStatus<unit, WorkflowResult<ClearAppeal.Error>>
     | CompleteQuiz of AsyncOperationStatus<unit, WorkflowResult<CompleteQuiz.Error>>
     | ReopenQuiz of AsyncOperationStatus<unit, WorkflowResult<ReopenQuiz.Error>>
-    | Prjump of AsyncOperationStatus<unit, WorkflowResult<Prejump.Error>>
+    | Prejump of AsyncOperationStatus<unit, WorkflowResult<Prejump.Error>>
+    | ExecuteWorkflow of AsyncOperationStatus<unit -> AsyncResult<RunQuizEvent list, string>, WorkflowResult<string>>
 
 
 type ExternalMessage =
@@ -182,7 +183,7 @@ let provideCapabilitiesModel (capabilityProvider: RunQuizCapabilityForQuizProvid
       SelectQuizzer = capabilityProvider.SelectQuizzer quiz user
       CompleteQuiz = capabilityProvider.CompleteQuiz quiz user
       ReopenQuiz = capabilityProvider.ReopenQuiz quiz user
-      Prejump = capabilityProvider.Prejump quiz user}
+      Prejump = capabilityProvider.Prejump quiz user }
 
 let private refreshModel capabilitiesProvider (quiz: RunningQuiz) =
     let currentQuestion =
@@ -274,6 +275,17 @@ let startWorkflow getQuiz publishEvents message transformToRunQuizEvent workflow
     |> reloadQuizAsync getQuiz
     |> mapToAsyncOperationCmd message
 
+let changeCurrentQuestionMessage questionNumber model =
+    let questionNumber = (questionNumber |> PositiveNumber.numberOrOne)
+    
+    model.Capabilities.ChangeCurrentQuestion
+    |> Option.map (fun cap ->
+        cap { Question = questionNumber }
+        |> AsyncResult.map RunQuizEvent.CurrentQuestionChanged
+        |> AsyncResult.mapError (fun error ->
+            match error with
+            | ChangeCurrentQuestion.Error.QuizState error -> mapQuizStateErrorToString error
+            | ChangeCurrentQuestion.DbError dbError -> mapDbErrorToString dbError))
 
 let update
     connectAndHandle
@@ -323,19 +335,12 @@ let update
             |> mapWorkflowErrors mapWorkflowSpecificErrors
             |> fun errorString -> errorString |> updateResultWithExternalError
 
-    let currentQuizzerOpt =
-        (model.Info
-         |> function
-             | NotYetStarted _ -> None
-             | InProgress _ -> None
-             | Resolved loaded -> loaded.CurrentQuizzer)
-
     let matchOptionalCommand cmdOpt =
         let cmd =
             cmdOpt |> Option.defaultValue Cmd.none
 
         model, cmd, NoMessage
-        
+
     match msg with
     | Message.InitializeQuizAndConnections (Finished result) ->
         match result with
@@ -401,37 +406,17 @@ let update
 
         model, Cmd.none, externalMessage
     | ChangeCurrentQuestion (Started questionNumber) ->
-        let mapToQuizEvent event =
-            event |> RunQuizEvent.CurrentQuestionChanged
-
+        let changeCurrentQuestionMessage = changeCurrentQuestionMessage questionNumber
         let startCmd =
             model.Info
             |> Deferred.toOption
-            |> Option.bind (fun model -> model.Capabilities.ChangeCurrentQuestion)
-            |> Option.map (fun workflow ->
-                asyncResult {
-                    let! newQuestion =
-                        questionNumber
-                        |> PositiveNumber.create "QuestionNumber"
-                        |> Result.mapError ChangeQuestionError.FormError
-                        |> AsyncResult.ofResult
-
-                    return!
-                        workflow { Question = newQuestion }
-                        |> AsyncResult.mapError ChangeQuestionError.QuizError
-                }
-                |> AsyncResult.map List.singleton
-                |> startWorkflow ChangeCurrentQuestion mapToQuizEvent)
+            |> Option.bind (changeCurrentQuestionMessage)
+            |> Option.map (AsyncResult.map List.singleton)
+            |> Option.map (startWorkflow ChangeCurrentQuestion id)
             |> Option.defaultValue Cmd.none
 
         model, startCmd, NoMessage
-    | ChangeCurrentQuestion (Finished result) ->
-        let mapChangeQuestionError error =
-            match error with
-            | ChangeQuestionError.FormError er -> er
-            | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
-
-        result |> finishWorkflow mapChangeQuestionError
+    | ChangeCurrentQuestion (Finished result) -> result |> finishWorkflow id
     | Message.AddQuizzer Cancel ->
         { model with
             Info =
@@ -655,9 +640,7 @@ let update
         |> Deferred.toOption
         |> Option.bind (fun model -> model.Capabilities.ClearAppeal)
         |> Option.map (fun workflowCap -> workflowCap ())
-        |> Option.map (fun workflow ->
-            workflow
-            |> startWorkflow ClearAppeal mapEvent)
+        |> Option.map (fun workflow -> workflow |> startWorkflow ClearAppeal mapEvent)
         |> matchOptionalCommand
     | ClearAppeal (Finished quiz) ->
         let mapAppealError error =
@@ -677,7 +660,7 @@ let update
         |> Option.bind (fun model -> model.Capabilities.CompleteQuiz)
         |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (fun workflow ->
-            workflow 
+            workflow
             |> startWorkflow CompleteQuiz mapQuizEvent)
         |> matchOptionalCommand
     | CompleteQuiz (Finished (Ok quiz)) ->
@@ -708,9 +691,7 @@ let update
         |> Deferred.toOption
         |> Option.bind (fun model -> model.Capabilities.ReopenQuiz)
         |> Option.map (fun workflowCap -> workflowCap ())
-        |> Option.map (fun workflow ->
-            workflow 
-            |> startWorkflow ReopenQuiz mapQuizEvent)
+        |> Option.map (fun workflow -> workflow |> startWorkflow ReopenQuiz mapQuizEvent)
         |> matchOptionalCommand
     | ReopenQuiz (Finished result) ->
         let mapErrors error =
@@ -719,6 +700,12 @@ let update
             | ReopenQuiz.QuizState quizStateError -> mapQuizStateErrorToString quizStateError
 
         result |> finishWorkflow mapErrors
+    | ExecuteWorkflow (Started capability) ->
+        let cmd =
+            capability () |> startWorkflow ExecuteWorkflow id
+
+        model, cmd, NoMessage
+    | ExecuteWorkflow (Finished result) -> result |> finishWorkflow id
 
 type private quizPage = Template<"wwwroot/Quiz.html">
 
@@ -788,10 +775,10 @@ let private getJumpPosition jumpOrder (quizzer: QuizzerModel) =
         | None -> 0
 
 let private teamView
-    removeQuizzerCap
+    _
     position
     (quizzerView: QuizzerModel * int -> Node)
-    ((teamModel, jumpOrder, currentQuizzer): TeamModel * string list * Option<Quizzer>)
+    ((teamModel, jumpOrder): TeamModel * string list )
     (dispatch: Dispatch<Message>)
     =
 
@@ -836,7 +823,7 @@ let sideViewSplit (individualsView: QuizzerModel list -> Node) index quizzerMode
     |> Option.defaultValue []
     |> individualsView
 
-let render linkToQuiz  (model: Model) (dispatch: Dispatch<Message>) =
+let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
 
     let isTeam model teamOneValue teamTwoValue =
         match model.AddQuizzer with
@@ -851,15 +838,18 @@ let render linkToQuiz  (model: Model) (dispatch: Dispatch<Message>) =
 
         let removeQuizzerCap quizzer =
             resolved.Capabilities.RemoveQuizzer
-            |> Option.map (fun remove ->
-                fun () ->
-                    remove { Quizzer = quizzer } )
+            |> Option.map (fun remove -> fun () -> remove { Quizzer = quizzer })
 
         let quizzerView =
             quizzerView removeQuizzerCap dispatch resolved.CurrentQuizzer
 
         let individualSideView =
             individualSideView removeQuizzerCap quizzerView resolved.JumpOrder
+
+        let mapChangeQuestionError error =
+            match error with
+            | ChangeQuestionError.FormError er -> er
+            | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
 
         quizPage()
             .QuizCode(model.Code)
@@ -878,7 +868,7 @@ let render linkToQuiz  (model: Model) (dispatch: Dispatch<Message>) =
                         removeQuizzerCap
                         TeamPosition.TeamOne
                         quizzerView
-                        (teamOne, resolved.JumpOrder, resolved.CurrentQuizzer)
+                        (teamOne, resolved.JumpOrder)
                         dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
@@ -891,7 +881,7 @@ let render linkToQuiz  (model: Model) (dispatch: Dispatch<Message>) =
                         removeQuizzerCap
                         TeamPosition.TeamTwo
                         quizzerView
-                        (teamTwo, resolved.JumpOrder, resolved.CurrentQuizzer)
+                        (teamTwo, resolved.JumpOrder)
                         dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
