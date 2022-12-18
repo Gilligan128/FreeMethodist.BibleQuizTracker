@@ -266,9 +266,8 @@ let private publishWorkflowEventsAsync publishEvents events =
     }
     |> AsyncResult.mapError WorkflowError.Workflow
 
-let startWorkflow getQuiz publishEvents message transformToRunQuizEvent workflow =
+let startWorkflow getQuiz publishEvents message workflow =
     workflow
-    |> AsyncResult.map (List.map transformToRunQuizEvent)
     |> publishWorkflowEventsAsync publishEvents
     |> reloadQuizAsync getQuiz
     |> mapToAsyncOperationCmd message
@@ -338,8 +337,8 @@ let update
     let getQuiz =
         fun () -> getQuizAsync model.Code
 
-    let startWorkflow message mapToEvent workflow =
-        startWorkflow getQuiz publishEvents message mapToEvent workflow
+    let startWorkflow message workflow =
+        startWorkflow getQuiz publishEvents message workflow
 
     let finishWorkflow mapWorkflowSpecificErrors result =
         match result with
@@ -488,7 +487,7 @@ let update
                     workflow
                     |> AsyncResult.map mapQuizEvent
                     |> AsyncResult.map List.singleton
-                    |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer) id)
+                    |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer))
                 |> Option.defaultValue Cmd.none
 
             model, startedCmd, NoMessage
@@ -519,7 +518,7 @@ let update
 
         cap ()
         |> AsyncResult.map (List.map mapEvent)
-        |> startWorkflow RemoveQuizzer id
+        |> startWorkflow RemoveQuizzer
         |> fun cmd -> model, cmd, NoMessage
     | RemoveQuizzer (Finished result) ->
         let mapRemoveError error =
@@ -540,7 +539,7 @@ let update
             workflow
             |> AsyncResult.map mapEvent
             |> AsyncResult.map List.singleton
-            |> startWorkflow SelectQuizzer id)
+            |> startWorkflow SelectQuizzer)
         |> Option.defaultValue Cmd.none
         |> fun cmd -> model, cmd, NoMessage
     | SelectQuizzer (Finished result) ->
@@ -582,7 +581,7 @@ let update
         |> Option.map (fun workflow ->
             workflow
             |> AsyncResult.map (List.map mapEvent)
-            |> startWorkflow AnswerIncorrectly id)
+            |> startWorkflow AnswerIncorrectly)
         |> matchOptionalCommand
     | AnswerIncorrectly (Finished result) ->
         let mapIncorrectError error =
@@ -606,7 +605,7 @@ let update
         |> Option.bind (fun model -> model.Capabilities.FailAppeal)
         |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (AsyncResult.map (List.map mapEvent))
-        |> Option.map (fun workflow -> workflow |> startWorkflow FailAppeal id)
+        |> Option.map (fun workflow -> workflow |> startWorkflow FailAppeal)
         |> matchOptionalCommand
     | FailAppeal (Finished quiz) ->
         let mapFailError error =
@@ -629,7 +628,7 @@ let update
         |> Option.map (fun workflow ->
             workflow
             |> AsyncResult.map (List.map mapEvent)
-            |> startWorkflow ClearAppeal id)
+            |> startWorkflow ClearAppeal)
         |> matchOptionalCommand
     | ClearAppeal (Finished quiz) ->
         let mapAppealError error =
@@ -651,7 +650,7 @@ let update
         |> Option.map (fun workflow ->
             workflow
             |> AsyncResult.map (List.map mapQuizEvent)
-            |> startWorkflow CompleteQuiz id)
+            |> startWorkflow CompleteQuiz)
         |> matchOptionalCommand
     | CompleteQuiz (Finished (Ok _)) ->
         let newCmd =
@@ -684,7 +683,7 @@ let update
         |> Option.map (fun workflow ->
             workflow
             |> AsyncResult.map (List.map mapQuizEvent)
-            |> startWorkflow ReopenQuiz id)
+            |> startWorkflow ReopenQuiz)
         |> matchOptionalCommand
     | ReopenQuiz (Finished result) ->
         let mapErrors error =
@@ -695,7 +694,7 @@ let update
         result |> finishWorkflow mapErrors
     | ExecuteWorkflow (Started capability) ->
         let cmd =
-            capability () |> startWorkflow ExecuteWorkflow id
+            capability () |> startWorkflow ExecuteWorkflow 
 
         model, cmd, NoMessage
     | ExecuteWorkflow (Finished result) -> result |> finishWorkflow id
