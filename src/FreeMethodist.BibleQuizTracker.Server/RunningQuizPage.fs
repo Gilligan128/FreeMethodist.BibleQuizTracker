@@ -486,7 +486,7 @@ let update
                 |> Option.map (fun cap -> cap { Name = name; Team = Some team })
                 |> Option.map (fun workflow ->
                     workflow
-                    |> AsyncResult.map mapQuizEvent 
+                    |> AsyncResult.map mapQuizEvent
                     |> AsyncResult.map List.singleton
                     |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer) id)
                 |> Option.defaultValue Cmd.none
@@ -512,13 +512,14 @@ let update
         externalMsg
     | RemoveQuizzer (Started cap) ->
 
-        let transformToRunQuizEvent event =
+        let mapEvent event =
             match event with
             | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
             | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
 
         cap ()
-        |> startWorkflow RemoveQuizzer transformToRunQuizEvent
+        |> AsyncResult.map (List.map mapEvent)
+        |> startWorkflow RemoveQuizzer id
         |> fun cmd -> model, cmd, NoMessage
     | RemoveQuizzer (Finished result) ->
         let mapRemoveError error =
@@ -529,7 +530,7 @@ let update
 
         result |> finishWorkflow mapRemoveError
     | SelectQuizzer (Started name) ->
-        let transformEvent event = CurrentQuizzerChanged event
+        let mapEvent event = CurrentQuizzerChanged event
 
         model.Info
         |> Deferred.toOption
@@ -537,8 +538,9 @@ let update
         |> Option.map (fun workflow -> workflow { Quizzer = name })
         |> Option.map (fun workflow ->
             workflow
+            |> AsyncResult.map mapEvent
             |> AsyncResult.map List.singleton
-            |> startWorkflow SelectQuizzer transformEvent)
+            |> startWorkflow SelectQuizzer id)
         |> Option.defaultValue Cmd.none
         |> fun cmd -> model, cmd, NoMessage
     | SelectQuizzer (Finished result) ->
@@ -579,7 +581,8 @@ let update
         |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (fun workflow ->
             workflow
-            |> startWorkflow AnswerIncorrectly mapEvent)
+            |> AsyncResult.map (List.map mapEvent)
+            |> startWorkflow AnswerIncorrectly id)
         |> matchOptionalCommand
     | AnswerIncorrectly (Finished result) ->
         let mapIncorrectError error =
@@ -623,7 +626,10 @@ let update
         |> Deferred.toOption
         |> Option.bind (fun model -> model.Capabilities.ClearAppeal)
         |> Option.map (fun workflowCap -> workflowCap ())
-        |> Option.map (fun workflow -> workflow |> startWorkflow ClearAppeal mapEvent)
+        |> Option.map (fun workflow ->
+            workflow
+            |> AsyncResult.map (List.map mapEvent)
+            |> startWorkflow ClearAppeal id)
         |> matchOptionalCommand
     | ClearAppeal (Finished quiz) ->
         let mapAppealError error =
@@ -644,9 +650,10 @@ let update
         |> Option.map (fun workflowCap -> workflowCap ())
         |> Option.map (fun workflow ->
             workflow
-            |> startWorkflow CompleteQuiz mapQuizEvent)
+            |> AsyncResult.map (List.map mapQuizEvent)
+            |> startWorkflow CompleteQuiz id)
         |> matchOptionalCommand
-    | CompleteQuiz (Finished (Ok quiz)) ->
+    | CompleteQuiz (Finished (Ok _)) ->
         let newCmd =
             (quizCode, Router.noModel)
             |> Page.QuizDetails
@@ -674,7 +681,10 @@ let update
         |> Deferred.toOption
         |> Option.bind (fun model -> model.Capabilities.ReopenQuiz)
         |> Option.map (fun workflowCap -> workflowCap ())
-        |> Option.map (fun workflow -> workflow |> startWorkflow ReopenQuiz mapQuizEvent)
+        |> Option.map (fun workflow ->
+            workflow
+            |> AsyncResult.map (List.map mapQuizEvent)
+            |> startWorkflow ReopenQuiz id)
         |> matchOptionalCommand
     | ReopenQuiz (Finished result) ->
         let mapErrors error =
@@ -847,11 +857,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
 
         let potentiallyDispatchWorkflow workflowOpt =
             workflowOpt
-            |> Option.iter (fun workflow ->
-                workflow
-                |> Started
-                |> ExecuteWorkflow
-                |> dispatch)
+            |> Option.iter (fun workflow -> workflow |> Started |> ExecuteWorkflow |> dispatch)
 
         quizPage()
             .QuizCode(model.Code)
@@ -932,7 +938,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
             .AnswerCorrectly(fun _ ->
                 resolved.Capabilities.AnswerCorrectly
-                |> Option.map(fun cap -> fun () -> answerCorrectlyMessage cap)
+                |> Option.map (fun cap -> fun () -> answerCorrectlyMessage cap)
                 |> potentiallyDispatchWorkflow)
             .FailAppeal(fun _ -> dispatch (FailAppeal(Started())))
             .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
