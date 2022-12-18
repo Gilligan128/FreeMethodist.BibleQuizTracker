@@ -486,8 +486,9 @@ let update
                 |> Option.map (fun cap -> cap { Name = name; Team = Some team })
                 |> Option.map (fun workflow ->
                     workflow
+                    |> AsyncResult.map mapQuizEvent 
                     |> AsyncResult.map List.singleton
-                    |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer) mapQuizEvent)
+                    |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer) id)
                 |> Option.defaultValue Cmd.none
 
             model, startedCmd, NoMessage
@@ -601,7 +602,8 @@ let update
         |> Deferred.toOption
         |> Option.bind (fun model -> model.Capabilities.FailAppeal)
         |> Option.map (fun workflowCap -> workflowCap ())
-        |> Option.map (fun workflow -> workflow |> startWorkflow FailAppeal mapEvent)
+        |> Option.map (AsyncResult.map (List.map mapEvent))
+        |> Option.map (fun workflow -> workflow |> startWorkflow FailAppeal id)
         |> matchOptionalCommand
     | FailAppeal (Finished quiz) ->
         let mapFailError error =
