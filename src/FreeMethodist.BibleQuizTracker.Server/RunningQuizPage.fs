@@ -82,7 +82,6 @@ type Message =
     | RemoveQuizzer of
         AsyncOperationStatus<unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>, WorkflowResult<RemoveQuizzer.Error>>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
-    | AnswerCorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerCorrectly.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
     | FailAppeal of AsyncOperationStatus<unit, WorkflowResult<FailAppeal.Error>>
     | ClearAppeal of AsyncOperationStatus<unit, WorkflowResult<ClearAppeal.Error>>
@@ -286,6 +285,27 @@ let changeCurrentQuestionMessage questionNumber (capability: ChangeCurrentQuesti
         match error with
         | ChangeCurrentQuestion.Error.QuizState error -> mapQuizStateErrorToString error
         | ChangeCurrentQuestion.DbError dbError -> mapDbErrorToString dbError)
+
+let answerCorrectlyMessage capability =
+    capability ()
+    |> AsyncResult.map (
+        List.map (fun event ->
+            match event with
+            | AnswerCorrectly.Event.CurrentQuestionChanged currentQuestionChanged ->
+                RunQuizEvent.CurrentQuestionChanged currentQuestionChanged
+            | AnswerCorrectly.Event.IndividualScoreChanged individualScoreChanged ->
+                RunQuizEvent.IndividualScoreChanged individualScoreChanged
+            | AnswerCorrectly.Event.TeamScoreChanged teamScoreChanged -> RunQuizEvent.TeamScoreChanged teamScoreChanged)
+    )
+    |> AsyncResult.mapError (fun error ->
+        match error with
+        | AnswerCorrectly.QuizzerNotFound er -> $"Quizzer {er} was not found in this quiz"
+        | AnswerCorrectly.Error.QuizStateError _ -> "Quiz is not running"
+        | AnswerCorrectly.Error.NoCurrentQuizzer -> "No one has jumped yet"
+        | (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (QuizAnswer.QuizzerAlreadyAnsweredCorrectly (quizzer,
+                                                                                                              question))) ->
+            $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
+        | AnswerCorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString)
 
 let update
     connectAndHandle
@@ -545,33 +565,6 @@ let update
                 error
                 |> mapWorkflowErrors mapSelectError
                 |> ExternalMessage.ErrorMessage
-    | AnswerCorrectly (Started _) ->
-        let mapEvent event =
-            match event with
-            | AnswerCorrectly.CurrentQuestionChanged e -> CurrentQuestionChanged e
-            | AnswerCorrectly.IndividualScoreChanged e -> IndividualScoreChanged e
-            | AnswerCorrectly.TeamScoreChanged e -> RunQuizEvent.TeamScoreChanged e
-
-        model.Info
-        |> Deferred.toOption
-        |> Option.bind (fun model -> model.Capabilities.AnswerCorrectly)
-        |> Option.map (fun workflow -> workflow ())
-        |> Option.map (fun result -> result |> startWorkflow AnswerCorrectly mapEvent)
-        |> Option.defaultValue Cmd.none
-        |> fun cmd -> model, cmd, NoMessage
-    | AnswerCorrectly (Finished result) ->
-        let mapWorkflowSpecificErrors workflowError =
-            match workflowError with
-            | AnswerCorrectly.QuizzerNotFound er -> $"Quizzer {er} was not found in this quiz"
-            | AnswerCorrectly.Error.QuizStateError _ -> "Quiz is not running"
-            | AnswerCorrectly.Error.NoCurrentQuizzer -> "No one has jumped yet"
-            | (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (QuizAnswer.QuizzerAlreadyAnsweredCorrectly (quizzer,
-                                                                                                                  question))) ->
-                $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
-            | AnswerCorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString
-
-        result |> finishWorkflow mapWorkflowSpecificErrors
-
     | AnswerIncorrectly (Started _) ->
         let mapEvent event =
             match event with
@@ -850,6 +843,14 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                 capability
                 |> changeCurrentQuestionMessage questionNumber
 
+        let potentiallyDispatchWorkflow workflowOpt =
+            workflowOpt
+            |> Option.iter (fun workflow ->
+                workflow
+                |> Started
+                |> ExecuteWorkflow
+                |> dispatch)
+
         quizPage()
             .QuizCode(model.Code)
             .QuizUrl(linkToQuiz <| model.Code)
@@ -926,8 +927,11 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                     "is-active"
             )
             .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
-            .AnswerCorrectly(fun _ -> dispatch (AnswerCorrectly(Started())))
             .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
+            .AnswerCorrectly(fun _ ->
+                resolved.Capabilities.AnswerCorrectly
+                |> Option.map(fun cap -> fun () -> answerCorrectlyMessage cap)
+                |> potentiallyDispatchWorkflow)
             .FailAppeal(fun _ -> dispatch (FailAppeal(Started())))
             .ClearAppeal(fun _ -> dispatch (ClearAppeal(Started())))
             .ItemizedScore(
