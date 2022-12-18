@@ -78,7 +78,6 @@ type ChangeQuestionError =
 type Message =
     | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz option, DbError>>
     | OnQuizEvent of AsyncOperationStatus<unit, Result<Quiz, DbError>>
-    | ChangeCurrentQuestion of AsyncOperationStatus<int, WorkflowResult<string>>
     | AddQuizzer of AddQuizzerMessage
     | RemoveQuizzer of
         AsyncOperationStatus<unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>, WorkflowResult<RemoveQuizzer.Error>>
@@ -406,20 +405,6 @@ let update
             |> ExternalMessage.ErrorMessage
 
         model, Cmd.none, externalMessage
-    | ChangeCurrentQuestion (Started questionNumber) ->
-        let changeCurrentQuestionMessage =
-            changeCurrentQuestionMessage questionNumber
-
-        let startCmd =
-            model.Info
-            |> Deferred.toOption
-            |> Option.bind (fun model -> model.Capabilities.ChangeCurrentQuestion)
-            |> Option.map (changeCurrentQuestionMessage)
-            |> Option.map (startWorkflow ChangeCurrentQuestion id)
-            |> Option.defaultValue Cmd.none
-
-        model, startCmd, NoMessage
-    | ChangeCurrentQuestion (Finished result) -> result |> finishWorkflow id
     | Message.AddQuizzer Cancel ->
         { model with
             Info =
@@ -895,7 +880,9 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .NextQuestion(fun _ ->
                 resolved.Capabilities.ChangeCurrentQuestion
                 |> Option.iter (fun cap -> dispatch (ExecuteWorkflow(Started(nextQuestionCap cap)))))
-            .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(Math.Max(resolved.CurrentQuestion - 1, 1)))))
+            .UndoQuestion(fun _ ->
+                resolved.Capabilities.ChangeCurrentQuestion
+                |> Option.iter (fun cap -> dispatch (ExecuteWorkflow(Started(previousQuestionCap cap)))))
             .CurrentQuizzer(
                 match resolved.CurrentQuizzer with
                 | Some q -> $"{q}'s Turn"
