@@ -275,17 +275,18 @@ let startWorkflow getQuiz publishEvents message transformToRunQuizEvent workflow
     |> reloadQuizAsync getQuiz
     |> mapToAsyncOperationCmd message
 
-let changeCurrentQuestionMessage questionNumber model =
-    let questionNumber = (questionNumber |> PositiveNumber.numberOrOne)
-    
-    model.Capabilities.ChangeCurrentQuestion
-    |> Option.map (fun cap ->
-        cap { Question = questionNumber }
-        |> AsyncResult.map RunQuizEvent.CurrentQuestionChanged
-        |> AsyncResult.mapError (fun error ->
-            match error with
-            | ChangeCurrentQuestion.Error.QuizState error -> mapQuizStateErrorToString error
-            | ChangeCurrentQuestion.DbError dbError -> mapDbErrorToString dbError))
+
+let changeCurrentQuestionMessage questionNumber (capability: ChangeCurrentQuestionCap) =
+    let questionNumber =
+        (questionNumber |> PositiveNumber.numberOrOne)
+
+    capability { Question = questionNumber }
+    |> AsyncResult.map RunQuizEvent.CurrentQuestionChanged
+    |> AsyncResult.map List.singleton
+    |> AsyncResult.mapError (fun error ->
+        match error with
+        | ChangeCurrentQuestion.Error.QuizState error -> mapQuizStateErrorToString error
+        | ChangeCurrentQuestion.DbError dbError -> mapDbErrorToString dbError)
 
 let update
     connectAndHandle
@@ -406,12 +407,14 @@ let update
 
         model, Cmd.none, externalMessage
     | ChangeCurrentQuestion (Started questionNumber) ->
-        let changeCurrentQuestionMessage = changeCurrentQuestionMessage questionNumber
+        let changeCurrentQuestionMessage =
+            changeCurrentQuestionMessage questionNumber
+
         let startCmd =
             model.Info
             |> Deferred.toOption
-            |> Option.bind (changeCurrentQuestionMessage)
-            |> Option.map (AsyncResult.map List.singleton)
+            |> Option.bind (fun model -> model.Capabilities.ChangeCurrentQuestion)
+            |> Option.map (changeCurrentQuestionMessage)
             |> Option.map (startWorkflow ChangeCurrentQuestion id)
             |> Option.defaultValue Cmd.none
 
@@ -778,7 +781,7 @@ let private teamView
     _
     position
     (quizzerView: QuizzerModel * int -> Node)
-    ((teamModel, jumpOrder): TeamModel * string list )
+    ((teamModel, jumpOrder): TeamModel * string list)
     (dispatch: Dispatch<Message>)
     =
 
@@ -846,10 +849,21 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
         let individualSideView =
             individualSideView removeQuizzerCap quizzerView resolved.JumpOrder
 
-        let mapChangeQuestionError error =
-            match error with
-            | ChangeQuestionError.FormError er -> er
-            | ChangeQuestionError.QuizError er -> $"Wrong Quiz State: {er}" in
+        let nextQuestionCap capability =
+            fun () ->
+                let questionNumber =
+                    resolved.CurrentQuestion + 1
+
+                capability
+                |> changeCurrentQuestionMessage questionNumber
+
+        let previousQuestionCap capability =
+            fun () ->
+                let questionNumber =
+                    Math.Max(resolved.CurrentQuestion - 1, 1)
+
+                capability
+                |> changeCurrentQuestionMessage questionNumber
 
         quizPage()
             .QuizCode(model.Code)
@@ -864,12 +878,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .SideOne(
                 match resolved.CompetitionStyle with
                 | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamView
-                        removeQuizzerCap
-                        TeamPosition.TeamOne
-                        quizzerView
-                        (teamOne, resolved.JumpOrder)
-                        dispatch
+                    teamView removeQuizzerCap TeamPosition.TeamOne quizzerView (teamOne, resolved.JumpOrder) dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
                     |> sideViewSplit individualSideView 0
@@ -877,18 +886,15 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .SideTwo(
                 match resolved.CompetitionStyle with
                 | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamView
-                        removeQuizzerCap
-                        TeamPosition.TeamTwo
-                        quizzerView
-                        (teamTwo, resolved.JumpOrder)
-                        dispatch
+                    teamView removeQuizzerCap TeamPosition.TeamTwo quizzerView (teamTwo, resolved.JumpOrder) dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
                     |> sideViewSplit individualSideView 1
             )
             .CurrentQuestion(string resolved.CurrentQuestion)
-            .NextQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(resolved.CurrentQuestion + 1))))
+            .NextQuestion(fun _ ->
+                resolved.Capabilities.ChangeCurrentQuestion
+                |> Option.iter (fun cap -> dispatch (ExecuteWorkflow(Started(nextQuestionCap cap)))))
             .UndoQuestion(fun _ -> dispatch (ChangeCurrentQuestion(Started(Math.Max(resolved.CurrentQuestion - 1, 1)))))
             .CurrentQuizzer(
                 match resolved.CurrentQuizzer with
