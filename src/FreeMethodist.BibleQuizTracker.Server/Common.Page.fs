@@ -21,13 +21,17 @@ type ConnectionStatus =
     | Disconnected of DateTimeOffset
     | Unknown
 
+type PrejumpState =
+    | NoPrejump
+    | Prejumped
 
 type QuizzerModel =
     { Name: string
       Score: int
       ConnectionStatus: ConnectionStatus
       AnswerState: AnswerState
-      AppealState: AppealState }
+      AppealState: AppealState
+      PrejumpState:  PrejumpState}
 
 type TeamModel =
     { Name: string

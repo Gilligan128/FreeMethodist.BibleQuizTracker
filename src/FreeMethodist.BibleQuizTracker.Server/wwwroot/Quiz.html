@@ -29,7 +29,7 @@
                         <button class="button is-danger" onclick="${AnswerIncorrectly}">Incorrect
                         </button>
                         <button class="button is-danger" onclick="${FailAppeal}">Fail Appeal</button>
-                        <button class="button is-danger " disabled>Incorrect Prejump</button>
+                        <button class="button is-danger ${PrejumpActionVisibility}" onClick="${Prejump}">Prejump</button>
                     </div>
                 </div>
                 <div class="box has-text-centered" id="question-section">
@@ -114,6 +114,7 @@
                         <div class="tags">
                             <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
                             <span class="tag is-warning ${AppealVisible}  is-rounded ">A</span>
+                            <span class="tag is-warning ${PrejumpBadgeVisible}  is-rounded ">P</span>
                         </div>
                     </div>
                     <div class="column is-one-third has-text-primary-dark">

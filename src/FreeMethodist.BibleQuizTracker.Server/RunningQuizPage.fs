@@ -45,6 +45,10 @@ type RunQuizCapabilities =
       ReopenQuiz: (unit -> AsyncResult<ReopenQuiz.Event list, ReopenQuiz.Error>) option
       Prejump: PrejumpCap option }
 
+type JumpOrder =
+    | Prejump of Quizzer
+    | Standard of Quizzer list
+
 type LoadedModel =
     { JoiningQuizzer: string
       CompetitionStyle: LoadedCompetitionStyle
@@ -87,7 +91,6 @@ type Message =
     | ClearAppeal of AsyncOperationStatus<unit, WorkflowResult<ClearAppeal.Error>>
     | CompleteQuiz of AsyncOperationStatus<unit, WorkflowResult<CompleteQuiz.Error>>
     | ReopenQuiz of AsyncOperationStatus<unit, WorkflowResult<ReopenQuiz.Error>>
-    | Prejump of AsyncOperationStatus<unit, WorkflowResult<Prejump.Error>>
     | ExecuteWorkflow of AsyncOperationStatus<unit -> AsyncResult<RunQuizEvent list, string>, WorkflowResult<string>>
 
 
@@ -152,7 +155,13 @@ let private refreshQuizzer (currentQuestion: QuestionState) (quizzer: QuizzerSta
         |> getAnswerState currentQuestion.AnswerState
       AppealState =
         quizzer.Name
-        |> getAppealStateNew currentQuestion.FailedAppeals }
+        |> getAppealStateNew currentQuestion.FailedAppeals
+      PrejumpState =
+        if currentQuestion.Prejumps
+           |> List.contains quizzer.Name then
+            Prejumped
+        else
+            NoPrejump }
 
 let private refreshTeam (currentQuestion: QuestionState) (team: QuizTeamState) : TeamModel =
     { Name = team.Name
@@ -300,11 +309,28 @@ let answerCorrectlyMessage capability =
         match error with
         | AnswerCorrectly.QuizzerNotFound er -> $"Quizzer {er} was not found in this quiz"
         | AnswerCorrectly.Error.QuizStateError _ -> "Quiz is not running"
-        | AnswerCorrectly.Error.NoCurrentQuizzer -> "No one has jumped yet"
+        | AnswerCorrectly.Error.NoCurrentQuizzer -> "No quizzer selected"
         | (AnswerCorrectly.Error.QuizzerAlreadyAnsweredCorrectly (QuizAnswer.QuizzerAlreadyAnsweredCorrectly (quizzer,
                                                                                                               question))) ->
             $"Quizzer {quizzer} already correctly answered question {question |> PositiveNumber.value}"
         | AnswerCorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString)
+
+let prejumpMessage capability =
+    capability ()
+    |> AsyncResult.map (
+        List.map (fun event ->
+            match event with
+            | Prejump.Event.Prejump quizzerPrejumped -> RunQuizEvent.QuizzerPrejumped quizzerPrejumped
+            | Prejump.Event.IndividualScoreChanged individualScoreChanged ->
+                RunQuizEvent.IndividualScoreChanged individualScoreChanged
+            | Prejump.Event.TeamScoreChanged event -> RunQuizEvent.TeamScoreChanged event)
+    )
+    |> AsyncResult.mapError (fun error ->
+        match error with
+        | Prejump.Error.DbError error -> error |> mapDbErrorToString
+        | Prejump.Error.RemoteError error -> $"Remote Error: {error}"
+        | Prejump.Error.NoCurrentQuizzer _ -> "No quizzer selected"
+        | Prejump.Error.WrongQuizState quizStateError -> "Quiz is not running")
 
 let update
     connectAndHandle
@@ -694,7 +720,7 @@ let update
         result |> finishWorkflow mapErrors
     | ExecuteWorkflow (Started capability) ->
         let cmd =
-            capability () |> startWorkflow ExecuteWorkflow 
+            capability () |> startWorkflow ExecuteWorkflow
 
         model, cmd, NoMessage
     | ExecuteWorkflow (Finished result) -> result |> finishWorkflow id
@@ -756,6 +782,10 @@ let quizzerView removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (quiz
             | NoFailure -> "is-hidden"
             | AppealFailure -> ""
         )
+        .PrejumpBadgeVisible(
+            match quizzer.PrejumpState with
+            | NoPrejump -> "is-hidden"
+            | Prejumped -> "")
         .Elt()
 
 let private getJumpPosition jumpOrder (quizzer: QuizzerModel) =
@@ -767,7 +797,6 @@ let private getJumpPosition jumpOrder (quizzer: QuizzerModel) =
         | None -> 0
 
 let private teamView
-    _
     position
     (quizzerView: QuizzerModel * int -> Node)
     ((teamModel, jumpOrder): TeamModel * string list)
@@ -871,7 +900,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .SideOne(
                 match resolved.CompetitionStyle with
                 | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamView removeQuizzerCap TeamPosition.TeamOne quizzerView (teamOne, resolved.JumpOrder) dispatch
+                    teamView TeamPosition.TeamOne quizzerView (teamOne, resolved.JumpOrder) dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
                     |> sideViewSplit individualSideView 0
@@ -879,7 +908,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .SideTwo(
                 match resolved.CompetitionStyle with
                 | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    teamView removeQuizzerCap TeamPosition.TeamTwo quizzerView (teamTwo, resolved.JumpOrder) dispatch
+                    teamView TeamPosition.TeamTwo quizzerView (teamTwo, resolved.JumpOrder) dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
                     quizzerModels
                     |> sideViewSplit individualSideView 1
@@ -958,4 +987,13 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             )
             .CompleteQuiz(fun _ -> dispatch (CompleteQuiz(Started())))
             .ReopenQuiz(fun _ -> dispatch (ReopenQuiz(Started())))
+            .PrejumpActionVisibility(
+                match resolved.Capabilities.Prejump with
+                | Some _ -> ""
+                | None -> "is-hidden"
+            )
+            .Prejump(fun _ ->
+                resolved.Capabilities.Prejump
+                |> Option.map (fun cap -> fun () -> prejumpMessage cap)
+                |> potentiallyDispatchWorkflow)
             .Elt()

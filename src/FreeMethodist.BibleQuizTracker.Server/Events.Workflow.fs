@@ -29,6 +29,8 @@ type IndividualScoreChanged =
 
 type QuizStateChanged = { Quiz: QuizCode; NewState : string }
 
+type QuizzerPrejumped = { Quiz : QuizCode; Quizzer : Quizzer }
+
 type RunQuizEvent =
     | QuizzerNoLongerParticipating of QuizzerNoLongerParticipating
     | TeamScoreChanged of TeamScoreChanged
@@ -37,3 +39,4 @@ type RunQuizEvent =
     | CurrentQuizzerChanged of CurrentQuizzerChanged
     | IndividualScoreChanged of IndividualScoreChanged
     | QuizStateChanged of QuizStateChanged
+    | QuizzerPrejumped of QuizzerPrejumped
