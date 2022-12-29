@@ -6,6 +6,7 @@ open System.Text.Json.Serialization
 open Azure
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server
+open FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.Extensions.Configuration
 open Xunit
@@ -42,7 +43,7 @@ let ``Save Blob`` () =
     ignore404 () (fun () -> blobServiceClient.DeleteBlobContainer("quizzes") |> ignore)
   
     let saveQuiz =
-        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions $"{Environment.MachineName}test"
+        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions $"{Environment.MachineName}test" QuizVersioning.CurrentVersion
 
     let result = saveQuiz (Running RunningQuiz.newTeamQuiz) |> Async.RunSynchronously
     
@@ -70,7 +71,7 @@ let ``Get Completed`` () =
         containerClient.DeleteBlob("completed"))
     
     let saveQuiz =
-        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions $"{Environment.MachineName}test"
+        Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions $"{Environment.MachineName}test" QuizVersioning.CurrentVersion
     asyncResult {
         let completedQuiz = Completed { Code = "completed"; CompletedQuestions = []; CompetitionStyle = CompletedCompetitionStyle.Individual [] }
         

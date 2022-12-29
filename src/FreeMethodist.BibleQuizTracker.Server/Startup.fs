@@ -5,7 +5,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
-open FreeMethodist.BibleQuizTracker.Server.Versioning
+open FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
@@ -64,7 +64,11 @@ type Startup() =
         let deserialize (json: string) =
             JsonSerializer.Deserialize(json, fsharpJsonOptions)
             |> QuizVersioning.applyBackwardsCompatibility
-
+        
+        let deserializeWithVersion schemaVersionOpt (json :string) =
+            let deserialize (json : string) = JsonSerializer.Deserialize(json, fsharpJsonOptions)
+            QuizVersioning.deserializeWithVersion deserialize schemaVersionOpt json
+        
         let getQuiz (provider: IServiceProvider) =
             let localStorage =
                 provider.GetRequiredService<ProtectedLocalStorage>()
@@ -78,7 +82,7 @@ type Startup() =
             let tenantName = resolveTenantName provider
 
             let getFromBlob =
-                Persistence.getQuizFromBlob blobServiceClient deserialize tenantName
+                Persistence.getQuizFromBlob blobServiceClient deserializeWithVersion tenantName
 
 
             Persistence.getQuizFromLocalOrBlob getFromLocal getFromBlob
@@ -96,7 +100,7 @@ type Startup() =
             let tenantName = resolveTenantName provider
 
             let saveToBlob =
-                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName
+                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName QuizVersioning.CurrentVersion
 
             Persistence.saveQuizToLocalOrBlob saveToLocal saveToBlob
 

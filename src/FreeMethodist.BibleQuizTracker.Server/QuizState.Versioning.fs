@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.Versioning
+﻿module FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
@@ -6,6 +6,8 @@ open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 [<RequireQualifiedAccess>]
 module QuizVersioning =
+   
+
    let isNull value = obj.ReferenceEquals(value, null)
 
    let private backwardsCompatibleToRunningCompetitionStyle quiz =
@@ -74,10 +76,16 @@ module QuizVersioning =
                                     else
                                         value.Prejumps }) }
         | quiz -> quiz
-        
+   
+   let CurrentVersion = 1
+   
    let applyBackwardsCompatibility quiz =
         quiz
         |> backwardsCompatibleToRunningCompetitionStyle
         |> backwardsCompatibleToFailedAppeals
         |> backwardsCompatibleToPrejumps 
- 
+
+   let deserializeWithVersion deserialize schemaVersion json =
+       match schemaVersion with
+       | None -> json |> deserialize |> applyBackwardsCompatibility
+       | Some _ -> json |> deserialize |> applyBackwardsCompatibility
