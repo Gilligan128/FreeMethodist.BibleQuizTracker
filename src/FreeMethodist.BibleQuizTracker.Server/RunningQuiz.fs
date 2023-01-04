@@ -1,12 +1,14 @@
 ﻿namespace global
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 
 type RunningQuiz =
     { Code: QuizCode
       Questions: Map<PositiveNumber, QuestionState>
       CompetitionStyle: RunningCompetitionStyle
       CurrentQuestion: QuestionNumber
-      CurrentQuizzer: Quizzer option }
+      CurrentQuizzer: Quizzer option
+      TournamentInfo: TournamentLink }
 
 [<RequireQualifiedAccess>]
 module RunningQuiz =
@@ -23,14 +25,16 @@ module RunningQuiz =
                 { Name = "RIGHT"
                   Score = QuizScore.zero
                   Quizzers = [] }
-            ) }
+            )
+          TournamentInfo = TournamentInfo.empty |> Info }
 
     let newIndividualQuiz =
         { Code = "Example"
           CurrentQuestion = PositiveNumber.one
           CurrentQuizzer = None
           Questions = Map.empty
-          CompetitionStyle = RunningCompetitionStyle.Individuals [] }
+          CompetitionStyle = RunningCompetitionStyle.Individuals []
+          TournamentInfo = TournamentInfo.empty |> Info }
 
     let getTeam teamPosition (quiz: RunningQuiz) =
         match quiz.CompetitionStyle, teamPosition with

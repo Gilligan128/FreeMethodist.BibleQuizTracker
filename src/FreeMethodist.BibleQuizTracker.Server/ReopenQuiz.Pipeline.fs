@@ -2,6 +2,7 @@
 
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 let private mapCompletedQuizzerToRunning (quizzer: CompletedQuizzer) =
@@ -65,7 +66,8 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
             completed.CompletedQuestions
             |> List.indexed
             |> List.map mapQuestionToRunning
-            |> Map.ofList }
+            |> Map.ofList
+          TournamentInfo = completed.TournamentInfo }
     | Choice2Of2 official ->
         let competitionStyle =
             match official.CompetitionStyle with
@@ -78,6 +80,7 @@ let updateQuizToRunning (quiz: Choice<CompletedQuiz, OfficialTeamQuiz>) : Runnin
                 competitionStyle
 
         { Code = official.Code
+          TournamentInfo = official.TournamentInfo
           CompetitionStyle = competitionStyle
           CurrentQuestion = official.CompletedQuestions.Length |> ofNumber
           CurrentQuizzer = None

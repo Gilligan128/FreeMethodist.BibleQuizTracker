@@ -64,10 +64,7 @@ type Startup() =
         let deserialize (json: string) =
             JsonSerializer.Deserialize(json, fsharpJsonOptions)
             |> QuizVersioning.applyBackwardsCompatibility
-        
-        let deserializeWithVersion schemaVersionOpt (json :string) =
-            let deserialize (json : string) = JsonSerializer.Deserialize(json, fsharpJsonOptions)
-            QuizVersioning.deserializeWithVersion deserialize schemaVersionOpt json
+       
         
         let getQuiz (provider: IServiceProvider) =
             let localStorage =
@@ -82,10 +79,9 @@ type Startup() =
             let tenantName = resolveTenantName provider
 
             let getFromBlob =
-                Persistence.getQuizFromBlob blobServiceClient deserializeWithVersion tenantName
+                Persistence.getQuizFromBlob blobServiceClient deserialize tenantName
 
-
-            Persistence.getQuizFromLocalOrBlob getFromLocal getFromBlob
+            Persistence.getQuizFromLocalOrBlob getFromLocal getFromBlob 
 
         let saveQuiz (provider: IServiceProvider) =
             let localStorage =
@@ -100,7 +96,7 @@ type Startup() =
             let tenantName = resolveTenantName provider
 
             let saveToBlob =
-                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName QuizVersioning.CurrentVersion
+                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName
 
             Persistence.saveQuizToLocalOrBlob saveToLocal saveToBlob
 

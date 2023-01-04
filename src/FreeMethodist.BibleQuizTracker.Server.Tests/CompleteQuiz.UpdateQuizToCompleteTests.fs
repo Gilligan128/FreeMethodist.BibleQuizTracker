@@ -3,6 +3,7 @@
 
 
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Xunit
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
@@ -27,6 +28,7 @@ let ``When completing a quiz Then quiz is in a Completed state`` () =
 
     let expectedQuiz: CompletedQuiz =
         { Code = initialQuiz.Code
+          TournamentInfo = TournamentInfo.empty |> Info
           CompetitionStyle =
             CompletedCompetitionStyle.Team(
                 { Name = teamOne.Name

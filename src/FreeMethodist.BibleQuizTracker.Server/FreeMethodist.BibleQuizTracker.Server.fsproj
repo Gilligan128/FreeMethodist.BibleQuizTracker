@@ -8,6 +8,7 @@
     <ItemGroup>
         <Compile Include="Result.fs" />
         <Compile Include="Option.fs" />
+        <Compile Include="Tournament.fs" />
         <Compile Include="Common.Workflow.fs" />
         <Compile Include="HumanReadableIds.fs" />
         <Compile Include="RunningQuiz.fs" />
@@ -57,9 +58,9 @@
         <Content Include="Architecture\quiz-states.plantuml" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
         <PackageReference Include="Azure.Storage.Files.Shares" Version="12.1.0" />
-        <PackageReference Include="Azure.Storage.Queues" Version="12.2.0" />
+        <PackageReference Include="Azure.Storage.Queues" Version="12.12.0" />
         <PackageReference Include="Bolero.Server" Version="0.*" />
         <PackageReference Include="Bolero.HotReload.Server" Version="0.*" />
         <PackageReference Include="Hashids.net" Version="1.6.1" />

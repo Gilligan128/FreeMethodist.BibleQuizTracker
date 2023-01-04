@@ -27,6 +27,7 @@ let private mapRunningQuestionToComplete (question: QuestionState) : CompletedQu
 let updateQuizToComplete (quiz: RunningQuiz) : CompletedQuiz =
 
     { Code = quiz.Code
+      TournamentInfo = quiz.TournamentInfo
       CompetitionStyle =
         match quiz.CompetitionStyle with
         | RunningCompetitionStyle.Team(teamOne, teamTwo) -> ((mapRunningTeamToComplete teamOne), (mapRunningTeamToComplete teamTwo)) |> CompletedCompetitionStyle.Team

@@ -1,16 +1,17 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 
 
 [<RequireQualifiedAccess>]
 module QuizVersioning =
-   
 
-   let isNull value = obj.ReferenceEquals(value, null)
 
-   let private backwardsCompatibleToRunningCompetitionStyle quiz =
+    let isNull value = obj.ReferenceEquals(value, null)
+
+    let private backwardsCompatibleToRunningCompetitionStyle quiz =
         match quiz with
         | Quiz.Running quiz when quiz.CompetitionStyle |> isNull ->
             let initialTeam =
@@ -20,8 +21,8 @@ module QuizVersioning =
 
             Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team(initialTeam, initialTeam) }
         | quiz -> quiz
-   
-   let private  backwardsCompatibleToFailedAppeals quiz =
+
+    let private backwardsCompatibleToFailedAppeals quiz =
         match quiz with
         | Quiz.Running quiz ->
             Running
@@ -48,8 +49,8 @@ module QuizVersioning =
                                     else
                                         value.FailedAppeals }) }
         | quiz -> quiz
-    
-   let private backwardsCompatibleToPrejumps quiz =
+
+    let private backwardsCompatibleToPrejumps quiz =
         match quiz with
         | Quiz.Running quiz ->
             Running
@@ -57,35 +58,30 @@ module QuizVersioning =
                     Questions =
                         quiz.Questions
                         |> Map.map (fun _ value ->
-                            { value with
-                                Prejumps =
-                                    if value.Prejumps |> isNull then
-                                        []
-                                    else
-                                        value.Prejumps }) }
+                            { value with Prejumps = if value.Prejumps |> isNull then [] else value.Prejumps }) }
         | Quiz.Completed quiz ->
             Completed
                 { quiz with
                     CompletedQuestions =
                         quiz.CompletedQuestions
                         |> List.map (fun value ->
-                            { value with
-                                Prejumps =
-                                    if value.Prejumps |> isNull then
-                                        []
-                                    else
-                                        value.Prejumps }) }
+                            { value with Prejumps = if value.Prejumps |> isNull then [] else value.Prejumps }) }
         | quiz -> quiz
-   
-   let CurrentVersion = 1
-   
-   let applyBackwardsCompatibility quiz =
+
+    let private backwardsCompatibleTournamentLink quiz =
+        match quiz with
+        | Quiz.Running runningQuiz when runningQuiz.TournamentInfo |> isNull ->
+            Running { runningQuiz with TournamentInfo = Info TournamentInfo.empty }
+        | Quiz.Completed completedQuiz when completedQuiz.TournamentInfo |> isNull ->
+            Completed { completedQuiz with TournamentInfo = Info TournamentInfo.empty }
+        | Quiz.Official officialTeamQuiz when officialTeamQuiz.TournamentInfo |> isNull ->
+            Official { officialTeamQuiz with TournamentInfo = Info TournamentInfo.empty }
+        | quiz -> quiz 
+
+
+    let applyBackwardsCompatibility quiz =
         quiz
         |> backwardsCompatibleToRunningCompetitionStyle
         |> backwardsCompatibleToFailedAppeals
-        |> backwardsCompatibleToPrejumps 
-
-   let deserializeWithVersion deserialize schemaVersion json =
-       match schemaVersion with
-       | None -> json |> deserialize |> applyBackwardsCompatibility
-       | Some _ -> json |> deserialize |> applyBackwardsCompatibility
+        |> backwardsCompatibleToPrejumps
+        |> backwardsCompatibleTournamentLink

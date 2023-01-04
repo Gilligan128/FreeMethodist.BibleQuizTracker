@@ -3,6 +3,7 @@
 open System
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 open Elmish
@@ -32,6 +33,7 @@ type CompletedQuestion =
 
 type CompletedQuiz =
     { Code: QuizCode
+      TournamentInfo: TournamentLink
       CompetitionStyle: CompletedCompetitionStyle
       CompletedQuestions: CompletedQuestion list }
 
@@ -59,6 +61,7 @@ type OfficialCompetitionStyle =
 
 type OfficialTeamQuiz =
     { Code: QuizCode
+      TournamentInfo : TournamentLink
       WinningTeam: OfficialTeam
       LosingTeam: OfficialTeam
       CompetitionStyle: OfficialCompetitionStyle
@@ -81,7 +84,8 @@ module Quiz =
                   CurrentQuestion = PositiveNumber.one
                   Questions =
                     Map.empty
-                    |> Map.add PositiveNumber.one QuestionState.initial }
+                    |> Map.add PositiveNumber.one QuestionState.initial
+                  TournamentInfo = TournamentInfo.empty |> Info }
         | CompetitionStyle.Team teams ->
             Running
                 { Code = unvalidatedQuiz.Code
@@ -98,7 +102,8 @@ module Quiz =
                   CurrentQuestion = PositiveNumber.one
                   Questions =
                     Map.empty
-                    |> Map.add PositiveNumber.one QuestionState.initial }
+                    |> Map.add PositiveNumber.one QuestionState.initial
+                  TournamentInfo = TournamentInfo.empty |> Info }
         |> Ok
 
     let getCode quiz =

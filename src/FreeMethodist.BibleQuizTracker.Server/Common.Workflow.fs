@@ -343,3 +343,4 @@ module QuizTeamState =
 type DbError =
     | Exception of exn
     | RemoteError of string
+

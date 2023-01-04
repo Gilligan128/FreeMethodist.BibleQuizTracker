@@ -7,6 +7,7 @@ open System.Threading
 open Azure
 open Azure.Storage.Blobs
 open Azure.Storage.Blobs.Models
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
@@ -39,10 +40,7 @@ let initExample quizCode =
     Running
         { Code = quizCode
           CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo)
-          CurrentQuestion =
-            (PositiveNumber.one
-             |> PositiveNumber.increment
-             |> PositiveNumber.increment)
+          CurrentQuestion = (PositiveNumber.one |> PositiveNumber.increment |> PositiveNumber.increment)
           CurrentQuizzer = Some "Juni"
           Questions =
             Map.empty
@@ -59,14 +57,13 @@ let initExample quizCode =
                  |> Answered
                  |> Complete)
             |> Map.add
-                (PositiveNumber.one
-                 |> PositiveNumber.increment
-                 |> PositiveNumber.increment)
+                (PositiveNumber.one |> PositiveNumber.increment |> PositiveNumber.increment)
                 ({ Answerer = "Jina"
                    IncorrectAnswerers = [] }
                  |> Answered
                  |> Complete)
-            |> Map.map (fun key value -> { QuestionState.initial with AnswerState = value }) }
+            |> Map.map (fun key value -> { QuestionState.initial with AnswerState = value })
+          TournamentInfo = TournamentInfo.empty |> Info }
 
 
 
@@ -74,18 +71,12 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) deserialize : 
     fun quizCode ->
         asyncResult {
             let! quizJsonString =
-                (localStorage
-                    .GetAsync<string>($"QUIZ-{quizCode}")
-                     .AsTask()
-                 |> Async.AwaitTask)
+                (localStorage.GetAsync<string>($"QUIZ-{quizCode}").AsTask() |> Async.AwaitTask)
                 |> Async.map (fun json -> json.Value)
                 |> AsyncResult.ofAsync
 
             return
-                (if quizJsonString = null then
-                     None
-                 else
-                     Some quizJsonString)
+                (if quizJsonString = null then None else Some quizJsonString)
                 |> Option.map deserialize
                 |> fun quizOpt ->
                     match quizOpt with
@@ -111,9 +102,7 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
             let json = JsonSerializer.Serialize(quiz, options)
 
             return!
-                localStorage
-                    .SetAsync($"QUIZ-{code}", json)
-                    .AsTask()
+                localStorage.SetAsync($"QUIZ-{code}", json).AsTask()
                 |> Async.AwaitTask
                 |> AsyncResult.ofAsync
         }
@@ -121,9 +110,7 @@ let saveQuizToLocalStorage (localStorage: ProtectedLocalStorage) (options: JsonS
 
 let validateBlobOperation (uploadResult: Response<'a>) =
     if uploadResult.GetRawResponse().IsError then
-        (uploadResult.GetRawResponse().ReasonPhrase
-         |> RemoteError
-         |> Error)
+        (uploadResult.GetRawResponse().ReasonPhrase |> RemoteError |> Error)
     else
         Ok uploadResult.Value
 
@@ -157,10 +144,7 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize (tenantNa
             let blobContainerClient =
                 blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
 
-            let blobClient =
-                quizCode
-                |> quizBlobName
-                |> blobContainerClient.GetBlobClient
+            let blobClient = quizCode |> quizBlobName |> blobContainerClient.GetBlobClient
 
             let! response =
                 blobClient.DownloadContentAsync()
@@ -168,19 +152,11 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize (tenantNa
                 |> Async.Catch
                 |> Async.map mapChoiceToResult
 
-            let schemaVersionOpt =
-                response.Value.Details.Metadata
-                |> Seq.map (|KeyValue|)
-                |> Map.ofSeq
-                |> Map.tryFind "SchemaVersion"
-
-            let! response =
-                validateBlobOperation response
-                |> AsyncResult.ofResult
+            let! response = validateBlobOperation response |> AsyncResult.ofResult
 
             let quizJson = response.Content.ToString()
 
-            let quiz = deserialize schemaVersionOpt quizJson
+            let quiz = deserialize quizJson
 
             return quiz
         }
@@ -195,7 +171,6 @@ let saveQuizToBlob
     (blobServiceClient: BlobServiceClient)
     (options: JsonSerializerOptions)
     (tenantName: string)
-    schemaVersion
     : SaveQuiz =
     fun quiz ->
         asyncResult {
@@ -212,15 +187,11 @@ let saveQuizToBlob
 
             let! json =
                 try
-                    (JsonSerializer.Serialize(quiz, options)
-                     |> AsyncResult.ofSuccess)
-                with
-                | exn -> exn |> DbError.Exception |> AsyncResult.ofError
+                    (JsonSerializer.Serialize(quiz, options) |> AsyncResult.ofSuccess)
+                with exn ->
+                    exn |> DbError.Exception |> AsyncResult.ofError
 
-            let blobClient =
-                quizCode
-                |> quizBlobName
-                |> blobContainerClient.GetBlobClient
+            let blobClient = quizCode |> quizBlobName |> blobContainerClient.GetBlobClient
 
             let uploadOptions =
                 BlobUploadOptions(Tags = ([ "State", mapState quiz ] |> Map.ofList))
@@ -232,21 +203,20 @@ let saveQuizToBlob
                 |> fun data -> blobClient.UploadAsync(data, uploadOptions)
                 |> Async.AwaitTask
                 |> Async.catchExceptionsAsErrors DbError.Exception
-                |> AsyncResult.bind (fun response ->
-                    validateBlobOperation response
-                    |> AsyncResult.ofResult)
-                |> AsyncResult.ignore
-
-            do!
-                blobClient.SetMetadata(
-                    [ "SchemaVersion", schemaVersion.ToString() ]
-                    |> Map.ofSeq
-                )
-                |> validateBlobOperation
-                |> AsyncResult.ofResult
+                |> AsyncResult.bind (fun response -> validateBlobOperation response |> AsyncResult.ofResult)
                 |> AsyncResult.ignore
         }
 
+let private mapTournamentInfo quiz =
+    let tournamentLink =
+        match quiz with
+        | Running runningTeamQuiz -> runningTeamQuiz.TournamentInfo
+        | Completed completedTeamQuiz -> completedTeamQuiz.TournamentInfo
+        | Official officialTeamQuiz -> officialTeamQuiz.TournamentInfo
+
+    match tournamentLink with
+    | Info info -> Some info
+    | Id link -> None
 
 let saveNewQuizToBlob
     (blobServiceClient: BlobServiceClient)
@@ -264,29 +234,29 @@ let saveNewQuizToBlob
                 |> Async.catchExceptionsAsErrors DbError.Exception
                 |> AsyncResult.ignore
 
-
             let quizCode = quiz |> getCodeFromQuiz
 
             let! json =
                 try
-                    (JsonSerializer.Serialize(quiz, options)
-                     |> AsyncResult.ofSuccess)
-                with
-                | exn -> exn |> DbError.Exception |> AsyncResult.ofError
+                    (JsonSerializer.Serialize(quiz, options) |> AsyncResult.ofSuccess)
+                with exn ->
+                    exn |> DbError.Exception |> AsyncResult.ofError
 
-            let blobClient =
-                quizCode
-                |> quizBlobName
-                |> blobContainerClient.GetBlobClient
+            let blobClient = quizCode |> quizBlobName |> blobContainerClient.GetBlobClient
+
+            let tournamentInfo = quiz |> mapTournamentInfo
+
+            let tournamentTags =
+                tournamentInfo
+                |> Option.bind (fun info -> info.Name)
+                |> Option.map (fun tournament -> [ "Tournament", tournament ])
+                |> Option.defaultValue []
 
             let uploadOptions =
                 BlobUploadOptions(
                     Conditions = BlobRequestConditions(IfNoneMatch = ETag("*")),
 
-                    Tags =
-                        ([ "Code", quizCode
-                           "State", mapState quiz ]
-                         |> Map.ofList)
+                    Tags = ([ "Code", quizCode; "State", mapState quiz ] @ tournamentTags |> Map.ofList)
 
                 )
 
@@ -297,6 +267,23 @@ let saveNewQuizToBlob
                     blobClient.UploadAsync(data, uploadOptions, CancellationToken.None)
                     |> Async.AwaitTask
                 |> Async.map validateBlobOperation
+                |> AsyncResult.ignore
+
+            let metadata =
+                tournamentInfo
+                |> Option.map (fun info ->
+                    [ info.Name |> Option.map (fun name -> ("Tournament", name))
+                      info.Church |> Option.map (fun church -> ("Church", church))
+                      info.Room |> Option.map (fun room -> ("Room", room))
+                      info.Round |> Option.map (fun round -> ("Round", round)) ])
+                |> Option.defaultValue []
+                |> List.choose id
+                |> Map.ofList
+
+            do!
+                blobClient.SetMetadata(metadata)
+                |> validateBlobOperation
+                |> AsyncResult.ofResult
                 |> AsyncResult.ignore
 
         }
@@ -343,10 +330,7 @@ let tryGetQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize (tenan
             let blobContainerClient =
                 blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
 
-            let blobClient =
-                quizCode
-                |> quizBlobName
-                |> blobContainerClient.GetBlobClient
+            let blobClient = quizCode |> quizBlobName |> blobContainerClient.GetBlobClient
 
             let! response =
                 blobClient.DownloadContentAsync()
@@ -369,18 +353,12 @@ let tryGetQuizFromLocalStorage (localStorage: ProtectedLocalStorage) deserialize
     fun quizCode ->
         asyncResult {
             let! quizJsonString =
-                (localStorage
-                    .GetAsync<string>($"QUIZ-{quizCode}")
-                     .AsTask()
-                 |> Async.AwaitTask)
+                (localStorage.GetAsync<string>($"QUIZ-{quizCode}").AsTask() |> Async.AwaitTask)
                 |> Async.map (fun storageResult -> storageResult.Value)
                 |> AsyncResult.ofAsync
 
             return
-                (if quizJsonString = null then
-                     None
-                 else
-                     Some quizJsonString)
+                (if quizJsonString = null then None else Some quizJsonString)
                 |> Option.map deserialize
                 |> function
                     | None -> initExample quizCode |> Some
