@@ -71,7 +71,7 @@ let ``Get Completed`` () =
         let completedQuiz =
             Completed
                 { Code = "completed"
-                  TournamentInfo = TournamentInfo.empty |> Info
+                  TournamentInfo = TournamentInfo.empty 
                   CompletedQuestions = []
                   CompetitionStyle = CompletedCompetitionStyle.Individual [] }
 

@@ -8,7 +8,7 @@ type RunningQuiz =
       CompetitionStyle: RunningCompetitionStyle
       CurrentQuestion: QuestionNumber
       CurrentQuizzer: Quizzer option
-      TournamentInfo: TournamentLink }
+      TournamentInfo: TournamentInfo }
 
 [<RequireQualifiedAccess>]
 module RunningQuiz =
@@ -26,7 +26,7 @@ module RunningQuiz =
                   Score = QuizScore.zero
                   Quizzers = [] }
             )
-          TournamentInfo = TournamentInfo.empty |> Info }
+          TournamentInfo = TournamentInfo.empty }
 
     let newIndividualQuiz =
         { Code = "Example"
@@ -34,7 +34,7 @@ module RunningQuiz =
           CurrentQuizzer = None
           Questions = Map.empty
           CompetitionStyle = RunningCompetitionStyle.Individuals []
-          TournamentInfo = TournamentInfo.empty |> Info }
+          TournamentInfo = TournamentInfo.empty }
 
     let getTeam teamPosition (quiz: RunningQuiz) =
         match quiz.CompetitionStyle, teamPosition with

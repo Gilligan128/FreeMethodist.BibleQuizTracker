@@ -33,7 +33,7 @@ type CompletedQuestion =
 
 type CompletedQuiz =
     { Code: QuizCode
-      TournamentInfo: TournamentLink
+      TournamentInfo: TournamentInfo
       CompetitionStyle: CompletedCompetitionStyle
       CompletedQuestions: CompletedQuestion list }
 
@@ -61,7 +61,7 @@ type OfficialCompetitionStyle =
 
 type OfficialTeamQuiz =
     { Code: QuizCode
-      TournamentInfo : TournamentLink
+      TournamentInfo : TournamentInfo
       WinningTeam: OfficialTeam
       LosingTeam: OfficialTeam
       CompetitionStyle: OfficialCompetitionStyle
@@ -85,7 +85,7 @@ module Quiz =
                   Questions =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial
-                  TournamentInfo = TournamentInfo.empty |> Info }
+                  TournamentInfo = TournamentInfo.empty }
         | CompetitionStyle.Team teams ->
             Running
                 { Code = unvalidatedQuiz.Code
@@ -103,7 +103,7 @@ module Quiz =
                   Questions =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial
-                  TournamentInfo = TournamentInfo.empty |> Info }
+                  TournamentInfo = TournamentInfo.empty }
         |> Ok
 
     let getCode quiz =

@@ -71,11 +71,11 @@ module QuizVersioning =
     let private backwardsCompatibleTournamentLink quiz =
         match quiz with
         | Quiz.Running runningQuiz when runningQuiz.TournamentInfo |> isNull ->
-            Running { runningQuiz with TournamentInfo = Info TournamentInfo.empty }
+            Running { runningQuiz with TournamentInfo = TournamentInfo.empty }
         | Quiz.Completed completedQuiz when completedQuiz.TournamentInfo |> isNull ->
-            Completed { completedQuiz with TournamentInfo = Info TournamentInfo.empty }
+            Completed { completedQuiz with TournamentInfo = TournamentInfo.empty }
         | Quiz.Official officialTeamQuiz when officialTeamQuiz.TournamentInfo |> isNull ->
-            Official { officialTeamQuiz with TournamentInfo = Info TournamentInfo.empty }
+            Official { officialTeamQuiz with TournamentInfo = TournamentInfo.empty }
         | quiz -> quiz 
 
 

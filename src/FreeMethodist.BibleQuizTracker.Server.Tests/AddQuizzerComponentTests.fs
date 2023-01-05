@@ -4,7 +4,8 @@ open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
-open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
+open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage_Update
+open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage_Model
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open Xunit
@@ -38,7 +39,7 @@ let capabilitiesForQuizProvider: RunQuizCapabilityForQuizProvider =
 let sut =
     update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore  capabilitiesForQuizProvider
 
-let mapToLoaded model =
+let mapToLoaded (model : Model) =
     match model.Info with
     | NotYetStarted -> failwith "not yet loaded"
     | InProgress -> failwith "loading"

@@ -28,7 +28,7 @@ let ``When completing a quiz Then quiz is in a Completed state`` () =
 
     let expectedQuiz: CompletedQuiz =
         { Code = initialQuiz.Code
-          TournamentInfo = TournamentInfo.empty |> Info
+          TournamentInfo = TournamentInfo.empty
           CompetitionStyle =
             CompletedCompetitionStyle.Team(
                 { Name = teamOne.Name

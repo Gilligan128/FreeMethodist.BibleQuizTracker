@@ -14,7 +14,7 @@ open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.QuizDetailsPage
 open FreeMethodist.BibleQuizTracker.Server.Routing
-open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage
+open FreeMethodist.BibleQuizTracker.Server.RunningQuizPage_Update
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.Capabilities_Pipeline
@@ -28,7 +28,7 @@ open Microsoft.FSharp.Control
 type Model =
     { page: Page
       Error: string option
-      Quiz: RunningQuizPage.Model option
+      Quiz: RunningQuizPage_Model.Model option
       QuizCode: QuizCode option
       CreateQuizForm: CreateQuizForm.Model }
 
@@ -43,7 +43,7 @@ let initModel =
 type Message =
     | SetPage of Page
     | ClearError
-    | QuizMessage of RunningQuizPage.Message
+    | QuizMessage of RunningQuizPage_Model.Message
     | SetQuizCode of string
     | JoinQuiz
     | CreateQuiz of CreateQuizForm.Message
@@ -204,8 +204,8 @@ let update
 
             let newModel =
                 match externalMessage with
-                | NoMessage -> { model with Error = None }
-                | ErrorMessage er -> { model with Error = Some er }
+                | RunningQuizPage_Model.NoMessage -> { model with Error = None }
+                | RunningQuizPage_Model.ErrorMessage er -> { model with Error = Some er }
 
             { newModel with Quiz = Some updatedModel }, Cmd.map QuizMessage quizCommand
         | None -> model, Cmd.none
@@ -375,7 +375,7 @@ let view  model dispatch =
                     match model.Quiz with
                     | None -> Node.Empty()
                     | Some quizModel ->
-                        RunningQuizPage.render (linkToQuizPage router) quizModel (fun quizMsg ->
+                        RunningQuizPage_Render.render (linkToQuizPage router) quizModel (fun quizMsg ->
                             dispatch (QuizMessage quizMsg))
                 | QuizLiveScore (quizCode, pageModel) ->
                     let model =

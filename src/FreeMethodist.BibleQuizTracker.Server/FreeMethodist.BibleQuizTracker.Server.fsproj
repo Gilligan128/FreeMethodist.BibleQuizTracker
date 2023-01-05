@@ -44,7 +44,9 @@
         <Compile Include="Routing.fs" />
         <Compile Include="Deferred.fs" />
         <Compile Include="ItemizedScoreView.fs" />
-        <Compile Include="RunningQuizPage.fs" />
+        <Compile Include="RunningQuizPage.Model.fs" />
+        <Compile Include="RunningQuizPage.Update.fs" />
+        <Compile Include="RunningQuizPage.Render.fs" />
         <Compile Include="CreateQuizForm.fs" />
         <Compile Include="LiveScorePage.fs" />
         <Compile Include="QuizDetailsPage.fs" />

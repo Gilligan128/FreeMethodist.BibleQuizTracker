@@ -63,7 +63,7 @@ let initExample quizCode =
                  |> Answered
                  |> Complete)
             |> Map.map (fun key value -> { QuestionState.initial with AnswerState = value })
-          TournamentInfo = TournamentInfo.empty |> Info }
+          TournamentInfo = TournamentInfo.empty }
 
 
 
@@ -208,15 +208,10 @@ let saveQuizToBlob
         }
 
 let private mapTournamentInfo quiz =
-    let tournamentLink =
-        match quiz with
-        | Running runningTeamQuiz -> runningTeamQuiz.TournamentInfo
-        | Completed completedTeamQuiz -> completedTeamQuiz.TournamentInfo
-        | Official officialTeamQuiz -> officialTeamQuiz.TournamentInfo
-
-    match tournamentLink with
-    | Info info -> Some info
-    | Id link -> None
+    match quiz with
+    | Running runningTeamQuiz -> runningTeamQuiz.TournamentInfo
+    | Completed completedTeamQuiz -> completedTeamQuiz.TournamentInfo
+    | Official officialTeamQuiz -> officialTeamQuiz.TournamentInfo
 
 let saveNewQuizToBlob
     (blobServiceClient: BlobServiceClient)
@@ -247,8 +242,11 @@ let saveNewQuizToBlob
             let tournamentInfo = quiz |> mapTournamentInfo
 
             let tournamentTags =
-                tournamentInfo
-                |> Option.bind (fun info -> info.Name)
+                tournamentInfo.Link
+                |> function
+                    | None -> None
+                    | Some (Id _) -> None
+                    | Some (Name name) -> Some name
                 |> Option.map (fun tournament -> [ "Tournament", tournament ])
                 |> Option.defaultValue []
 
@@ -271,12 +269,10 @@ let saveNewQuizToBlob
 
             let metadata =
                 tournamentInfo
-                |> Option.map (fun info ->
-                    [ info.Name |> Option.map (fun name -> ("Tournament", name))
-                      info.Church |> Option.map (fun church -> ("Church", church))
+                |> fun info ->
+                    [ info.Church |> Option.map (fun church -> ("Church", church))
                       info.Room |> Option.map (fun room -> ("Room", room))
-                      info.Round |> Option.map (fun round -> ("Round", round)) ])
-                |> Option.defaultValue []
+                      info.Round |> Option.map (fun round -> ("Round", round)) ]
                 |> List.choose id
                 |> Map.ofList
 

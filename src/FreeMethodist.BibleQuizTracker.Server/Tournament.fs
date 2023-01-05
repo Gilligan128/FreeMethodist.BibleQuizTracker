@@ -1,16 +1,18 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Tournament
 
+type TournamentLink =
+    | Id of string
+    | Name of string
+
 type TournamentInfo = {
-    Name : string option
+    Link : TournamentLink option
     Church : string option
     Room : string option
     Round : string option
 }
-type TournamentLink =
-    | Id of string
-    | Info of TournamentInfo
+
 
 [<RequireQualifiedAccess>]
 module TournamentInfo =
     let empty =
-        { Name = None; Church = None; Room = None; Round = None }
+        { Link  = None ; Church = None; Room = None; Round = None }
