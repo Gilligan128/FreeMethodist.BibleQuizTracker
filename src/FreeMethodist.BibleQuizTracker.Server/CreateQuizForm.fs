@@ -39,6 +39,9 @@ module CreateQuizForm =
         | SetTeamOneName of string
         | SetTeamTwoName of string
         | SetTournamentName of string
+        | SetTournamentChurch of string
+        | SetTournamentRoom of string
+        | SetTournamentRound of string
         | Start
         | Cancel
 
@@ -135,7 +138,32 @@ module CreateQuizForm =
             Cmd.none
         | SetTournamentName name, Active model ->
             Active { model with TournamentInfo = { model.TournamentInfo with Name = name } }, Cmd.none
+        | SetTournamentChurch church, Active model ->
+            Active { model with TournamentInfo = { model.TournamentInfo with Church = church } }, Cmd.none
+        | SetTournamentRoom room, Active model -> Active { model with TournamentInfo = { model.TournamentInfo with Room = room } }, Cmd.none
+        | SetTournamentRound round, Active model ->
+            Active { model with TournamentInfo = { model.TournamentInfo with Round = round } }, Cmd.none
+    
+    let private labeledField fieldLabel field changeAction =
+          div {
+            attr.``class`` "field"
 
+            div {
+                attr.``class`` "control"
+
+                label {
+                    attr.``class`` "label"
+                    
+                    $"{fieldLabel}:"
+                }
+
+                input {
+                    attr.``class`` "input"
+
+                    bind.input.string field (fun code -> changeAction code)
+                }
+            }
+        }
 
     let competitionStyleView formData dispatch : Node =
         cond formData.CompetitionStyle
@@ -279,26 +307,11 @@ module CreateQuizForm =
                     }
 
                     competitionStyleView formData dispatch
-
-                    div {
-                        attr.``class`` "field"
-
-                        div {
-                            attr.``class`` "control"
-
-                            label {
-                                attr.``class`` "label"
-                                "Tournament:"
-                            }
-
-                            input {
-                                attr.``class`` "input"
-
-                                bind.input.string formData.TournamentInfo.Name (fun code ->
-                                    dispatch <| Message.SetTournamentName code)
-                            }
-                        }
-                    }
+                    
+                    labeledField "Tournament: " formData.TournamentInfo.Name (fun name -> dispatch <| SetTournamentName name)
+                    labeledField "Church: " formData.TournamentInfo.Church (fun church -> dispatch <| SetTournamentChurch church)
+                    labeledField "Room: " formData.TournamentInfo.Room (fun room -> dispatch <| SetTournamentRoom room)
+                    labeledField "Round: " formData.TournamentInfo.Round (fun round -> dispatch <| SetTournamentRound round)
                 }
 
                 div {
