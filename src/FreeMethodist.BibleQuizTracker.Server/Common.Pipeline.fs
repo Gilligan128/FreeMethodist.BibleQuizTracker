@@ -85,7 +85,7 @@ module Quiz =
                   Questions =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial
-                  TournamentInfo = TournamentInfo.empty }
+                  TournamentInfo = unvalidatedQuiz.TournamentInfo }
         | CompetitionStyle.Team teams ->
             Running
                 { Code = unvalidatedQuiz.Code
@@ -103,7 +103,7 @@ module Quiz =
                   Questions =
                     Map.empty
                     |> Map.add PositiveNumber.one QuestionState.initial
-                  TournamentInfo = TournamentInfo.empty }
+                  TournamentInfo = unvalidatedQuiz.TournamentInfo }
         |> Ok
 
     let getCode quiz =

@@ -1,10 +1,12 @@
 module FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 
+open System
 open Bolero
 open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Workflow
 open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Pipeline
@@ -16,9 +18,16 @@ module CreateQuizForm =
         | Active of 'T
         | Submitting of 'T
 
+    type TournamentFormData =
+        { Name: string
+          Church: string
+          Room: string
+          Round: string }
+
     type CreateQuizFormData =
         { Code: QuizCode
           CompetitionStyle: CompetitionStyle
+          TournamentInfo: TournamentFormData
           Error: string option }
 
     type Model = ModalForm<CreateQuizFormData>
@@ -29,12 +38,15 @@ module CreateQuizForm =
         | SetCompetitionStyle of CompetitionStyle
         | SetTeamOneName of string
         | SetTeamTwoName of string
+        | SetTournamentName of string
         | Start
         | Cancel
 
-
+    let private stringToOption (s: string) =
+        if String.IsNullOrEmpty(s) then None else Some s
+    
     let init = Inert, Cmd.none
-
+    
     let updateCompetitionStyleWithTeamName competitionStyle teamPosition name =
         match teamPosition with
         | TeamOne -> Team { competitionStyle with TeamOneName = name }
@@ -44,33 +56,31 @@ module CreateQuizForm =
         match formData.CompetitionStyle with
         | Individual -> None
         | Team teamStyle ->
-            let newTeamModel =
-                name
-                |> updateCompetitionStyleWithTeamName teamStyle teamPosition
+            let newTeamModel = name |> updateCompetitionStyleWithTeamName teamStyle teamPosition
 
-            Active { formData with CompetitionStyle = newTeamModel }
-            |> Some
-
+            Active { formData with CompetitionStyle = newTeamModel } |> Some
+    
     let update generateCode saveNewQuiz spectateQuiz message model =
         match message, model with
         | Start, Inert ->
             Active
                 { Code = generateCode ()
                   CompetitionStyle = Team { TeamOneName = ""; TeamTwoName = "" }
-                  Error = None },
+                  Error = None
+                  TournamentInfo =
+                    { Name = ""
+                      Church = ""
+                      Room = ""
+                      Round = "" } },
             Cmd.none
         | SetTeamOneName name, Active quizFormData ->
             let model =
-                name
-                |> updateFormWithTeamName quizFormData TeamOne
-                |> Option.defaultValue model
+                name |> updateFormWithTeamName quizFormData TeamOne |> Option.defaultValue model
 
             model, Cmd.none
         | SetTeamTwoName name, Active quizFormData ->
             let model =
-                name
-                |> updateFormWithTeamName quizFormData TeamTwo
-                |> Option.defaultValue model
+                name |> updateFormWithTeamName quizFormData TeamTwo |> Option.defaultValue model
 
             model, Cmd.none
         | Submit (Started _), Active activeModel ->
@@ -85,7 +95,12 @@ module CreateQuizForm =
 
             let cmd =
                 { Code = activeModel.Code
-                  CompetitionStyle = activeModel.CompetitionStyle }
+                  CompetitionStyle = activeModel.CompetitionStyle
+                  TournamentInfo =
+                    { Link = activeModel.TournamentInfo.Name |> stringToOption |> Option.map TournamentLink.Name
+                      Church = activeModel.TournamentInfo.Church |> stringToOption
+                      Room = activeModel.TournamentInfo.Room |> stringToOption
+                      Round = activeModel.TournamentInfo.Round |> stringToOption} }
                 |> createQuiz saveNewQuiz
                 |> AsyncResult.mapError mapErrorToString
                 |> Async.timeoutNone 3000
@@ -118,6 +133,9 @@ module CreateQuizForm =
                 { quizFormData with
                     CompetitionStyle = newCompetitionStyle competitionStyle quizFormData.CompetitionStyle },
             Cmd.none
+        | SetTournamentName name, Active model ->
+            Active { model with TournamentInfo = { model.TournamentInfo with Name = name } }, Cmd.none
+
 
     let competitionStyleView formData dispatch : Node =
         cond formData.CompetitionStyle
@@ -188,12 +206,7 @@ module CreateQuizForm =
                         attr.``class`` "delete"
                         attr.aria "label" "close"
 
-                        attr.disabled (
-                            if isSubmitting then
-                                "disabled"
-                            else
-                                null
-                        )
+                        attr.disabled (if isSubmitting then "disabled" else null)
 
                         on.click (fun _ -> dispatch <| Cancel)
                     }
@@ -209,13 +222,13 @@ module CreateQuizForm =
                             attr.``class`` "control"
 
                             label {
-                               attr.``class`` "label"
-                               "Code:"
+                                attr.``class`` "label"
+                                "Code:"
                             }
 
                             input {
                                 attr.``class`` "input"
-                                
+
                                 bind.input.string formData.Code (fun code -> dispatch <| SetCode code)
                             }
                         }
@@ -257,8 +270,7 @@ module CreateQuizForm =
                                     attr.name "competitionstyle"
 
                                     bind.change.string ("Individuals") (fun _ ->
-                                        dispatch
-                                        <| Message.SetCompetitionStyle(Individual))
+                                        dispatch <| Message.SetCompetitionStyle(Individual))
                                 }
 
                                 "Individuals"
@@ -267,6 +279,26 @@ module CreateQuizForm =
                     }
 
                     competitionStyleView formData dispatch
+
+                    div {
+                        attr.``class`` "field"
+
+                        div {
+                            attr.``class`` "control"
+
+                            label {
+                                attr.``class`` "label"
+                                "Tournament:"
+                            }
+
+                            input {
+                                attr.``class`` "input"
+
+                                bind.input.string formData.TournamentInfo.Name (fun code ->
+                                    dispatch <| Message.SetTournamentName code)
+                            }
+                        }
+                    }
                 }
 
                 div {
@@ -284,10 +316,7 @@ module CreateQuizForm =
 
                     button {
                         attr.``class`` (
-                            (if isSubmitting then
-                                 "is-loading"
-                             else
-                                 "")
+                            (if isSubmitting then "is-loading" else "")
                             |> fun loadingClass -> $"button is-success {loadingClass}"
                         )
 
@@ -298,12 +327,7 @@ module CreateQuizForm =
                     button {
                         attr.``class`` "button"
 
-                        attr.disabled (
-                            if isSubmitting then
-                                "disabled"
-                            else
-                                null
-                        )
+                        attr.disabled (if isSubmitting then "disabled" else null)
 
                         on.click (fun _ -> Cancel |> dispatch)
                         "Cancel"

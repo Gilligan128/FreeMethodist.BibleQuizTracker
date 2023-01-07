@@ -1,6 +1,7 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.Workflow
 
 open System
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open Microsoft.FSharp.Core
 
 type NonEmptyString = string
@@ -111,6 +112,7 @@ type Jump =
 
 type UnvalidatedQuiz =
     { Code: QuizCode
+      TournamentInfo: TournamentInfo
       CompetitionStyle: CompetitionStyle }
 
 type CreateTeamQuizCommand = { Data: UnvalidatedQuiz }
