@@ -65,7 +65,7 @@ module LiveScorePage =
                     completedQuizzers
                     |> List.map loadCompletedQuizzer
                     |> LiveScoreCompetitionStyle.Individual }
-        | Running quizState ->
+        | Quiz.Running quizState ->
             { LastUpdated = DateTimeOffset.Now
               QuestionState = Current quizState.CurrentQuestion
               CompetitionStyle =
@@ -76,7 +76,7 @@ module LiveScorePage =
                     quizzerStates
                     |> List.map loadRunningQuizzer
                     |> LiveScoreCompetitionStyle.Individual }
-        | Official quizState ->
+        | Quiz.Official quizState ->
             { LastUpdated = DateTimeOffset.Now
               QuestionState = Completed quizState.CompletedQuestions.Length
               CompetitionStyle =

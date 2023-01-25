@@ -245,9 +245,9 @@ let update
 
     let finishWorkflow mapWorkflowSpecificErrors result =
         match result with
-        | Ok (Running quiz) -> { model with Info = refreshModel quiz }, Cmd.none, NoMessage
+        | Ok (Quiz.Running quiz) -> { model with Info = refreshModel quiz }, Cmd.none, NoMessage
         | Ok (Quiz.Completed _)
-        | Ok (Official _) ->
+        | Ok (Quiz.Official _) ->
             model,
             navigate |> subOfFunc Page.Home |> Cmd.ofSub,
             "Quiz is not running"
@@ -266,7 +266,7 @@ let update
     match msg with
     | Message.InitializeQuizAndConnections (Finished result) ->
         match result with
-        | Ok (Some (Running quiz)) ->
+        | Ok (Some (Quiz.Running quiz)) ->
             let model =
                 { model with Info = quiz |> refreshModel }
 
@@ -315,7 +315,7 @@ let update
         match quiz with
         | Quiz.Running quiz -> { model with Info = refreshModel quiz }, Cmd.none, NoMessage
         | Quiz.Completed _
-        | Official _ ->
+        | Quiz.Official _ ->
             model,
             Cmd.none,
             "Quiz is not running"
@@ -455,9 +455,9 @@ let update
 
         result
         |> function
-            | Ok (Running result) -> { model with Info = result |> refreshModel }, Cmd.none, NoMessage
+            | Ok (Quiz.Running result) -> { model with Info = result |> refreshModel }, Cmd.none, NoMessage
             | Ok (Quiz.Completed _)
-            | Ok (Official _) ->
+            | Ok (Quiz.Official _) ->
                 model,
                 (fun _ -> navigate Page.Home) |> Cmd.ofSub,
                 "Quiz is not running"

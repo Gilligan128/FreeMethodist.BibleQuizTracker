@@ -31,7 +31,7 @@ type QuizzerModel =
       ConnectionStatus: ConnectionStatus
       AnswerState: AnswerState
       AppealState: AppealState
-      PrejumpState:  PrejumpState}
+      PrejumpState: PrejumpState }
 
 type TeamModel =
     { Name: string
@@ -53,8 +53,7 @@ type WorkflowError<'a> =
 
 //Itemized Score model
 type ItemizedTeam =
-    { Name: string
-      Quizzers: Quizzer list }
+    { Name: string; Quizzers: Quizzer list }
 
 type ItemizedCompetitionStyle =
     | Individual of Quizzer list
@@ -69,13 +68,13 @@ type ItemizedScoreModel =
 
 type Link = string
 
-type QuizControlCapabilities = {
-    CompleteQuiz : CompleteQuizCap option
-    ReopenQuiz : ReopenQuizCap option
-    Run: Link option
-    Spectate : Link option
-    LiveScore : Link option 
-}
+type QuizControlCapabilities =
+    { CompleteQuiz: CompleteQuizCap option
+      ReopenQuiz: ReopenQuizCap option
+      Run: Link option
+      Spectate: Link option
+      LiveScore: Link option }
+
 type Details =
     { State: string
       Capabilities: QuizControlCapabilities
@@ -83,8 +82,27 @@ type Details =
 
 type QuizDetailsModel =
     { Code: QuizCode
-      Details: Deferred<Details>
-    } 
+      Details: Deferred<Details> }
+
+type ListQuizStateFilter =
+    | All
+    | Running
+    | Completed
+    | Official
+type ListQuizState =
+    | Running
+    | Completed
+    | Official
+type ListQuizItem =
+    { Code: QuizCode
+      State: ListQuizState 
+      Tournament: string option
+      Round: string option
+      Room: string option }
+
+type ListQuizModel =
+    { StateFilter: ListQuizStateFilter
+      Quizzes: Deferred<ListQuizItem list> }
 
 //Connecting to SignalR
 type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
@@ -94,11 +112,8 @@ type ConnectAndHandleQuizEvents<'T, 'Msg> = HandleEventSub<'T, 'Msg> -> QuizCode
 let connectAndHandleQuizEvents connectToQuiz onEvent : ConnectAndHandleQuizEvents<'T, 'Msg> =
     fun handleEvent (quizCode, previousCode) ->
         fun dispatch ->
-            let connectTask =
-                connectToQuiz quizCode previousCode
+            let connectTask = connectToQuiz quizCode previousCode
 
-            connectTask
-            |> Async.Ignore
-            |> Async.StartImmediate
+            connectTask |> Async.Ignore |> Async.StartImmediate
 
             onEvent (handleEvent dispatch)

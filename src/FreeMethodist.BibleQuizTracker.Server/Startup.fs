@@ -6,7 +6,7 @@ open System.Text.Json.Serialization
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
-open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.QuizQueries
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
@@ -157,7 +157,7 @@ type Startup() =
                     let blobClient =
                         provider.GetRequiredService<BlobServiceClient>()
 
-                    fun () -> Persistence.getRecentCompletedQuizzes blobClient (resolveTenantName provider))
+                    fun () -> getRecentCompletedQuizzes blobClient (resolveTenantName provider))
             )
         |> ignore
 

@@ -6,9 +6,8 @@ open System.Text.Json.Serialization
 open Azure
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server
-open FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 open FreeMethodist.BibleQuizTracker.Server.Tournament
-open FreeMethodist.BibleQuizTracker.Server.Workflow
+open FreeMethodist.BibleQuizTracker.Server.QuizQueries
 open Microsoft.Extensions.Configuration
 open Xunit
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
@@ -77,7 +76,7 @@ let ``Get Completed`` () =
 
         do! saveQuiz completedQuiz
 
-        let! result = Persistence.getRecentCompletedQuizzes blobServiceClient $"{Environment.MachineName}test"
+        let! result = getRecentCompletedQuizzes blobServiceClient $"{Environment.MachineName}test"
 
         Assert.NotEmpty(result)
     }

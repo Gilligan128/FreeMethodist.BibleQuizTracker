@@ -242,13 +242,17 @@ let saveNewQuizToBlob
             let tournamentInfo = quiz |> mapTournamentInfo
 
             let tournamentTags =
-                tournamentInfo.Link
-                |> function
-                    | None -> None
-                    | Some (Id _) -> None
-                    | Some (Name name) -> Some name
-                |> Option.map (fun tournament -> [ "Tournament", tournament ])
-                |> Option.defaultValue []
+                [ tournamentInfo.Link
+                  |> function
+                      | None -> None
+                      | Some (Id _) -> None
+                      | Some (Name name) -> Some name
+                  |> Option.map (fun tournament -> "Tournament", tournament)
+                  tournamentInfo.Church |> Option.map (fun church -> ("Church", church))
+                  tournamentInfo.Room |> Option.map (fun room -> ("Room", room))
+                  tournamentInfo.Round |> Option.map (fun round -> ("Round", round))]
+                |> List.choose id
+
 
             let uploadOptions =
                 BlobUploadOptions(
@@ -266,22 +270,6 @@ let saveNewQuizToBlob
                     |> Async.AwaitTask
                 |> Async.map validateBlobOperation
                 |> AsyncResult.ignore
-
-            let metadata =
-                tournamentInfo
-                |> fun info ->
-                    [ info.Church |> Option.map (fun church -> ("Church", church))
-                      info.Room |> Option.map (fun room -> ("Room", room))
-                      info.Round |> Option.map (fun round -> ("Round", round)) ]
-                |> List.choose id
-                |> Map.ofList
-
-            do!
-                blobClient.SetMetadata(metadata)
-                |> validateBlobOperation
-                |> AsyncResult.ofResult
-                |> AsyncResult.ignore
-
         }
     |> SaveNewQuiz
 
@@ -367,27 +355,3 @@ let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
             getFromLocal quizCode
         else
             getFromBlob quizCode
-
-let trimQuizPrefixes (name: string) =
-    name.Replace("quizzes/", "").Replace("quiz-", "")
-
-let getRecentCompletedQuizzes (blobServiceClient: BlobServiceClient) (tenantName: string) =
-    asyncResult {
-        let blobContainerClient =
-            blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
-
-        let state = nameof Quiz.Completed
-        let expression = $"\"State\" = '{state}'"
-
-        if blobContainerClient.Exists().Value then
-
-            let results =
-                blobContainerClient.FindBlobsByTags(expression)
-                |> Seq.map (fun item -> item.BlobName)
-                |> Seq.map trimQuizPrefixes
-                |> Seq.toList
-
-            return results
-        else
-            return []
-    }

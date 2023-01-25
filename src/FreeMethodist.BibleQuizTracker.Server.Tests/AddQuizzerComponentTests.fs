@@ -14,12 +14,12 @@ let publishQuiz _ _ _ = Async.retn ()
 
 let getQuizAsync code =
     RunningQuiz.newTeamQuiz
-    |> Running
+    |> Quiz.Running
     |> AsyncResult.retn
 
 let tryGetQuizAsync code =
     RunningQuiz.newTeamQuiz
-    |> Running
+    |> Quiz.Running
     |> Some
     |> AsyncResult.retn
 

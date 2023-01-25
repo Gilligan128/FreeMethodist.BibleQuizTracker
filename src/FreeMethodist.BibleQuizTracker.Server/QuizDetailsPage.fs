@@ -103,15 +103,15 @@ let private reloadModel capabilityProvider model quiz =
 
     let details =
         match quiz with
-        | Running running ->
+        | Quiz.Running running ->
             { State = nameof Running
               Capabilities = capabilities
               ItemizedScore = running |> loadRunningQuiz }
-        | Completed completedQuiz ->
+        | Quiz.Completed completedQuiz ->
             { State = nameof Completed
               Capabilities = capabilities
               ItemizedScore = completedQuiz |> loadCompletedQuiz }
-        | Official _ ->
+        | Quiz.Official _ ->
             { State = nameof Official
               Capabilities = capabilities
               ItemizedScore = Unchecked.defaultof<ItemizedScoreModel> }
