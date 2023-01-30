@@ -102,7 +102,7 @@ type ListQuizItem =
 
 type ListQuizModel =
     { StateFilter: ListQuizStateFilter
-      Quizzes: Deferred<ListQuizItem list> }
+      Quizzes: Deferred<Result<ListQuizItem list, DbError>> }
 
 //Connecting to SignalR
 type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>

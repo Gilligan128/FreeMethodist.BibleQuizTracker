@@ -22,7 +22,9 @@ module CreateQuizForm =
         { Name: string
           Church: string
           Room: string
-          Round: string }
+          Round: string
+          GradeDivision: string
+          CompetitionDivision: string }
 
     type CreateQuizFormData =
         { Code: QuizCode
@@ -47,9 +49,9 @@ module CreateQuizForm =
 
     let private stringToOption (s: string) =
         if String.IsNullOrEmpty(s) then None else Some s
-    
+
     let init = Inert, Cmd.none
-    
+
     let updateCompetitionStyleWithTeamName competitionStyle teamPosition name =
         match teamPosition with
         | TeamOne -> Team { competitionStyle with TeamOneName = name }
@@ -62,7 +64,7 @@ module CreateQuizForm =
             let newTeamModel = name |> updateCompetitionStyleWithTeamName teamStyle teamPosition
 
             Active { formData with CompetitionStyle = newTeamModel } |> Some
-    
+
     let update generateCode saveNewQuiz spectateQuiz message model =
         match message, model with
         | Start, Inert ->
@@ -74,7 +76,9 @@ module CreateQuizForm =
                     { Name = ""
                       Church = ""
                       Room = ""
-                      Round = "" } },
+                      Round = ""
+                      GradeDivision = ""
+                      CompetitionDivision = "" } },
             Cmd.none
         | SetTeamOneName name, Active quizFormData ->
             let model =
@@ -100,10 +104,15 @@ module CreateQuizForm =
                 { Code = activeModel.Code
                   CompetitionStyle = activeModel.CompetitionStyle
                   TournamentInfo =
-                    { Link = activeModel.TournamentInfo.Name |> stringToOption |> Option.map TournamentLink.Name
+                    { Link =
+                        activeModel.TournamentInfo.Name
+                        |> stringToOption
+                        |> Option.map TournamentLink.Name
                       Church = activeModel.TournamentInfo.Church |> stringToOption
                       Room = activeModel.TournamentInfo.Room |> stringToOption
-                      Round = activeModel.TournamentInfo.Round |> stringToOption} }
+                      Round = activeModel.TournamentInfo.Round |> stringToOption
+                      GradeDivision = None
+                      CompetitionDivision = None } }
                 |> createQuiz saveNewQuiz
                 |> AsyncResult.mapError mapErrorToString
                 |> Async.timeoutNone 3000
@@ -140,12 +149,13 @@ module CreateQuizForm =
             Active { model with TournamentInfo = { model.TournamentInfo with Name = name } }, Cmd.none
         | SetTournamentChurch church, Active model ->
             Active { model with TournamentInfo = { model.TournamentInfo with Church = church } }, Cmd.none
-        | SetTournamentRoom room, Active model -> Active { model with TournamentInfo = { model.TournamentInfo with Room = room } }, Cmd.none
+        | SetTournamentRoom room, Active model ->
+            Active { model with TournamentInfo = { model.TournamentInfo with Room = room } }, Cmd.none
         | SetTournamentRound round, Active model ->
             Active { model with TournamentInfo = { model.TournamentInfo with Round = round } }, Cmd.none
-    
+
     let private labeledField fieldLabel field changeAction =
-          div {
+        div {
             attr.``class`` "field"
 
             div {
@@ -153,7 +163,7 @@ module CreateQuizForm =
 
                 label {
                     attr.``class`` "label"
-                    
+
                     $"{fieldLabel}:"
                 }
 
@@ -307,11 +317,17 @@ module CreateQuizForm =
                     }
 
                     competitionStyleView formData dispatch
-                    
-                    labeledField "Tournament: " formData.TournamentInfo.Name (fun name -> dispatch <| SetTournamentName name)
-                    labeledField "Church: " formData.TournamentInfo.Church (fun church -> dispatch <| SetTournamentChurch church)
+
+                    labeledField "Tournament: " formData.TournamentInfo.Name (fun name ->
+                        dispatch <| SetTournamentName name)
+
+                    labeledField "Church: " formData.TournamentInfo.Church (fun church ->
+                        dispatch <| SetTournamentChurch church)
+
                     labeledField "Room: " formData.TournamentInfo.Room (fun room -> dispatch <| SetTournamentRoom room)
-                    labeledField "Round: " formData.TournamentInfo.Round (fun round -> dispatch <| SetTournamentRound round)
+
+                    labeledField "Round: " formData.TournamentInfo.Round (fun round ->
+                        dispatch <| SetTournamentRound round)
                 }
 
                 div {

@@ -167,6 +167,8 @@ let private mapState quiz =
     | Completed _ -> nameof Completed
     | Official _ -> nameof Official
 
+
+
 let saveQuizToBlob
     (blobServiceClient: BlobServiceClient)
     (options: JsonSerializerOptions)
@@ -213,6 +215,22 @@ let private mapTournamentInfo quiz =
     | Completed completedTeamQuiz -> completedTeamQuiz.TournamentInfo
     | Official officialTeamQuiz -> officialTeamQuiz.TournamentInfo
 
+let mapStyle quiz =
+    match quiz with
+    | Running runningTeamQuiz ->
+        match runningTeamQuiz.CompetitionStyle with
+        | RunningCompetitionStyle.Individuals _ -> "Individual"
+        | RunningCompetitionStyle.Team _ -> "Team"
+    | Completed completedQuiz ->
+        match completedQuiz.CompetitionStyle with
+        | CompletedCompetitionStyle.Individual _ -> "Individual"
+        | CompletedCompetitionStyle.Team _ -> "Team"
+    | Official officialQuiz ->
+        match officialQuiz.CompetitionStyle with
+        | OfficialCompetitionStyle.Individual _ -> "Individual"
+        | OfficialCompetitionStyle.Team _ -> "Team"
+
+
 let saveNewQuizToBlob
     (blobServiceClient: BlobServiceClient)
     (options: JsonSerializerOptions)
@@ -250,15 +268,38 @@ let saveNewQuizToBlob
                   |> Option.map (fun tournament -> "Tournament", tournament)
                   tournamentInfo.Church |> Option.map (fun church -> ("Church", church))
                   tournamentInfo.Room |> Option.map (fun room -> ("Room", room))
-                  tournamentInfo.Round |> Option.map (fun round -> ("Round", round))]
+                  tournamentInfo.Round |> Option.map (fun round -> ("Round", round))
+                  tournamentInfo.GradeDivision
+                  |> Option.map (fun division ->
+                      let division =
+                          match division with
+                          | GradeDivision.Kids -> "Kids"
+                          | GradeDivision.SeniorTeen -> "Senior Teen"
+                          | GradeDivision.YoungTeen -> "Young Teen"
+                          | GradeDivision.QUIC -> "QUIC"
+                          | GradeDivision.Custom name -> name
+
+                      ("GradeDivision", division))
+                  tournamentInfo.CompetitionDivision
+                  |> Option.map (fun division ->
+                      let division =
+                          match division with
+                          | CompetitionDivision.Veteran -> "Veteran"
+                          | CompetitionDivision.Rookie -> "Rookie"
+
+                      ("CompetitionDivision", division)) ]
                 |> List.choose id
 
+            let tags =
+                ([ "Code", quizCode; "State", mapState quiz; "CompetitionStyle", mapStyle quiz ]
+                 @ tournamentTags
+                 |> Map.ofList)
 
             let uploadOptions =
                 BlobUploadOptions(
                     Conditions = BlobRequestConditions(IfNoneMatch = ETag("*")),
 
-                    Tags = ([ "Code", quizCode; "State", mapState quiz ] @ tournamentTags |> Map.ofList)
+                    Tags = tags
 
                 )
 
