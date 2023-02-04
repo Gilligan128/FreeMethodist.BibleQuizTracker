@@ -22,6 +22,7 @@
         <Compile Include="ScoreEvents.fs" />
         <Compile Include="Common.Page.fs" />
         <Compile Include="QuizState.Persistence.fs" />
+        <Compile Include="QuizState.Persistence.CosmosDb.fs" />
         <Compile Include="QuizQueries.fs" />
         <Compile Include="ChangeCurrentQuestion.Pipeline.fs" />
         <Compile Include="AddQuizzer.Pipeline.fs" />
