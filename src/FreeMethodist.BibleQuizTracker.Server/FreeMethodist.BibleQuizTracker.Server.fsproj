@@ -22,6 +22,7 @@
         <Compile Include="ScoreEvents.fs" />
         <Compile Include="Common.Page.fs" />
         <Compile Include="QuizState.Persistence.fs" />
+        <Compile Include="Persistence.CosmosDb.fs" />
         <Compile Include="QuizState.Persistence.CosmosDb.fs" />
         <Compile Include="QuizQueries.fs" />
         <Compile Include="ChangeCurrentQuestion.Pipeline.fs" />
@@ -71,6 +72,7 @@
         <PackageReference Include="Bolero.HotReload.Server" Version="0.*" />
         <PackageReference Include="Hashids.net" Version="1.6.1" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="6.0.*" />
+        <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.31.2" />
         <PackageReference Include="Microsoft.Extensions.Azure" Version="1.0.0" />
     </ItemGroup>
     <ItemGroup>

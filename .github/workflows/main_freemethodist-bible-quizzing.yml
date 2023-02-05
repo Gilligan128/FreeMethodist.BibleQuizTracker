@@ -71,6 +71,11 @@ jobs:
                       "name": "BLOBSTORAGE_CONNECTION_STRING",
                       "value": "${{secrets.BLOBSTORAGE_CONNECTION_STRING}}",
                       "slotSetting": false
+                  },
+                  {
+                      "name": "COSMOSDB_CONNECTION_STRING",
+                      "value": "${{secrets.COSMOSDB_CONNECTION_STRING}}",
+                      "slotSetting": false
                   }
               ]
 

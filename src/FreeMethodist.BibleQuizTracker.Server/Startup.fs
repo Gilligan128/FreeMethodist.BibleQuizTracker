@@ -16,6 +16,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.SignalR
 open Microsoft.AspNetCore.SignalR.Client
+open Microsoft.Azure.Cosmos
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Bolero.Server
@@ -24,7 +25,7 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 
 
-type Startup() =
+type Startup(configuration : IConfiguration) =
 
     let getTenantName machineName (environment: IHostEnvironment) =
         if environment.EnvironmentName = Environments.Development then
@@ -177,7 +178,10 @@ type Startup() =
                 BlobServiceClient(connectionString))
         )
         |> ignore
-
+        
+        
+        new CosmosClient(configuration["COSMOSDB_CONNECTION_STRING"]) |> ignore
+        
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     member this.Configure(app: IApplicationBuilder, env: IWebHostEnvironment) =
         app
