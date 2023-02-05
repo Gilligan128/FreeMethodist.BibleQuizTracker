@@ -6,12 +6,13 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Azure
 open FreeMethodist.BibleQuizTracker.Server
-open FreeMethodist.BibleQuizTracker.Server.Persistence_CosmosDb
+open FreeMethodist.BibleQuizTracker.Server.QuizState_Persistence_CosmosDb
 open Microsoft.Azure.Cosmos
 open Microsoft.Extensions.Configuration
 open Xunit
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open Xunit.Sdk
+open Persistence_CosmosDb
 
 let createJsonOptions =
     fun () ->
@@ -35,15 +36,17 @@ let ``Save Blob`` () =
 
     let connectionString = configuration["COSMOSDB_CONNECTION_STRING"]
 
-    use cosmosClient = new CosmosClient(connectionString, new CosmosClientOptions(Serializer = CosmosSystemTextJsonSerializer(fsharpJsonOptions)))
-
+    use cosmosClient = createCosmosClient fsharpJsonOptions connectionString
+    
+    let containerResponseResultAsync = 
+        cosmosClient
+        |> ensureBibleQuizDatabase $"{Environment.MachineName}test"
+        |> AsyncResult.map (fun db -> db.Database)
+        |> AsyncResult.bind ensureQuizContainer
+        |> AsyncResult.map (fun container -> container.Container)
     do
-        cosmosClient.CreateDatabaseIfNotExistsAsync($"{Environment.MachineName}test")
-        |> Async.AwaitTask
-        |> Async.bind (fun db ->
-            db.Database.CreateContainerIfNotExistsAsync("quiz", "/TournamentInfo/Link")
-            |> Async.AwaitTask)
-        |> Async.bind (fun container -> container.Container.DeleteContainerAsync() |> Async.AwaitTask)
+        containerResponseResultAsync
+        |> AsyncResult.bind (fun container -> container.DeleteContainerAsync() |> Async.AwaitTask |> AsyncResult.ofAsync)
         |> Async.Ignore
         |> Async.RunSynchronously
         
@@ -54,5 +57,11 @@ let ``Save Blob`` () =
 
     let result = saveQuiz quiz |> Async.RunSynchronously
     
-    Assert.Equal(Ok(), result)
-
+    Assert.Equal(Ok(), result) |> ignore
+    
+    let items = containerResponseResultAsync
+                |> AsyncResult.map (fun container -> container.GetItemLinqQueryable<QuizEntity>(allowSynchronousQueryExecution = true))
+                |> Async.RunSynchronously
+                |> function Ok items -> items | Error _ -> failwith "Could not get items"
+                |> Seq.toList
+    Assert.NotEmpty(items)

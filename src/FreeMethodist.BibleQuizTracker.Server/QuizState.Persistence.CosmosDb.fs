@@ -24,7 +24,7 @@ let saveNewQuiz (cosmosClient: CosmosClient) (tenantName: string)  =
                 |> Async.catchExceptionsAsErrors DbError.Exception
 
             let! containerClient =
-                database.Database.CreateContainerIfNotExistsAsync("quiz", "/TournamentInfo/Link")
+                database.Database.CreateContainerIfNotExistsAsync("quiz", "/id")
                 |> Async.AwaitTask
                 |> Async.catchExceptionsAsErrors DbError.Exception
                 |> AsyncResult.map (fun container -> container.Container)
