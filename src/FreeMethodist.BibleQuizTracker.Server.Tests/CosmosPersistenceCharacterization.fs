@@ -38,9 +38,10 @@ let ``Save Blob`` () =
 
     use cosmosClient = createCosmosClient fsharpJsonOptions connectionString
     
+    let tenant = $"{Environment.MachineName}test"
     let containerResponseResultAsync = 
         cosmosClient
-        |> ensureBibleQuizDatabase $"{Environment.MachineName}test"
+        |> ensureBibleQuizDatabase tenant
         |> AsyncResult.map (fun db -> db.Database)
         |> AsyncResult.bind ensureQuizContainer
         |> AsyncResult.map (fun container -> container.Container)
@@ -50,8 +51,7 @@ let ``Save Blob`` () =
         |> Async.Ignore
         |> Async.RunSynchronously
         
-    let saveQuiz =
-        QuizState_Persistence_CosmosDb.saveNewQuiz cosmosClient $"{Environment.MachineName}test"
+    let saveQuiz = cosmosClient |> saveNewQuiz tenant
 
     let quiz = Running RunningQuiz.newTeamQuiz
 
@@ -65,3 +65,32 @@ let ``Save Blob`` () =
                 |> function Ok items -> items | Error _ -> failwith "Could not get items"
                 |> Seq.toList
     Assert.NotEmpty(items)
+
+
+[<Fact(Skip="Characterization Test")>]
+let ``Try get blob`` () =
+    let fsharpJsonOptions = createJsonOptions ()
+
+    let configuration = ConfigurationBuilder().AddUserSecrets<Startup>().Build()
+
+    let connectionString = configuration["COSMOSDB_CONNECTION_STRING"]
+
+    use cosmosClient = createCosmosClient fsharpJsonOptions connectionString
+    
+    let tenantName = $"{Environment.MachineName}test"
+    
+    let containerResponseResultAsync = 
+        cosmosClient
+        |> ensureBibleQuizDatabase tenantName
+        |> AsyncResult.map (fun db -> db.Database)
+        |> AsyncResult.bind ensureQuizContainer
+        |> AsyncResult.map (fun container -> container.Container)
+    do
+        containerResponseResultAsync
+        |> AsyncResult.bind (fun container -> container.DeleteContainerAsync() |> Async.AwaitTask |> AsyncResult.ofAsync)
+        |> Async.Ignore
+        |> Async.RunSynchronously
+    
+    let result = (cosmosClient |> tryGetQuiz tenantName) "not_fount" |> Async.RunSynchronously
+   
+    Assert.Equal(Ok None, result) 
