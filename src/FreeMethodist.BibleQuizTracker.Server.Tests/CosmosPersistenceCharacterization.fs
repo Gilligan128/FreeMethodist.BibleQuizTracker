@@ -20,77 +20,75 @@ let createJsonOptions =
         options.Converters.Add(JsonFSharpConverter())
         options
 
-let ignore404 defaultValue io =
-    try
-        io ()
-    with :? CosmosException as ex when ex.StatusCode = HttpStatusCode.NotFound ->
-        defaultValue
 
+let deleteContainer (container: Container) =
+    container.DeleteContainerAsync() |> Async.AwaitTask
 
-[<Fact(Skip= "Characterization Test")>]
-let ``Save Blob`` () =
-
+type CosmosDbPersistenceCharacterization() =
     let fsharpJsonOptions = createJsonOptions ()
-
     let configuration = ConfigurationBuilder().AddUserSecrets<Startup>().Build()
-
     let connectionString = configuration["COSMOSDB_CONNECTION_STRING"]
-
-    use cosmosClient = createCosmosClient fsharpJsonOptions connectionString
-    
+    let cosmosDbClient = createCosmosClient fsharpJsonOptions connectionString
     let tenant = $"{Environment.MachineName}test"
-    let containerResponseResultAsync = 
-        cosmosClient
+
+    let containerResult =
+        cosmosDbClient
         |> ensureBibleQuizDatabase tenant
         |> AsyncResult.map (fun db -> db.Database)
         |> AsyncResult.bind ensureQuizContainer
         |> AsyncResult.map (fun container -> container.Container)
+
     do
-        containerResponseResultAsync
-        |> AsyncResult.bind (fun container -> container.DeleteContainerAsync() |> Async.AwaitTask |> AsyncResult.ofAsync)
-        |> Async.Ignore
+        containerResult
+        |> AsyncResult.bind (deleteContainer >> AsyncResult.ofAsync)
         |> Async.RunSynchronously
+        |> ignore
+
+
+    interface IDisposable with
+        member this.Dispose() = cosmosDbClient.Dispose()
+
+    [<Fact (Skip= "Characterization Test") >]
+    member _.``Save quiz``() =
+
+        let saveQuiz = cosmosDbClient |> saveNewQuiz tenant
+
+        let quiz = Running RunningQuiz.newTeamQuiz
+
+        let result = saveQuiz quiz |> Async.RunSynchronously
+
+        Assert.Equal(Ok(), result) |> ignore
+
+        let items =
+            containerResult
+            |> AsyncResult.map (fun container ->
+                container.GetItemLinqQueryable<QuizEntity>(allowSynchronousQueryExecution = true))
+            |> Async.RunSynchronously
+            |> function
+                | Ok items -> items
+                | Error _ -> failwith "Could not get items"
+            |> Seq.toList
+
+        Assert.NotEmpty(items)
+
+
+    [<Fact(Skip = "Characterization Test")>]
+    member _.``Try get quiz when not found``() =
+        let result =
+            (cosmosDbClient |> tryGetQuiz tenant) "not_fount" |> Async.RunSynchronously
+
+        Assert.Equal(Ok None, result)
+    
+    [<Fact(Skip = "Characterization Test")>]
+    member _.``list quizzes``() =
+        let quiz = Running RunningQuiz.newTeamQuiz
+        let saveQuiz = cosmosDbClient |> saveNewQuiz tenant
+
+        do saveQuiz quiz |> Async.RunSynchronously |> ignore
         
-    let saveQuiz = cosmosClient |> saveNewQuiz tenant
+        let input =  { Status = QuizStatusFilter.Running} 
+        let result =
+            getQuizzes tenant cosmosDbClient input |> Async.RunSynchronously
 
-    let quiz = Running RunningQuiz.newTeamQuiz
-
-    let result = saveQuiz quiz |> Async.RunSynchronously
+        Assert.Equal(Ok 1, result |> Result.map Seq.length)
     
-    Assert.Equal(Ok(), result) |> ignore
-    
-    let items = containerResponseResultAsync
-                |> AsyncResult.map (fun container -> container.GetItemLinqQueryable<QuizEntity>(allowSynchronousQueryExecution = true))
-                |> Async.RunSynchronously
-                |> function Ok items -> items | Error _ -> failwith "Could not get items"
-                |> Seq.toList
-    Assert.NotEmpty(items)
-
-
-[<Fact(Skip="Characterization Test")>]
-let ``Try get blob`` () =
-    let fsharpJsonOptions = createJsonOptions ()
-
-    let configuration = ConfigurationBuilder().AddUserSecrets<Startup>().Build()
-
-    let connectionString = configuration["COSMOSDB_CONNECTION_STRING"]
-
-    use cosmosClient = createCosmosClient fsharpJsonOptions connectionString
-    
-    let tenantName = $"{Environment.MachineName}test"
-    
-    let containerResponseResultAsync = 
-        cosmosClient
-        |> ensureBibleQuizDatabase tenantName
-        |> AsyncResult.map (fun db -> db.Database)
-        |> AsyncResult.bind ensureQuizContainer
-        |> AsyncResult.map (fun container -> container.Container)
-    do
-        containerResponseResultAsync
-        |> AsyncResult.bind (fun container -> container.DeleteContainerAsync() |> Async.AwaitTask |> AsyncResult.ofAsync)
-        |> Async.Ignore
-        |> Async.RunSynchronously
-    
-    let result = (cosmosClient |> tryGetQuiz tenantName) "not_fount" |> Async.RunSynchronously
-   
-    Assert.Equal(Ok None, result) 

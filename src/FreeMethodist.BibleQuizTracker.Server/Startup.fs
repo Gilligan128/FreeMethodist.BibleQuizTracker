@@ -82,7 +82,7 @@ type Startup(configuration : IConfiguration) =
             let getFromBlob =
                 Persistence.getQuizFromBlob blobServiceClient deserialize tenantName
 
-            Persistence.getQuizFromLocalOrBlob getFromLocal getFromBlob 
+            Persistence.getQuizFromLocalOrDb getFromLocal getFromBlob 
 
         let saveQuiz (provider: IServiceProvider) =
             let localStorage =
@@ -99,7 +99,7 @@ type Startup(configuration : IConfiguration) =
             let saveToBlob =
                 Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName
 
-            Persistence.saveQuizToLocalOrBlob saveToLocal saveToBlob
+            Persistence.saveQuizToLocalOrDb saveToLocal saveToBlob
 
         services
             .AddScoped<GetQuiz>(Func<IServiceProvider, GetQuiz>(getQuiz))

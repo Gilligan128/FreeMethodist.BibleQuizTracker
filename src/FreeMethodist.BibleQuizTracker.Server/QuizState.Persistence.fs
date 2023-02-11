@@ -316,21 +316,21 @@ let saveNewQuizToBlob
 
 let private isAnExampleQuiz (quizCode: QuizCode) = quizCode.ToUpper() = "EXAMPLE"
 
-let getQuizFromLocalOrBlob getFromLocal getFromBlob : GetQuiz =
+let getQuizFromLocalOrDb getFromLocal getFromDb : GetQuiz =
     fun quizCode ->
         if isAnExampleQuiz quizCode then
             getFromLocal quizCode
         else
-            getFromBlob quizCode
+            getFromDb quizCode
 
-let saveQuizToLocalOrBlob saveToLocal saveToBlob : SaveQuiz =
+let saveQuizToLocalOrDb saveToLocal saveToDb : SaveQuiz =
     fun quiz ->
         quiz
         |> getCodeFromQuiz
         |> isAnExampleQuiz
         |> function
             | true -> saveToLocal quiz
-            | false -> saveToBlob quiz
+            | false -> saveToDb quiz
 
 let private mapChoiceToResult choice =
     match choice with
@@ -390,9 +390,9 @@ let tryGetQuizFromLocalStorage (localStorage: ProtectedLocalStorage) deserialize
                     | Some quiz -> quiz |> Some
         }
 
-let tryGetQuizFromLocalOrBlob getFromLocal getFromBlob : TryGetQuiz =
+let tryGetQuizFromLocalOrBlob getFromLocal getFromDb : TryGetQuiz =
     fun quizCode ->
         if isAnExampleQuiz quizCode then
             getFromLocal quizCode
         else
-            getFromBlob quizCode
+            getFromDb quizCode
