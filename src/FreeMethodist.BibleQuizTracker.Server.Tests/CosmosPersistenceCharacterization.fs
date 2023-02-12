@@ -26,7 +26,13 @@ let deleteContainer (container: Container) =
 
 type CosmosDbPersistenceCharacterization() =
     let fsharpJsonOptions = createJsonOptions ()
-    let configuration = ConfigurationBuilder().AddUserSecrets<Startup>().Build()
+
+    let configuration =
+        ConfigurationBuilder()
+            .AddEnvironmentVariables()
+            .AddUserSecrets<Startup>()
+            .Build()
+
     let connectionString = configuration["COSMOSDB_CONNECTION_STRING"]
     let cosmosDbClient = createCosmosClient fsharpJsonOptions connectionString
     let tenant = $"{Environment.MachineName}test"
@@ -48,7 +54,7 @@ type CosmosDbPersistenceCharacterization() =
     interface IDisposable with
         member this.Dispose() = cosmosDbClient.Dispose()
 
-    [<Fact (Skip = "Characterization test") >]
+    [<Fact()>]
     member _.``Save quiz``() =
 
         let saveQuiz = cosmosDbClient |> saveNewQuiz tenant
@@ -78,17 +84,15 @@ type CosmosDbPersistenceCharacterization() =
             (cosmosDbClient |> tryGetQuiz tenant) "not_fount" |> Async.RunSynchronously
 
         Assert.Equal(Ok None, result)
-    
+
     [<Fact(Skip = "Characterization Test")>]
     member _.``list quizzes``() =
         let quiz = Running RunningQuiz.newTeamQuiz
         let saveQuiz = cosmosDbClient |> saveNewQuiz tenant
 
         do saveQuiz quiz |> Async.RunSynchronously |> ignore
-        
-        let input =  { Status = QuizStatusFilter.Running} 
-        let result =
-            getQuizzes tenant cosmosDbClient input |> Async.RunSynchronously
+
+        let input = { Status = QuizStatusFilter.Running }
+        let result = getQuizzes tenant cosmosDbClient input |> Async.RunSynchronously
 
         Assert.Equal(Ok 1, result |> Result.map Seq.length)
-    
