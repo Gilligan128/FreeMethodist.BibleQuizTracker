@@ -56,7 +56,7 @@ let saveQuiz (tenantName: string) (cosmosClient: CosmosClient) =
                 |> AsyncResult.ignore
         }
 
-let getQuiz (tenantName: string) (cosmosClient: CosmosClient) =
+let getQuiz  (tenantName: string) (cosmosClient: CosmosClient) =
     fun quizCode ->
         asyncResult {
             let! database = cosmosClient |> ensureBibleQuizDatabase tenantName
@@ -75,7 +75,7 @@ let getQuiz (tenantName: string) (cosmosClient: CosmosClient) =
             return quiz
         }
 
-let tryGetQuiz (tenantName: string) (cosmosClient: CosmosClient) =
+let tryGetQuiz  (tenantName: string) (cosmosClient: CosmosClient) =
     fun quizCode ->
         asyncResult {
             let! database = cosmosClient |> ensureBibleQuizDatabase tenantName
@@ -104,7 +104,6 @@ let tryGetQuiz (tenantName: string) (cosmosClient: CosmosClient) =
                             else
                                 Error error
                         | _ -> error |> Error)
-
             return quiz
         }
 
@@ -133,6 +132,7 @@ let getQuizzes tenant cosmosClient input =
                     | QuizStatusFilter.Completed, Quiz.Completed _ -> true
                     | QuizStatusFilter.Official, Quiz.Official _ -> true
                     | _ -> false)
+                |> Seq.map (fun quiz -> quiz.data)
                 
             return quizzes
         }

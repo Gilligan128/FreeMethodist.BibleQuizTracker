@@ -1,14 +1,20 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 
+open System.IO
+open System.Text.Json
+open System.Text.Json.Serialization
+open Azure.Core.Serialization
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
+open Microsoft.Azure.Cosmos
+
 
 
 [<RequireQualifiedAccess>]
 module QuizVersioning =
 
-
+    
     let isNull value = obj.ReferenceEquals(value, null)
 
     let private backwardsCompatibleToRunningCompetitionStyle quiz =
@@ -85,3 +91,17 @@ module QuizVersioning =
         |> backwardsCompatibleToFailedAppeals
         |> backwardsCompatibleToPrejumps
         |> backwardsCompatibleTournamentLink
+
+type QuizBackwardsCompatibilityConverter () =                                                                    
+     inherit JsonConverter<Quiz>()
+  
+        override this.CanConvert(typeToConvert) =
+            typeToConvert = typeof<Quiz>
+
+        override this.Read(reader, typeToConvert, options) =
+            
+            let quiz = JsonSerializer.Deserialize<Quiz>(&reader, options)
+            quiz |> QuizVersioning.applyBackwardsCompatibility
+        override this.Write(writer, value, options) =
+            JsonSerializer.Serialize<Quiz>(writer, value, options)
+        

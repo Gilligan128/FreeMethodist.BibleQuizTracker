@@ -18,7 +18,7 @@ type Message =
 let init =
     {Quizzes = NotYetStarted}, () |> Started |> Initialize |> Cmd.ofMsg
 
-let update getCompletedQuizzes model message =
+let update getCompletedQuizzes model message : Model*Cmd<Message>*ExternalMessage=
     match message with
     | Initialize (Started _) ->
         let cmd = getCompletedQuizzes ()

@@ -5,8 +5,10 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.QuizState_Persistence_CosmosDb
 open FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 open FreeMethodist.BibleQuizTracker.Server.QuizQueries
+open FreeMethodist.BibleQuizTracker.Server.Serialization
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
@@ -25,7 +27,7 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 
 
-type Startup(configuration : IConfiguration) =
+type Startup(configuration: IConfiguration) =
 
     let getTenantName machineName (environment: IHostEnvironment) =
         if environment.EnvironmentName = Environments.Development then
@@ -37,7 +39,7 @@ type Startup(configuration : IConfiguration) =
         provider.GetRequiredService<IHostEnvironment>()
         |> getTenantName Environment.MachineName
 
-  
+
     // This method gets called by the runtime. Use this method to add services to the container.
     // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
     member this.ConfigureServices(services: IServiceCollection) =
@@ -56,94 +58,60 @@ type Startup(configuration : IConfiguration) =
 #endif
         |> ignore
 
-        let fsharpJsonOptions =
-            JsonSerializerOptions()
-
-        fsharpJsonOptions.Converters.Add(JsonFSharpConverter(allowNullFields = true))
-
+        let fsharpJsonOptions = FSharpSerializer.fSharpOptions
 
         let deserialize (json: string) =
             JsonSerializer.Deserialize(json, fsharpJsonOptions)
             |> QuizVersioning.applyBackwardsCompatibility
-       
-        
-        let getQuiz (provider: IServiceProvider) =
-            let localStorage =
-                provider.GetRequiredService<ProtectedLocalStorage>()
-
-            let blobServiceClient =
-                provider.GetRequiredService<BlobServiceClient>()
-
-            let getFromLocal =
-                Persistence.getQuizFromLocalStorage localStorage deserialize
-
-            let tenantName = resolveTenantName provider
-
-            let getFromBlob =
-                Persistence.getQuizFromBlob blobServiceClient deserialize tenantName
-
-            Persistence.getQuizFromLocalOrDb getFromLocal getFromBlob 
-
-        let saveQuiz (provider: IServiceProvider) =
-            let localStorage =
-                provider.GetRequiredService<ProtectedLocalStorage>()
-
-            let blobServiceClient =
-                provider.GetRequiredService<BlobServiceClient>()
-
-            let saveToLocal =
-                Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
-
-            let tenantName = resolveTenantName provider
-
-            let saveToBlob =
-                Persistence.saveQuizToBlob blobServiceClient fsharpJsonOptions tenantName
-
-            Persistence.saveQuizToLocalOrDb saveToLocal saveToBlob
 
         services
-            .AddScoped<GetQuiz>(Func<IServiceProvider, GetQuiz>(getQuiz))
-            .AddScoped<SaveQuiz>(Func<IServiceProvider, SaveQuiz>(saveQuiz))
+            .AddScoped<CosmosClient>(
+                Func<IServiceProvider, CosmosClient>(fun services ->
+                    Persistence_CosmosDb.createCosmosClient
+                        fsharpJsonOptions
+                        configuration["COSMOSDB_CONNECTION_STRING"])
+            )
+            .AddScoped<GetQuiz>(
+                Func<IServiceProvider, GetQuiz>(fun provider ->
+                    let localStorage = provider.GetRequiredService<ProtectedLocalStorage>()
+                    let cosmosClient = provider.GetRequiredService<CosmosClient>()
+                    let getFromLocal = Persistence.getQuizFromLocalStorage localStorage deserialize
+                    let tenantName = resolveTenantName provider
+                    let getFromBlob = QuizState_Persistence_CosmosDb.getQuiz tenantName cosmosClient
+
+                    Persistence.getQuizFromLocalOrDb getFromLocal getFromBlob)
+            )
+            .AddScoped<SaveQuiz>(
+                Func<IServiceProvider, SaveQuiz>(fun provider ->
+                    let localStorage = provider.GetRequiredService<ProtectedLocalStorage>()
+                    let cosmosClient = provider.GetRequiredService<CosmosClient>()
+                    let saveToLocal = Persistence.saveQuizToLocalStorage localStorage fsharpJsonOptions
+                    let tenantName = resolveTenantName provider
+                    let saveToBlob = QuizState_Persistence_CosmosDb.saveQuiz tenantName cosmosClient
+                    Persistence.saveQuizToLocalOrDb saveToLocal saveToBlob)
+            )
             .AddScoped<SaveNewQuiz>(
-                Func<IServiceProvider, SaveNewQuiz> (fun provider ->
-                    let environment =
-                        provider.GetRequiredService<IHostEnvironment>()
+                Func<IServiceProvider, SaveNewQuiz>(fun provider ->
+                    let tenantName = resolveTenantName provider
+                    let cosmosClient = provider.GetRequiredService<CosmosClient>()
 
-                    let tenantName =
-                        getTenantName Environment.MachineName environment
-
-                    let blobServiceClient =
-                        provider.GetRequiredService<BlobServiceClient>()
-
-                    Persistence.saveNewQuizToBlob blobServiceClient fsharpJsonOptions tenantName)
+                    QuizState_Persistence_CosmosDb.saveNewQuiz tenantName cosmosClient
+                    |> SaveNewQuiz)
             )
             .AddScoped<TryGetQuiz>(
-                Func<IServiceProvider, TryGetQuiz> (fun provider ->
-                    let blobServiceClient =
-                        provider.GetRequiredService<BlobServiceClient>()
-
-                    let localStorage =
-                        provider.GetRequiredService<ProtectedLocalStorage>()
-
-
-
-                    let tryGetLocal =
-                        Persistence.tryGetQuizFromLocalStorage localStorage deserialize
-
+                Func<IServiceProvider, TryGetQuiz>(fun provider ->
+                    let localStorage = provider.GetRequiredService<ProtectedLocalStorage>()
+                    let cosmosClient = provider.GetRequiredService<CosmosClient>()
+                    let tryGetLocal = Persistence.tryGetQuizFromLocalStorage localStorage deserialize
                     let tenantName = resolveTenantName provider
-
-                    let tryGetBlob =
-                        Persistence.tryGetQuizFromBlob blobServiceClient deserialize tenantName
-
-                    Persistence.tryGetQuizFromLocalOrBlob tryGetLocal tryGetBlob)
+                    let tryGetDb = QuizState_Persistence_CosmosDb.tryGetQuiz tenantName cosmosClient
+                    Persistence.tryGetQuizFromLocalOrBlob tryGetLocal tryGetDb)
             )
-
             .AddScoped<HubConnection>(
-                Func<IServiceProvider, HubConnection> (fun provider ->
+                Func<IServiceProvider, HubConnection>(fun provider ->
                     let configureLogging (logging: ILoggingBuilder) = logging.AddConsole() |> ignore
 
-                    let navigator =
-                        provider.GetRequiredService<NavigationManager>()
+                    let navigator = provider.GetRequiredService<NavigationManager>()
 
                     HubConnectionBuilder()
                         .WithUrl($"{navigator.BaseUri}QuizHub")
@@ -154,34 +122,19 @@ type Startup(configuration : IConfiguration) =
                         .Build())
             )
             .AddScoped<GetRecentCompletedQuizzes>(
-                Func<IServiceProvider, GetRecentCompletedQuizzes> (fun provider ->
-                    let blobClient =
-                        provider.GetRequiredService<BlobServiceClient>()
+                Func<IServiceProvider, GetRecentCompletedQuizzes>(fun provider ->
+                    let tenantName = resolveTenantName provider
+                    let cosmosClient = provider.GetRequiredService<CosmosClient>()
 
-                    fun () -> getRecentCompletedQuizzes blobClient (resolveTenantName provider))
+                    fun () ->
+                        { Status = QuizStatusFilter.Completed }
+                        |> getQuizzes tenantName cosmosClient
+                        |> AsyncResult.map (fun quizzes -> quizzes |> Seq.map Quiz.getCode |> Seq.toList))
             )
+            .Configure(fun (options: JsonHubProtocolOptions) -> //So that Discriminated unions can be serialized/deserialized
+                options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
         |> ignore
 
-        //So that Discriminated unions can be serialized/deserialized
-        services.Configure (fun (options: JsonHubProtocolOptions) ->
-            options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
-        |> ignore
-
-        services.AddScoped<BlobServiceClient>(
-            Func<IServiceProvider, BlobServiceClient> (fun services ->
-                let configuration =
-                    services.GetRequiredService<IConfiguration>()
-
-                let connectionString =
-                    configuration["BLOBSTORAGE_CONNECTION_STRING"]
-
-                BlobServiceClient(connectionString))
-        )
-        |> ignore
-        
-        
-        new CosmosClient(configuration["COSMOSDB_CONNECTION_STRING"]) |> ignore
-        
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     member this.Configure(app: IApplicationBuilder, env: IWebHostEnvironment) =
         app
@@ -195,11 +148,9 @@ type Startup(configuration : IConfiguration) =
 #endif
                 endpoints.MapBlazorHub() |> ignore
 
-                endpoints.MapHub<QuizHub.Hub>(PathString "/quizhub")
-                |> ignore
+                endpoints.MapHub<QuizHub.Hub>(PathString "/quizhub") |> ignore
 
-                endpoints.MapFallbackToBolero(Index.page)
-                |> ignore)
+                endpoints.MapFallbackToBolero(Index.page) |> ignore)
 
         |> ignore
 

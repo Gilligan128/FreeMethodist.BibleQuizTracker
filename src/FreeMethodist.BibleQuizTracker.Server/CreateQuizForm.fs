@@ -115,7 +115,7 @@ module CreateQuizForm =
                       CompetitionDivision = None } }
                 |> createQuiz saveNewQuiz
                 |> AsyncResult.mapError mapErrorToString
-                |> Async.timeoutNone 3000
+                |> Async.timeoutNone 5000
                 |> Async.map (Option.defaultValue (Result.Error "Creating the quiz timed out"))
                 |> Async.map mapToFinished
                 |> Cmd.OfAsync.result
