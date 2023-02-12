@@ -10,12 +10,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  environment:
-    name: 'Test'
-    url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
   build:
     runs-on: ubuntu-latest
-
+    environment:
+      name: 'Test'
+      url: "https://localhost:5001"
     steps:
       - uses: actions/checkout@v2
 
@@ -30,6 +29,8 @@ jobs:
         
       - name: Test with dotnet
         run: dotnet test --configuration Release --no-restore
+        environment:
+         
         env:
           COSMOSDB_CONNECTION_STRING: ${{secrets.COSMOSDB_CONNECTION_STRING}}
 
