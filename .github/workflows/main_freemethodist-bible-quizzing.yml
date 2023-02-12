@@ -30,6 +30,8 @@ jobs:
         
       - name: Test with dotnet
         run: dotnet test --configuration Release --no-restore
+        env:
+          COSMOSDB_CONNECTION_STRING: ${{secrets.COSMOSDB_CONNECTION_STRING}}
 
       - name: dotnet publish
         run: dotnet publish  src/FreeMethodist.BibleQuizTracker.Server/FreeMethodist.BibleQuizTracker.Server.fsproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
