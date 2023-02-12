@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
 
 jobs:
+  environment:
+    name: 'Test'
+    url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
   build:
     runs-on: ubuntu-latest
 
