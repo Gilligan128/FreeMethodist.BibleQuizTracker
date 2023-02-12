@@ -12,9 +12,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment:
-      name: 'Test'
-      url: https://localhost:5001
+    environment: Test
     steps:
       - uses: actions/checkout@v2
 
