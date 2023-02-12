@@ -27,8 +27,6 @@ jobs:
         
       - name: Test with dotnet
         run: dotnet test --configuration Release --no-restore
-        environment:
-         
         env:
           COSMOSDB_CONNECTION_STRING: ${{secrets.COSMOSDB_CONNECTION_STRING}}
 
