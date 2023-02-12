@@ -48,7 +48,7 @@ type CosmosDbPersistenceCharacterization() =
     interface IDisposable with
         member this.Dispose() = cosmosDbClient.Dispose()
 
-    [<Fact () >]
+    [<Fact (Skip = "Characterization test") >]
     member _.``Save quiz``() =
 
         let saveQuiz = cosmosDbClient |> saveNewQuiz tenant
