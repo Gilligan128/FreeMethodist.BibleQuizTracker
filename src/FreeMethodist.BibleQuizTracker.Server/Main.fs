@@ -478,9 +478,6 @@ type MyApp() =
     member val TryGetQuiz = Unchecked.defaultof<TryGetQuiz> with get, set
 
     [<Inject>]
-    member val GetRecentCompletedQuizzes = Unchecked.defaultof<GetRecentCompletedQuizzes> with get, set
-
-    [<Inject>]
     member val GetQuizzes = Unchecked.defaultof<QuizStatusFilter -> AsyncResult<ListQuizItem list, DbError>> with get, set
     
     override this.Program =

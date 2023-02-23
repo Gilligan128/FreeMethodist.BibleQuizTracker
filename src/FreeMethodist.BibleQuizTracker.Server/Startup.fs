@@ -27,7 +27,7 @@ open Bolero.Server
 open Bolero.Templating.Server
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
-
+open FreeMethodist.BibleQuizTracker.Server.ListQuizzes
 
 type Startup(configuration: IConfiguration) =
 
@@ -123,33 +123,14 @@ type Startup(configuration: IConfiguration) =
                             options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))
                         .Build())
             )
-            .AddScoped<GetRecentCompletedQuizzes>(
-                Func<IServiceProvider, GetRecentCompletedQuizzes>(fun provider ->
-                    let tenantName = resolveTenantName provider
-                    let cosmosClient = provider.GetRequiredService<CosmosClient>()
-
-                    fun () ->
-                        { Status = QuizStatusFilter.Completed }
-                        |> getQuizzes tenantName cosmosClient
-                        |> AsyncResult.map (fun quizzes -> quizzes |> Seq.map Quiz.getCode |> Seq.toList))
-            )
             .AddScoped<QuizStatusFilter -> AsyncResult<ListQuizItem list, DbError>>(
                 Func<IServiceProvider, QuizStatusFilter -> AsyncResult<ListQuizItem list, DbError>>(fun services ->
                     let tenantName = resolveTenantName services
                     let cosmosClient = services.GetRequiredService<CosmosClient>()
 
                     fun status ->
-                        { Status = status }
-                        |> getQuizzes tenantName cosmosClient
-                        |> AsyncResult.map (fun quizzes ->
-                            quizzes
-                            |> Seq.map (fun quiz ->
-                                { Code = quiz |> Quiz.getCode
-                                  State = ListQuizState.Running
-                                  Tournament = None
-                                  Round = None
-                                  Room = None })
-                            |> Seq.toList))
+                        Persistence.getQuizzes tenantName cosmosClient { Status = status }
+                        |> AsyncResult.map (fun quizzes -> quizzes |> Seq.map (Core.mapQuizToListQuizItem) |> Seq.toList))
             )
             .Configure(fun (options: JsonHubProtocolOptions) -> //So that Discriminated unions can be serialized/deserialized
                 options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))

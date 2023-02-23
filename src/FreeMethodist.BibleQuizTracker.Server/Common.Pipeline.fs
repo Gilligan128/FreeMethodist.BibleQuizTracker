@@ -122,8 +122,6 @@ type SaveJump = Jump -> unit
 
 type TryGetQuiz = QuizCode -> AsyncResult<Option<Quiz>, DbError>
 
-type GetRecentCompletedQuizzes = unit -> AsyncResult<string list, DbError>
-
 type QuizStatusFilter =
     | All
     | Running

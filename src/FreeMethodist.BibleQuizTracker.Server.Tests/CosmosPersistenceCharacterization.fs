@@ -92,7 +92,6 @@ type CosmosDbPersistenceCharacterization() =
 
         do saveQuiz quiz |> Async.RunSynchronously |> ignore
 
-        let input = { Status = QuizStatusFilter.Running }
-        let result = getQuizzes tenant cosmosDbClient input |> Async.RunSynchronously
+        let result = ListQuizzes.Persistence.getQuizzes tenant cosmosDbClient { Status = QuizStatusFilter.Running } |> Async.RunSynchronously
 
         Assert.Equal(Ok 1, result |> Result.map Seq.length)

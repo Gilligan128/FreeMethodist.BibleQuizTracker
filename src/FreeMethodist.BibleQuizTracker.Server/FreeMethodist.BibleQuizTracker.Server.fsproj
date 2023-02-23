@@ -53,6 +53,8 @@
         <Compile Include="CreateQuizForm.fs" />
         <Compile Include="LiveScorePage.fs" />
         <Compile Include="QuizDetailsPage.fs" />
+        <Compile Include="ListQuizzes\Core.fs" />
+        <Compile Include="ListQuizzes\Persistence.fs" />
         <Compile Include="ListQuizzes\ListQuizzesPage.fs" />
         <Compile Include="Main.fs" />
         <Compile Include="Index.fs" />
