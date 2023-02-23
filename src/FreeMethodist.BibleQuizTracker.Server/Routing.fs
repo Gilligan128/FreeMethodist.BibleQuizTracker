@@ -11,4 +11,4 @@ type Page =
     | [<EndPoint "/quiz/{quizCode}/run">] QuizRun of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/spectate">] QuizSpectate of quizCode: string
     | [<EndPoint "/quiz/{quizCode}/live-score">] QuizLiveScore of quizCode: string * PageModel<LiveScoreModel>
-    | [<EndPoint "/quiz/completed">] QuizzesCompleted of PageModel<CompletedQuizzesModel.Model>
+    | [<EndPoint "/quiz/">] ListQuizzes of PageModel<ListQuizModel>

@@ -1,4 +1,4 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
+﻿module FreeMethodist.BibleQuizTracker.Server.ListQuizzesModel
 
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Workflow

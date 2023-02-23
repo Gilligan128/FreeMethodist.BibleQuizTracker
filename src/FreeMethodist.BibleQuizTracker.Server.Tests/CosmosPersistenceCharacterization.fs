@@ -59,7 +59,7 @@ type CosmosDbPersistenceCharacterization() =
 
         let saveQuiz = cosmosDbClient |> saveNewQuiz tenant
 
-        let quiz = Running RunningQuiz.newTeamQuiz
+        let quiz = Quiz.Running RunningQuiz.newTeamQuiz
 
         let result = saveQuiz quiz |> Async.RunSynchronously
 
@@ -87,7 +87,7 @@ type CosmosDbPersistenceCharacterization() =
 
     [<Fact(Skip = "Characterization Test")>]
     member _.``list quizzes``() =
-        let quiz = Running RunningQuiz.newTeamQuiz
+        let quiz = Quiz.Running RunningQuiz.newTeamQuiz
         let saveQuiz = cosmosDbClient |> saveNewQuiz tenant
 
         do saveQuiz quiz |> Async.RunSynchronously |> ignore

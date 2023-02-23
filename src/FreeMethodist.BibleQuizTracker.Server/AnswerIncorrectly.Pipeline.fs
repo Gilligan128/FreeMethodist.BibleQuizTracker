@@ -108,7 +108,7 @@ let answerIncorrectly getQuiz saveQuiz : AnswerIncorrectly.Workflow =
 
             do!
                 updatedQuiz.QuizState
-                |> Running
+                |> Quiz.Running
                 |> saveQuiz
                 |> AsyncResult.mapError AnswerIncorrectly.Error.DbError
 

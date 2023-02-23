@@ -43,7 +43,7 @@
         <Compile Include="Page.Workflow.fs" />
         <Compile Include="LiveScoreModel.fs" />
         <Compile Include="Html.fs" />
-        <Compile Include="CompletedQuizzesModel.fs" />
+        <Compile Include="ListQuizzesModel.fs" />
         <Compile Include="Deferred.fs" />
         <Compile Include="ItemizedScoreView.fs" />
         <Compile Include="Routing.fs" />
@@ -53,8 +53,7 @@
         <Compile Include="CreateQuizForm.fs" />
         <Compile Include="LiveScorePage.fs" />
         <Compile Include="QuizDetailsPage.fs" />
-        <Compile Include="CompletedQuizzesPage.fs" />
-        <Compile Include="ListQuizzes\ListQuizzes.fs" />
+        <Compile Include="ListQuizzes\ListQuizzesPage.fs" />
         <Compile Include="Main.fs" />
         <Compile Include="Index.fs" />
         <Compile Include="ItemizedScore.Api.fs" />

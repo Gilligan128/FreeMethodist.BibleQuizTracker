@@ -25,13 +25,13 @@ module QuizVersioning =
                   Quizzers = []
                   Name = "" }
 
-            Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team(initialTeam, initialTeam) }
+            Quiz.Running { quiz with CompetitionStyle = RunningCompetitionStyle.Team(initialTeam, initialTeam) }
         | quiz -> quiz
 
     let private backwardsCompatibleToFailedAppeals quiz =
         match quiz with
         | Quiz.Running quiz ->
-            Running
+            Quiz.Running
                 { quiz with
                     Questions =
                         quiz.Questions
@@ -43,7 +43,7 @@ module QuizVersioning =
                                     else
                                         value.FailedAppeals }) }
         | Quiz.Completed quiz ->
-            Completed
+            Quiz.Completed
                 { quiz with
                     CompletedQuestions =
                         quiz.CompletedQuestions
@@ -59,14 +59,14 @@ module QuizVersioning =
     let private backwardsCompatibleToPrejumps quiz =
         match quiz with
         | Quiz.Running quiz ->
-            Running
+             Quiz.Running
                 { quiz with
                     Questions =
                         quiz.Questions
                         |> Map.map (fun _ value ->
                             { value with Prejumps = if value.Prejumps |> isNull then [] else value.Prejumps }) }
         | Quiz.Completed quiz ->
-            Completed
+            Quiz.Completed
                 { quiz with
                     CompletedQuestions =
                         quiz.CompletedQuestions
@@ -77,11 +77,11 @@ module QuizVersioning =
     let private backwardsCompatibleTournamentLink quiz =
         match quiz with
         | Quiz.Running runningQuiz when runningQuiz.TournamentInfo |> isNull ->
-            Running { runningQuiz with TournamentInfo = TournamentInfo.empty }
+             Quiz.Running { runningQuiz with TournamentInfo = TournamentInfo.empty }
         | Quiz.Completed completedQuiz when completedQuiz.TournamentInfo |> isNull ->
-            Completed { completedQuiz with TournamentInfo = TournamentInfo.empty }
+             Quiz.Completed { completedQuiz with TournamentInfo = TournamentInfo.empty }
         | Quiz.Official officialTeamQuiz when officialTeamQuiz.TournamentInfo |> isNull ->
-            Official { officialTeamQuiz with TournamentInfo = TournamentInfo.empty }
+             Quiz.Official { officialTeamQuiz with TournamentInfo = TournamentInfo.empty }
         | quiz -> quiz 
 
 

@@ -108,7 +108,7 @@ let reopenQuiz getQuiz saveQuiz =
 
             do!
                 runningQuiz
-                |> Running
+                |> Quiz.Running
                 |> saveQuiz
                 |> AsyncResult.mapError ReopenQuiz.DbError
 

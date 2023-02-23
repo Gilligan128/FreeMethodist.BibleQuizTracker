@@ -26,7 +26,6 @@
         <Compile Include="CompleteQuiz.UpdateQuizToCompleteTests.fs" />
         <Compile Include="Prejump.UpdateQuiz.Tests.fs" />
         <Compile Include="UpdatesQuizScore.Tests.fs" />
-        <Compile Include="PersistenceCharacterization.fs" />
         <Compile Include="CosmosPersistenceCharacterization.fs" />
         <Compile Include="BackwardsCompatibilityTests.fs" />
         <Compile Include="Program.fs" />

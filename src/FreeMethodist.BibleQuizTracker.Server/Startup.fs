@@ -5,10 +5,12 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Azure.Storage.Blobs
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.QuizState_Persistence_CosmosDb
 open FreeMethodist.BibleQuizTracker.Server.QuizState_Versioning
 open FreeMethodist.BibleQuizTracker.Server.QuizQueries
 open FreeMethodist.BibleQuizTracker.Server.Serialization
+open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Authentication.Cookies
 open Microsoft.AspNetCore.Builder
@@ -130,6 +132,24 @@ type Startup(configuration: IConfiguration) =
                         { Status = QuizStatusFilter.Completed }
                         |> getQuizzes tenantName cosmosClient
                         |> AsyncResult.map (fun quizzes -> quizzes |> Seq.map Quiz.getCode |> Seq.toList))
+            )
+            .AddScoped<QuizStatusFilter -> AsyncResult<ListQuizItem list, DbError>>(
+                Func<IServiceProvider, QuizStatusFilter -> AsyncResult<ListQuizItem list, DbError>>(fun services ->
+                    let tenantName = resolveTenantName services
+                    let cosmosClient = services.GetRequiredService<CosmosClient>()
+
+                    fun status ->
+                        { Status = status }
+                        |> getQuizzes tenantName cosmosClient
+                        |> AsyncResult.map (fun quizzes ->
+                            quizzes
+                            |> Seq.map (fun quiz ->
+                                { Code = quiz |> Quiz.getCode
+                                  State = ListQuizState.Running
+                                  Tournament = None
+                                  Round = None
+                                  Room = None })
+                            |> Seq.toList))
             )
             .Configure(fun (options: JsonHubProtocolOptions) -> //So that Discriminated unions can be serialized/deserialized
                 options.PayloadSerializerOptions.Converters.Add(JsonFSharpConverter()))

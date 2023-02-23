@@ -44,7 +44,7 @@ let ``When completing a quiz Then quiz is in a Completed state`` () =
             )
           CompletedQuestions = [] }
 
-    Assert.Equal(Completed expectedQuiz, Completed actualQuiz)
+    Assert.Equal(Quiz.Completed expectedQuiz, Quiz.Completed actualQuiz)
 
 let private numberOf value =
     PositiveNumber.create "number" value

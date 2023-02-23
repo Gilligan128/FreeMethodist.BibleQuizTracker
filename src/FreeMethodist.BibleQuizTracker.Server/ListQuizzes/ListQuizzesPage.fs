@@ -1,12 +1,13 @@
-﻿module FreeMethodist.BibleQuizTracker.Server.ListQuizzes.ListQuizzes
+﻿module FreeMethodist.BibleQuizTracker.Server.ListQuizzesPage
 
 open Bolero
 open Elmish
-open FreeMethodist.BibleQuizTracker.Server
-open FreeMethodist.BibleQuizTracker.Server.Common_Page
-open FreeMethodist.BibleQuizTracker.Server.Workflow
+open Common_Page
 open Bolero.Html
-open Routing
+open FreeMethodist.BibleQuizTracker.Server.Common_Page
+open FreeMethodist.BibleQuizTracker.Server.Routing
+open FreeMethodist.BibleQuizTracker.Server.Workflow
+open Common.Pipeline
 
 type ExternalMessage =
     | Error of string
@@ -16,12 +17,15 @@ type Message =
     | Initialize of AsyncOperationStatus<unit, Result<ListQuizItem list, DbError>>
 
 let init =
-    {Quizzes = NotYetStarted; StateFilter = ListQuizStateFilter.All}, () |> Started |> Initialize |> Cmd.ofMsg
+    {
+        StateFilter = QuizStatusFilter.All 
+        Quizzes = NotYetStarted
+    }, () |> Started |> Initialize |> Cmd.ofMsg
 
-let update listQuizzes model message =
+let update getQuizzes model message : ListQuizModel*Cmd<Message>*ExternalMessage=
     match message with
     | Initialize (Started _) ->
-        let cmd = listQuizzes ()
+        let cmd = getQuizzes model.StateFilter
                     |> Async.map (Initialize << Finished)
                     |> Cmd.OfAsync.result
         { model with Quizzes = InProgress }, cmd, ExternalMessage.NoError

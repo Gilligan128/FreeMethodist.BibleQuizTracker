@@ -105,7 +105,7 @@ let addQuizzerAsync getQuiz (saveQuiz: SaveQuiz) : AddQuizzer.Workflow =
 
             return!
                 addQuizzerToQuiz validQuiz command.Data
-                |> Running
+                |> Quiz.Running
                 |> saveQuiz
                 |> AsyncResult.mapError AddQuizzer.Error.DbError
 

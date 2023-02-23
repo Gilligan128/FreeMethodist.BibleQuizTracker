@@ -11,9 +11,9 @@ type QuizEntity = { id: string; data: Quiz }
 
 let private getCodeFromQuiz quiz =
     match quiz with
-    | Running runningTeamQuiz -> runningTeamQuiz.Code
-    | Completed completedTeamQuiz -> completedTeamQuiz.Code
-    | Official officialTeamQuiz -> officialTeamQuiz.Code
+    |  Quiz.Running runningTeamQuiz -> runningTeamQuiz.Code
+    |  Quiz.Completed completedTeamQuiz -> completedTeamQuiz.Code
+    |  Quiz.Official officialTeamQuiz -> officialTeamQuiz.Code
 
 let private getBlobName quizCode = $"quiz-{quizCode}"
 
@@ -107,11 +107,7 @@ let tryGetQuiz  (tenantName: string) (cosmosClient: CosmosClient) =
             return quiz
         }
 
-type QuizStatusFilter =
-    | All
-    | Running
-    | Completed
-    | Official
+
     
 type ListQuizInput = { Status : QuizStatusFilter  } 
 let getQuizzes tenant cosmosClient input =

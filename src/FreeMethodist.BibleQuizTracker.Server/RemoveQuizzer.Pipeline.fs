@@ -124,7 +124,7 @@ let removeQuizzer getQuiz (saveQuiz: SaveQuiz) : RemoveQuizzer.Workflow =
 
             do!
                 quiz
-                |> Running
+                |> Quiz.Running
                 |> saveQuiz
                 |> AsyncResult.mapError RemoveQuizzer.DbError
 

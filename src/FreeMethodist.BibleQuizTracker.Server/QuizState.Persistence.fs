@@ -37,7 +37,7 @@ let initExample quizCode =
                 Score = QuizScore.zero
                 Participation = In } ] }
 
-    Running
+    Quiz.Running
         { Code = quizCode
           CompetitionStyle = RunningCompetitionStyle.Team(teamOne, teamTwo)
           CurrentQuestion = (PositiveNumber.one |> PositiveNumber.increment |> PositiveNumber.increment)
@@ -86,9 +86,9 @@ let getQuizFromLocalStorage (localStorage: ProtectedLocalStorage) deserialize : 
 
 let getCodeFromQuiz quiz =
     match quiz with
-    | Running runningTeamQuiz -> runningTeamQuiz.Code
-    | Completed completedTeamQuiz -> completedTeamQuiz.Code
-    | Official officialTeamQuiz -> officialTeamQuiz.Code
+    | Quiz.Running runningTeamQuiz -> runningTeamQuiz.Code
+    | Quiz.Completed completedTeamQuiz -> completedTeamQuiz.Code
+    | Quiz.Official officialTeamQuiz -> officialTeamQuiz.Code
 
 let getBlobName quizCode = $"quiz-{quizCode}"
 
@@ -163,69 +163,27 @@ let getQuizFromBlob (blobServiceClient: BlobServiceClient) deserialize (tenantNa
 
 let private mapState quiz =
     match quiz with
-    | Running _ -> nameof Running
-    | Completed _ -> nameof Completed
-    | Official _ -> nameof Official
-
-
-
-let saveQuizToBlob
-    (blobServiceClient: BlobServiceClient)
-    (options: JsonSerializerOptions)
-    (tenantName: string)
-    : SaveQuiz =
-    fun quiz ->
-        asyncResult {
-            let blobContainerClient =
-                blobServiceClient.GetBlobContainerClient(tenantName.ToLower())
-
-            do!
-                blobContainerClient.CreateIfNotExistsAsync()
-                |> Async.AwaitTask
-                |> Async.catchExceptionsAsErrors DbError.Exception
-                |> AsyncResult.ignore
-
-            let quizCode = quiz |> getCodeFromQuiz
-
-            let! json =
-                try
-                    (JsonSerializer.Serialize(quiz, options) |> AsyncResult.ofSuccess)
-                with exn ->
-                    exn |> DbError.Exception |> AsyncResult.ofError
-
-            let blobClient = quizCode |> quizBlobName |> blobContainerClient.GetBlobClient
-
-            let uploadOptions =
-                BlobUploadOptions(Tags = ([ "State", mapState quiz ] |> Map.ofList))
-
-            let data = json |> BinaryData.FromString
-
-            do!
-                data
-                |> fun data -> blobClient.UploadAsync(data, uploadOptions)
-                |> Async.AwaitTask
-                |> Async.catchExceptionsAsErrors DbError.Exception
-                |> AsyncResult.bind (fun response -> validateBlobOperation response |> AsyncResult.ofResult)
-                |> AsyncResult.ignore
-        }
+    |  Quiz.Running _ -> nameof Running
+    |  Quiz.Completed _ -> nameof Completed
+    |  Quiz.Official _ -> nameof Official
 
 let private mapTournamentInfo quiz =
     match quiz with
-    | Running runningTeamQuiz -> runningTeamQuiz.TournamentInfo
-    | Completed completedTeamQuiz -> completedTeamQuiz.TournamentInfo
-    | Official officialTeamQuiz -> officialTeamQuiz.TournamentInfo
+    | Quiz.Running runningTeamQuiz -> runningTeamQuiz.TournamentInfo
+    | Quiz.Completed completedTeamQuiz -> completedTeamQuiz.TournamentInfo
+    | Quiz.Official officialTeamQuiz -> officialTeamQuiz.TournamentInfo
 
 let mapStyle quiz =
     match quiz with
-    | Running runningTeamQuiz ->
+    | Quiz.Running runningTeamQuiz ->
         match runningTeamQuiz.CompetitionStyle with
         | RunningCompetitionStyle.Individuals _ -> "Individual"
         | RunningCompetitionStyle.Team _ -> "Team"
-    | Completed completedQuiz ->
+    | Quiz.Completed completedQuiz ->
         match completedQuiz.CompetitionStyle with
         | CompletedCompetitionStyle.Individual _ -> "Individual"
         | CompletedCompetitionStyle.Team _ -> "Team"
-    | Official officialQuiz ->
+    | Quiz.Official officialQuiz ->
         match officialQuiz.CompetitionStyle with
         | OfficialCompetitionStyle.Individual _ -> "Individual"
         | OfficialCompetitionStyle.Team _ -> "Team"

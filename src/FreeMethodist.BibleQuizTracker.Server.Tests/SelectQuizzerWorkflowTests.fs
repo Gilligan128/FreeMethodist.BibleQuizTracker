@@ -20,6 +20,6 @@ let ``Given an Individual quiz, When valiating a quizzer participating, then val
     let quiz = RunningQuiz.newTeamQuiz
                 |> fun quiz -> {quiz with CompetitionStyle = RunningCompetitionStyle.Individuals [QuizzerState.create quizzer]}
                 
-    let result = SelectQuizzer_Pipeline.validateSelection ( Running quiz) { Quizzer = quizzer }
+    let result = SelectQuizzer_Pipeline.validateSelection ( Quiz.Running quiz) { Quizzer = quizzer }
     
     Assert.Equal(Ok quiz, result)

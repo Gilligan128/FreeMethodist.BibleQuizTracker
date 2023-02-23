@@ -55,7 +55,7 @@ let completeQuiz getQuiz saveQuiz : CompleteQuiz.Workflow =
 
             do!
                 updatedQuiz
-                |> Completed
+                |> Quiz.Completed
                 |> saveQuiz
                 |> AsyncResult.mapError CompleteQuiz.DbError
 

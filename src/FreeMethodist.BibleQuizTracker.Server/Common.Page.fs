@@ -3,6 +3,7 @@
 open System
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Capabilities
+open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 
@@ -101,7 +102,7 @@ type ListQuizItem =
       Room: string option }
 
 type ListQuizModel =
-    { StateFilter: ListQuizStateFilter
+    { StateFilter: QuizStatusFilter
       Quizzes: Deferred<Result<ListQuizItem list, DbError>> }
 
 //Connecting to SignalR

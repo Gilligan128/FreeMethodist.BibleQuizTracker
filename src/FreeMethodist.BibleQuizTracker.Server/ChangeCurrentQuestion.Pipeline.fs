@@ -31,7 +31,7 @@ let changeCurrentQuestionAsync
 
             do!
                 newQuizState
-                |> Running
+                |> Quiz.Running
                 |> saveQuiz
                 |> AsyncResult.mapError ChangeCurrentQuestion.Error.DbError
 

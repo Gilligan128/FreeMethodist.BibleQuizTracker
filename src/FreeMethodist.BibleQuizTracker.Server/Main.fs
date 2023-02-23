@@ -8,7 +8,7 @@ open Bolero.Remoting.Client
 open Bolero.Templating.Client
 open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
-open FreeMethodist.BibleQuizTracker.Server.CompletedQuizzesModel
+open FreeMethodist.BibleQuizTracker.Server.ListQuizzesModel
 open FreeMethodist.BibleQuizTracker.Server.LiveScoreModel
 open FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
@@ -49,7 +49,7 @@ type Message =
     | CreateQuiz of CreateQuizForm.Message
     | LiveScoreMessage of LiveScorePage.Message
     | QuizDetailsMessage of QuizDetailsMessage
-    | CompletedQuizzesMessage of CompletedQuizzesPage.Message
+    | CompletedQuizzesMessage of ListQuizzesPage.Message
 
 let clientStub =
     Unchecked.defaultof<QuizHub.Client>
@@ -65,7 +65,7 @@ let previousQuizCode page =
     | Page.QuizRun quizCode
     | Page.QuizLiveScore (quizCode, _)
     | Page.QuizSpectate quizCode -> quizCode |> Some
-    | Page.QuizzesCompleted _
+    | Page.ListQuizzes _
     | Page.Home -> None
 
 let disconnectFromHub (hubConnection: HubConnection) quizCode =
@@ -106,7 +106,7 @@ let update
     (navigate: Page -> unit)
     capabilitiesForQuizProvider
     quizControlCapProvider
-    getCompletedQuizzes
+    getQuizzes
     (message: Message)
     model
     : Model * Cmd<Message> =
@@ -172,14 +172,14 @@ let update
         { model with page = Page.QuizDetails(quizCode, { Model = detailsModel }) },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map Message.QuizDetailsMessage ]
-    | SetPage (Page.QuizzesCompleted pageModel) ->
+    | SetPage (Page.ListQuizzes pageModel) ->
         let disconnectCmd =
             disconnectPreviousPage model.page
 
         let initialModel, initCmd =
-            CompletedQuizzesPage.init
+            ListQuizzesPage.init
 
-        { model with page = Page.QuizzesCompleted { Model = initialModel } },
+        { model with page = Page.ListQuizzes { Model = initialModel } },
         Cmd.batch [ disconnectCmd
                     initCmd |> Cmd.map Message.CompletedQuizzesMessage ]
     | SetPage page ->
@@ -251,17 +251,17 @@ let update
         | _ -> model, Cmd.none
     | CompletedQuizzesMessage message ->
         match model.page with
-        | QuizzesCompleted pageModel ->
+        | ListQuizzes pageModel ->
             let newModel, cmd, externalMsg =
-                CompletedQuizzesPage.update getCompletedQuizzes pageModel.Model message
+                ListQuizzesPage.update getQuizzes pageModel.Model message
 
             let model =
                 { model with
-                    page = QuizzesCompleted { Model = newModel }
+                    page = ListQuizzes { Model = newModel }
                     Error =
                         match externalMsg with
-                        | CompletedQuizzesPage.ExternalMessage.NoError -> None
-                        | CompletedQuizzesPage.ExternalMessage.Error error -> Some error }
+                        | ListQuizzesPage.ExternalMessage.NoError -> None
+                        | ListQuizzesPage.ExternalMessage.Error error -> Some error }
 
             let cmd =
                 cmd |> Cmd.map CompletedQuizzesMessage
@@ -286,7 +286,7 @@ let defaultModel =
             pageModel
             { Code = ""
               Scores = Deferred.NotYetStarted }
-    | QuizzesCompleted pageModel -> Router.definePageModel pageModel { Quizzes = NotYetStarted }
+    | ListQuizzes pageModel -> Router.definePageModel pageModel { StateFilter = QuizStatusFilter.All; Quizzes = NotYetStarted }
 
 let router =
     Router.inferWithModel SetPage (fun model -> model.page) defaultModel
@@ -331,13 +331,13 @@ let private pagesAreSame page1 page2 =
     | Page.QuizLiveScore (quizCode1, _), Page.QuizLiveScore (quizCode2, _) -> quizCode1 = quizCode2
     | Page.QuizRun one, Page.QuizRun two
     | Page.QuizSpectate one, Page.QuizSpectate two -> one = two
-    | Page.QuizzesCompleted _, Page.QuizzesCompleted _ -> true
+    | Page.ListQuizzes _, Page.ListQuizzes _ -> true
     | Page.Home, _
     | Page.QuizDetails _, _
     | Page.QuizRun _, _
     | Page.QuizSpectate _, _
     | Page.QuizLiveScore _, _
-    | Page.QuizzesCompleted _, _ -> false
+    | Page.ListQuizzes _, _ -> false
 
 let menuItem (model: Model) (page: Page) (text: string) =
     Main
@@ -361,7 +361,7 @@ let view  model dispatch =
             concat {
                 menuItem model Home "Home"
                 menuItem model (QuizDetails("Example", Router.noModel)) "Quiz Example"
-                menuItem model (Page.QuizzesCompleted Router.noModel) "Completed Quizzes"
+                menuItem model (Page.ListQuizzes Router.noModel) "Quizzes"
             }
         )
         .Body(
@@ -382,7 +382,7 @@ let view  model dispatch =
                         { pageModel.Model with Code = quizCode }
 
                     LiveScorePage.page model
-                | QuizzesCompleted pageModel -> CompletedQuizzesPage.render router.Link dispatch pageModel.Model
+                | ListQuizzes pageModel -> ListQuizzesPage.render router.Link dispatch pageModel.Model
         )
         .Error(
             cond model.Error
@@ -404,17 +404,17 @@ let avilableQuizControlCapabilities getQuiz saveQuiz navigate : QuizControlCapab
         capOpt
         |> Option.bind (fun cap ->
             match quiz with
-            | Running _ -> Some cap
-            | Completed _ -> None
-            | Official _ -> None)
+            | Quiz.Running _ -> Some cap
+            | Quiz.Completed _ -> None
+            | Quiz.Official _ -> None)
 
     let activeWhileComplete quiz capOpt =
         capOpt
         |> Option.bind (fun cap ->
             match quiz with
-            | Running _ -> None
-            | Completed _ -> Some cap
-            | Official _ -> Some cap)
+            | Quiz.Running _ -> None
+            | Quiz.Completed _ -> Some cap
+            | Quiz.Official _ -> Some cap)
 
     let completeQuizCap quiz =
         quiz
@@ -480,6 +480,9 @@ type MyApp() =
     [<Inject>]
     member val GetRecentCompletedQuizzes = Unchecked.defaultof<GetRecentCompletedQuizzes> with get, set
 
+    [<Inject>]
+    member val GetQuizzes = Unchecked.defaultof<QuizStatusFilter -> AsyncResult<ListQuizItem list, DbError>> with get, set
+    
     override this.Program =
         let hubConnection = this.HubConnection
 
@@ -530,7 +533,7 @@ type MyApp() =
                 navigate
                 availableCapabilitiesForQuiz
                 availableQuizControlCapabilities
-                this.GetRecentCompletedQuizzes
+                this.GetQuizzes
 
         Program.mkProgram
             (fun _ ->

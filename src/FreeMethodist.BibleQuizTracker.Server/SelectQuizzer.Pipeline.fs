@@ -68,7 +68,7 @@ let selectQuizzer getQuiz (saveQuiz: SaveQuiz) : SelectQuizzer.Workflow =
             do!
                 validQuiz
                 |> changeCurrentQuizzer command.Data.Quizzer
-                |> Running
+                |> Quiz.Running
                 |> saveQuiz
                 |> AsyncResult.mapError SelectQuizzer.DbError
 

@@ -124,6 +124,12 @@ type TryGetQuiz = QuizCode -> AsyncResult<Option<Quiz>, DbError>
 
 type GetRecentCompletedQuizzes = unit -> AsyncResult<string list, DbError>
 
+type QuizStatusFilter =
+    | All
+    | Running
+    | Completed
+    | Official
+
 //Event Handling
 type PublishQuizEventTask = string -> QuizCode -> obj -> Async<unit>
 
@@ -193,7 +199,7 @@ let runQuizWorklfowEngine getQuiz saveQuiz pureWorkflow mapDbError (command: Wit
 
         do!
             quiz
-            |> Running
+            |>  Quiz.Running
             |> saveQuiz
             |> AsyncResult.mapError mapDbError
 
