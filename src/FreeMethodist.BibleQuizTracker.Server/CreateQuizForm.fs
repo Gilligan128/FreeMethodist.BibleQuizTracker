@@ -361,8 +361,8 @@ module CreateQuizForm =
                                             | _ -> None
                                             |> SetTournamentCompetitionDivision
                                             |> dispatch)
-                                        ([ ("", "Select Competition"); ("Rookie", "Rookie"); ("Veteran", "Veteran") ])
-                                        (string formData.TournamentInfo.CompetitionDivision)
+                                        ([ ("", "None"); ("Rookie", "Rookie"); ("Veteran", "Veteran") ])
+                                        (formData.TournamentInfo.CompetitionDivision  |> Option.map string |> Option.defaultValue "")
                                 }
                             )
 
@@ -380,12 +380,12 @@ module CreateQuizForm =
                                             | _ -> None
                                             |> SetTournamentGradeDivision
                                             |> dispatch)
-                                        ([ ("", "Select Grade")
+                                        ([ ("", "None")
                                            ("YoungTeen", "Young Teen")
                                            ("SeniorTeen", "Senior Teen")
                                            ("Kids", "Kids")
                                            ("QUIC", "QUIC") ])
-                                        (string formData.TournamentInfo.GradeDivision)
+                                        (formData.TournamentInfo.GradeDivision |> Option.map string |> Option.defaultValue "")
                                 }
                             )
                         }
