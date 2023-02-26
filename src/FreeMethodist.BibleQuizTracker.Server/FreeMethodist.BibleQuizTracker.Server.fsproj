@@ -50,6 +50,7 @@
         <Compile Include="RunQuiz\RunningQuizPage.Model.fs" />
         <Compile Include="RunQuiz\RunningQuizPage.Update.fs" />
         <Compile Include="RunQuiz\RunningQuizPage.Render.fs" />
+        <Compile Include="InputFields.fs" />
         <Compile Include="CreateQuizForm.fs" />
         <Compile Include="LiveScorePage.fs" />
         <Compile Include="QuizDetailsPage.fs" />

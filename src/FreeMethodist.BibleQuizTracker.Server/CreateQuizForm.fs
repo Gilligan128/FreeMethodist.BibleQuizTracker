@@ -1,7 +1,9 @@
 module FreeMethodist.BibleQuizTracker.Server.CreateQuizForm
 
 open System
+open System.Text.RegularExpressions
 open Bolero
+open Bolero.Builders
 open Bolero.Html
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server
@@ -10,7 +12,7 @@ open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Workflow
 open FreeMethodist.BibleQuizTracker.Server.CreateQuiz.Pipeline
-
+open InputFields
 
 module CreateQuizForm =
     type ModalForm<'T> =
@@ -159,43 +161,27 @@ module CreateQuizForm =
             Active
                 { model with
                     TournamentInfo =
-                        { model.TournamentInfo with GradeDivision = match gradeDivision with
-                                                                    | "YoungTeen" -> GradeDivision.YoungTeen
-                                                                    | "SeniorTeen" -> GradeDivision.SeniorTeen
-                                                                    | "Kids" -> GradeDivision.Kids
-                                                                    | "QUIC" -> GradeDivision.QUIC
-                                                                    | name -> GradeDivision.Custom name} },
+                        { model.TournamentInfo with
+                            GradeDivision =
+                                match gradeDivision with
+                                | "YoungTeen" -> GradeDivision.YoungTeen
+                                | "SeniorTeen" -> GradeDivision.SeniorTeen
+                                | "Kids" -> GradeDivision.Kids
+                                | "QUIC" -> GradeDivision.QUIC
+                                | name -> GradeDivision.Custom name } },
             Cmd.none
         | SetTournamentCompetitionDivision competitionDivision, Active model ->
             Active
                 { model with
                     TournamentInfo =
-                        { model.TournamentInfo with CompetitionDivision = match competitionDivision with
-                                                                            | "Novice" -> CompetitionDivision.Rookie
-                                                                            | "Veteran" -> CompetitionDivision.Veteran
-                                                                            | _ -> CompetitionDivision.Veteran} },
+                        { model.TournamentInfo with
+                            CompetitionDivision =
+                                match competitionDivision with
+                                | "Novice" -> CompetitionDivision.Rookie
+                                | "Veteran" -> CompetitionDivision.Veteran
+                                | _ -> CompetitionDivision.Veteran } },
             Cmd.none
 
-    let private labeledField fieldLabel field changeAction =
-        div {
-            attr.``class`` "field"
-
-            div {
-                attr.``class`` "control"
-
-                label {
-                    attr.``class`` "label"
-
-                    $"{fieldLabel}:"
-                }
-
-                input {
-                    attr.``class`` "input"
-
-                    bind.input.string field (fun code -> changeAction code)
-                }
-            }
-        }
 
     let competitionStyleView formData dispatch : Node =
         cond formData.CompetitionStyle
@@ -339,17 +325,30 @@ module CreateQuizForm =
                     }
 
                     competitionStyleView formData dispatch
+                    
+                    fieldset {
+                        attr.``class`` "box"
+                        legend{
+                            attr.``class`` "label"
+                            "Tournament Info (optional)"
+                        }
+                        labeledField "Tournament" formData.TournamentInfo.Name (fun name ->
+                            dispatch <| SetTournamentName name)
 
-                    labeledField "Tournament: " formData.TournamentInfo.Name (fun name ->
-                        dispatch <| SetTournamentName name)
+                        labeledField "Church" formData.TournamentInfo.Church (fun church ->
+                            dispatch <| SetTournamentChurch church)
 
-                    labeledField "Church: " formData.TournamentInfo.Church (fun church ->
-                        dispatch <| SetTournamentChurch church)
+                        labeledField "Room" formData.TournamentInfo.Room (fun room -> dispatch <| SetTournamentRoom room)
 
-                    labeledField "Room: " formData.TournamentInfo.Room (fun room -> dispatch <| SetTournamentRoom room)
+                        labeledField "Round" formData.TournamentInfo.Round (fun round ->
+                            dispatch <| SetTournamentRound round)
 
-                    labeledField "Round: " formData.TournamentInfo.Round (fun round ->
-                        dispatch <| SetTournamentRound round)
+                        labeledSelect
+                            "Grade Division"
+                            (fun gradeDivision -> dispatch <| SetTournamentGradeDivision gradeDivision)
+                            [ GradeDivision.YoungTeen; GradeDivision.SeniorTeen; GradeDivision.Kids; GradeDivision.QUIC ]
+                            (formData.TournamentInfo.GradeDivision)
+                    }
                 }
 
                 div {
