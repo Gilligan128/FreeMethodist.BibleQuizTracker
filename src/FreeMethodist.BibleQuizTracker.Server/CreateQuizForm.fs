@@ -23,8 +23,8 @@ module CreateQuizForm =
           Church: string
           Room: string
           Round: string
-          GradeDivision: string
-          CompetitionDivision: string }
+          GradeDivision: GradeDivision
+          CompetitionDivision: CompetitionDivision }
 
     type CreateQuizFormData =
         { Code: QuizCode
@@ -44,6 +44,8 @@ module CreateQuizForm =
         | SetTournamentChurch of string
         | SetTournamentRoom of string
         | SetTournamentRound of string
+        | SetTournamentGradeDivision of string
+        | SetTournamentCompetitionDivision of string
         | Start
         | Cancel
 
@@ -77,8 +79,8 @@ module CreateQuizForm =
                       Church = ""
                       Room = ""
                       Round = ""
-                      GradeDivision = ""
-                      CompetitionDivision = "" } },
+                      GradeDivision = GradeDivision.SeniorTeen
+                      CompetitionDivision = CompetitionDivision.Veteran } },
             Cmd.none
         | SetTeamOneName name, Active quizFormData ->
             let model =
@@ -153,6 +155,26 @@ module CreateQuizForm =
             Active { model with TournamentInfo = { model.TournamentInfo with Room = room } }, Cmd.none
         | SetTournamentRound round, Active model ->
             Active { model with TournamentInfo = { model.TournamentInfo with Round = round } }, Cmd.none
+        | SetTournamentGradeDivision gradeDivision, Active model ->
+            Active
+                { model with
+                    TournamentInfo =
+                        { model.TournamentInfo with GradeDivision = match gradeDivision with
+                                                                    | "YoungTeen" -> GradeDivision.YoungTeen
+                                                                    | "SeniorTeen" -> GradeDivision.SeniorTeen
+                                                                    | "Kids" -> GradeDivision.Kids
+                                                                    | "QUIC" -> GradeDivision.QUIC
+                                                                    | name -> GradeDivision.Custom name} },
+            Cmd.none
+        | SetTournamentCompetitionDivision competitionDivision, Active model ->
+            Active
+                { model with
+                    TournamentInfo =
+                        { model.TournamentInfo with CompetitionDivision = match competitionDivision with
+                                                                            | "Novice" -> CompetitionDivision.Rookie
+                                                                            | "Veteran" -> CompetitionDivision.Veteran
+                                                                            | _ -> CompetitionDivision.Veteran} },
+            Cmd.none
 
     let private labeledField fieldLabel field changeAction =
         div {
