@@ -25,8 +25,8 @@ module CreateQuizForm =
           Church: string
           Room: string
           Round: string
-          GradeDivision: GradeDivision
-          CompetitionDivision: CompetitionDivision }
+          GradeDivision: GradeDivision option
+          CompetitionDivision: CompetitionDivision option }
 
     type CreateQuizFormData =
         { Code: QuizCode
@@ -46,8 +46,8 @@ module CreateQuizForm =
         | SetTournamentChurch of string
         | SetTournamentRoom of string
         | SetTournamentRound of string
-        | SetTournamentGradeDivision of string
-        | SetTournamentCompetitionDivision of string
+        | SetTournamentGradeDivision of GradeDivision option
+        | SetTournamentCompetitionDivision of CompetitionDivision option
         | Start
         | Cancel
 
@@ -81,8 +81,8 @@ module CreateQuizForm =
                       Church = ""
                       Room = ""
                       Round = ""
-                      GradeDivision = GradeDivision.SeniorTeen
-                      CompetitionDivision = CompetitionDivision.Veteran } },
+                      GradeDivision = None
+                      CompetitionDivision = None } },
             Cmd.none
         | SetTeamOneName name, Active quizFormData ->
             let model =
@@ -115,8 +115,8 @@ module CreateQuizForm =
                       Church = activeModel.TournamentInfo.Church |> stringToOption
                       Room = activeModel.TournamentInfo.Room |> stringToOption
                       Round = activeModel.TournamentInfo.Round |> stringToOption
-                      GradeDivision = None
-                      CompetitionDivision = None } }
+                      GradeDivision = activeModel.TournamentInfo.GradeDivision
+                      CompetitionDivision = activeModel.TournamentInfo.CompetitionDivision } }
                 |> createQuiz saveNewQuiz
                 |> AsyncResult.mapError mapErrorToString
                 |> Async.timeoutNone 5000
@@ -158,28 +158,10 @@ module CreateQuizForm =
         | SetTournamentRound round, Active model ->
             Active { model with TournamentInfo = { model.TournamentInfo with Round = round } }, Cmd.none
         | SetTournamentGradeDivision gradeDivision, Active model ->
-            Active
-                { model with
-                    TournamentInfo =
-                        { model.TournamentInfo with
-                            GradeDivision =
-                                match gradeDivision with
-                                | "YoungTeen" -> GradeDivision.YoungTeen
-                                | "SeniorTeen" -> GradeDivision.SeniorTeen
-                                | "Kids" -> GradeDivision.Kids
-                                | "QUIC" -> GradeDivision.QUIC
-                                | name -> GradeDivision.Custom name } },
-            Cmd.none
+            Active { model with TournamentInfo = { model.TournamentInfo with GradeDivision = gradeDivision } }, Cmd.none
         | SetTournamentCompetitionDivision competitionDivision, Active model ->
             Active
-                { model with
-                    TournamentInfo =
-                        { model.TournamentInfo with
-                            CompetitionDivision =
-                                match competitionDivision with
-                                | "Novice" -> CompetitionDivision.Rookie
-                                | "Veteran" -> CompetitionDivision.Veteran
-                                | _ -> CompetitionDivision.Veteran } },
+                { model with TournamentInfo = { model.TournamentInfo with CompetitionDivision = competitionDivision } },
             Cmd.none
 
 
@@ -325,29 +307,88 @@ module CreateQuizForm =
                     }
 
                     competitionStyleView formData dispatch
-                    
+
                     fieldset {
                         attr.``class`` "box"
-                        legend{
-                            attr.``class`` "label"
+
+                        legend {
+
                             "Tournament Info (optional)"
                         }
+
                         labeledField "Tournament" formData.TournamentInfo.Name (fun name ->
                             dispatch <| SetTournamentName name)
 
                         labeledField "Church" formData.TournamentInfo.Church (fun church ->
                             dispatch <| SetTournamentChurch church)
 
-                        labeledField "Room" formData.TournamentInfo.Room (fun room -> dispatch <| SetTournamentRoom room)
+                        div {
+                            attr.``class`` "field is-grouped"
 
-                        labeledField "Round" formData.TournamentInfo.Round (fun round ->
-                            dispatch <| SetTournamentRound round)
+                            bulmaControl (
+                                concat {
+                                    bulmaLabel "Room"
 
-                        labeledSelect
-                            "Grade Division"
-                            (fun gradeDivision -> dispatch <| SetTournamentGradeDivision gradeDivision)
-                            [ GradeDivision.YoungTeen; GradeDivision.SeniorTeen; GradeDivision.Kids; GradeDivision.QUIC ]
-                            (formData.TournamentInfo.GradeDivision)
+                                    bulmaInput
+                                        (fun room -> dispatch <| SetTournamentRoom room)
+                                        formData.TournamentInfo.Room
+                                }
+                            )
+
+                            bulmaControl (
+                                concat {
+                                    bulmaLabel "Round"
+
+                                    bulmaInput
+                                        (fun round -> dispatch <| SetTournamentRound round)
+                                        formData.TournamentInfo.Round
+                                }
+                            )
+                        }
+
+                        div {
+                            attr.``class`` "field is-grouped"
+
+                            bulmaControl (
+                                concat {
+                                    bulmaLabel "Competition Division"
+
+                                    bulmaSelect
+                                        (fun competitionDivision ->
+                                            match competitionDivision with
+                                            | "Rookie" -> Some CompetitionDivision.Rookie
+                                            | "Veteran" -> Some CompetitionDivision.Veteran
+                                            | _ -> None
+                                            |> SetTournamentCompetitionDivision
+                                            |> dispatch)
+                                        ([ ("", "Select Competition"); ("Rookie", "Rookie"); ("Veteran", "Veteran") ])
+                                        (string formData.TournamentInfo.CompetitionDivision)
+                                }
+                            )
+
+                            bulmaControl (
+                                concat {
+                                    bulmaLabel "Grade Division"
+
+                                    bulmaSelect
+                                        (fun gradeDivision ->
+                                            match gradeDivision with
+                                            | "YoungTeen" -> Some GradeDivision.YoungTeen
+                                            | "SeniorTeen" -> Some GradeDivision.SeniorTeen
+                                            | "Kids" -> Some GradeDivision.Kids
+                                            | "QUIC" -> Some GradeDivision.QUIC
+                                            | _ -> None
+                                            |> SetTournamentGradeDivision
+                                            |> dispatch)
+                                        ([ ("", "Select Grade")
+                                           ("YoungTeen", "Young Teen")
+                                           ("SeniorTeen", "Senior Teen")
+                                           ("Kids", "Kids")
+                                           ("QUIC", "QUIC") ])
+                                        (string formData.TournamentInfo.GradeDivision)
+                                }
+                            )
+                        }
                     }
                 }
 

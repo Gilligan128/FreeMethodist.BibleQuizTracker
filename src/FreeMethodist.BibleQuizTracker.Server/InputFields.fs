@@ -4,7 +4,28 @@ open System.Text.RegularExpressions
 open Bolero
 open Bolero.Html
 
-let  labeledField fieldLabel field changeAction =
+let bulmaInput changeAction field =
+    input {
+        attr.``class`` "input"
+
+        bind.input.string field (changeAction)
+    }
+
+let bulmaLabel fieldLabel =
+    label {
+        attr.``class`` "label"
+
+        $"{fieldLabel}"
+    }
+
+let bulmaControl (inner: Node) =
+    div {
+        attr.``class`` "control"
+
+        inner
+    }
+
+let labeledField fieldLabel field changeAction =
     div {
         attr.``class`` "field"
 
@@ -25,33 +46,35 @@ let  labeledField fieldLabel field changeAction =
         }
     }
 
-let  labeledSelect fieldLabel changeAction options field =
+let bulmaSelect changeAction options field =
     div {
-        attr.``class`` "field"
+        attr.``class`` "select"
+        select {
+            bind.change.string (field) (changeAction)
+
+            forEach options
+            <| fun (value, display) ->
+                option {
+                    attr.value value
+
+                    text display
+                }
+        }
+    }
+
+let labeledSelectControl fieldLabel changeAction options field =
+    div {
+        attr.``class`` "control"
+
+        label {
+            attr.``class`` "label"
+
+            $"{fieldLabel}:"
+        }
 
         div {
-            attr.``class`` "control"
+            attr.``class`` "select"
 
-            label {
-                attr.``class`` "label"
-
-                $"{fieldLabel}:"
-            }
-
-            div {
-                attr.``class`` "select"
-
-                select {
-                    bind.change.string (string field) (changeAction)
-                   
-                    forEach options
-                    <| fun  opt -> 
-                        let optString = string opt
-                        option {
-                            attr.value (optString)
-                            text (Regex.Replace(optString, "(\\B[A-Z])", " $1"))
-                        }
-                }
-            }
+            bulmaSelect changeAction options field
         }
     }
