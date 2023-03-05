@@ -111,6 +111,7 @@ let runQuizCapabilitiesForQuiz dependencies : RunQuizCapabilityForQuizProvider =
         fun () -> (runQuizWorkflowEngine prejumpWorkflow Prejump.Error.DbError) { Quiz = quiz.Code; Data = () }
         |> Some
         |> onlyQuizmastersAndScorekeepers user
+        |> fun cap -> printfn "what is going on with Prejumps??"; cap
     
     { AddQuizzer = addQuizzer
       RemoveQuizzer = removeQuizzer
