@@ -18,7 +18,6 @@ type private quizPage = Template<"wwwroot/Quiz.html">
 let prejumpMessage capability =
     capability
     |> fun cap ->
-        printfn "Prejump MEssage!"
         cap
     |> fun cap -> cap ()
     |> AsyncResult.map (

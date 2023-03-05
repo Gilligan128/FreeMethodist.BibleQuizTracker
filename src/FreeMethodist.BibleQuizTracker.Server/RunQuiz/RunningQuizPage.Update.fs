@@ -596,7 +596,6 @@ let update
 
         result |> finishWorkflow mapErrors
     | ExecuteWorkflow (Started capability) ->
-        printfn $"Executing Worklow {capability}"
         let cmd =
             capability () |> startWorkflow ExecuteWorkflow
 
