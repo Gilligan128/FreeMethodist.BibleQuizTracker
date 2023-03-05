@@ -1,5 +1,6 @@
 ﻿module FreeMethodist.BibleQuizTracker.Server.AnswerIncorrectly.Pipeline
 
+open FreeMethodist.BibleQuizTracker.Server
 open FreeMethodist.BibleQuizTracker.Server.Events_Workflow
 open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
@@ -23,13 +24,11 @@ let private revertScoressBasedOnQuizzerIfNecessary revertedCorrectAnswer quiz =
 let updateQuiz: UpdateQuiz =
 
     let updateOrAddQuestion quizzer questionNumber questionOpt =
-        questionOpt
-        |> QuizAnswer.answerIncorrectly quizzer questionNumber
+        questionOpt |> QuizAnswer.answerIncorrectly quizzer questionNumber
 
     fun quizzer quiz ->
         result {
-            let quizCurrentQuestion =
-                quiz.CurrentQuestion
+            let quizCurrentQuestion = quiz.CurrentQuestion
 
             let currentAnswerRecord =
                 quiz.Questions.TryFind quizCurrentQuestion
@@ -43,54 +42,16 @@ let updateQuiz: UpdateQuiz =
                 { quiz with
                     CurrentQuizzer = None
                     Questions = RunningQuiz.changeCurrentAnswer quiz changedQuestion }
-                |> revertScoressBasedOnQuizzerIfNecessary revertedCorrectAnswer
-            
+
             return
                 { QuizState = quizState
                   RevertedAnswer = revertedCorrectAnswer }
         }
 
-let createEvents: CreateEvents =
-    fun quiz ->
-        let revertedQuizzerOpt =
-            quiz.RevertedAnswer
-            |> RevertedCorrectAnswer.toOption
-            |> Option.bind (RunningQuiz.tryFindQuizzer quiz.QuizState)
-
-        let revertedEvents =
-            revertedQuizzerOpt
-            |> Option.map (fun (quizzer, teamOpt) ->
-                [ { Quiz = quiz.QuizState.Code
-                    Quizzer = quizzer.Name
-                    NewScore = quizzer.Score
-                    Question = quiz.QuizState.CurrentQuestion }
-                  |> AnswerIncorrectly.Event.IndividualScoreChanged ]
-                @ (teamOpt
-                   |> Option.map (fun team ->
-                       { Quiz = quiz.QuizState.Code
-                         NewScore =
-                           quiz.QuizState
-                           |> RunningQuiz.getTeam team
-                           |> fun team -> team.Score
-                         Team = team }
-                       |> AnswerIncorrectly.Event.TeamScoreChanged)
-                   |> Option.toList))
-            |> Option.defaultValue []
-
-        let quizzerChanged =
-            { Quiz = quiz.QuizState.Code
-              CurrentQuizzer = quiz.QuizState.CurrentQuizzer }
-            |> AnswerIncorrectly.Event.CurrentQuizzerChanged
-
-        [ quizzerChanged
-          yield! revertedEvents ]
-
 let answerIncorrectly getQuiz saveQuiz : AnswerIncorrectly.Workflow =
     fun command ->
         asyncResult {
-            let! quiz =
-                getQuiz command.Quiz
-                |> AsyncResult.mapError AnswerIncorrectly.DbError
+            let! quiz = getQuiz command.Quiz |> AsyncResult.mapError AnswerIncorrectly.DbError
 
             let! runningQuiz =
                 validateRunningQuiz quiz
@@ -104,6 +65,8 @@ let answerIncorrectly getQuiz saveQuiz : AnswerIncorrectly.Workflow =
 
             let! updatedQuiz =
                 updateQuiz validQuizzer runningQuiz
+                |> Result.map (fun updatedQuiz ->
+                    { updatedQuiz with QuizState = updatedQuiz.QuizState |> Score.updateQuizScores })
                 |> AsyncResult.ofResult
 
             do!
@@ -112,5 +75,13 @@ let answerIncorrectly getQuiz saveQuiz : AnswerIncorrectly.Workflow =
                 |> saveQuiz
                 |> AsyncResult.mapError AnswerIncorrectly.Error.DbError
 
-            return createEvents updatedQuiz
+            let events =
+                updatedQuiz.QuizState
+                |> ScoreEvents.createScoreEvents updatedQuiz.QuizState
+                |> List.map (fun e ->
+                    match e with
+                    | ScoreEvents.IndividualScoreChanged e -> AnswerIncorrectly.Event.IndividualScoreChanged e
+                    | ScoreEvents.TeamScoreChanged e -> AnswerIncorrectly.Event.TeamScoreChanged e)
+
+            return events
         }

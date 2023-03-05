@@ -67,6 +67,7 @@ let render link dispatch model =
                                 attr.href (link (Page.QuizDetails (quiz.Code, Router.noModel) ))
                                 quiz.Code
                                }
+                            
                         }
                     }
             }

@@ -62,19 +62,3 @@ let bulmaSelect changeAction options field =
         }
     }
 
-let labeledSelectControl fieldLabel changeAction options field =
-    div {
-        attr.``class`` "control"
-
-        label {
-            attr.``class`` "label"
-
-            $"{fieldLabel}:"
-        }
-
-        div {
-            attr.``class`` "select"
-
-            bulmaSelect changeAction options field
-        }
-    }
