@@ -16,7 +16,7 @@ open FreeMethodist.BibleQuizTracker.Server.Common_Page
 type private quizPage = Template<"wwwroot/Quiz.html">
 
 let prejumpMessage capability =
-    capability ()
+    (capability >> (fun cap -> printfn "prejumpMessage: %A" cap; cap)) ()
     |> AsyncResult.map (
         List.map (fun event ->
             match event with
