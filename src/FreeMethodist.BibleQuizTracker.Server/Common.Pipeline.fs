@@ -203,6 +203,7 @@ let runQuizWorklfowEngine getQuiz saveQuiz pureWorkflow mapDbError (command: Wit
 
         return events
     }
+    |> fun result -> printfn $"workflow: {pureWorkflow},result: {result}"; result
 
 
 
