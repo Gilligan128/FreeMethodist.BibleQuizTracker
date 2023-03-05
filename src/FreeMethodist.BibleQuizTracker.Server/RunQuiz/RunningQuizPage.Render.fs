@@ -316,6 +316,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             )
             .Prejump(fun _ ->
                 resolved.Capabilities.Prejump
+                |> fun cap -> printfn $"capability: {cap}; why isnt it working?"; cap
                 |> Option.map (fun cap -> fun () -> prejumpMessage cap)
                 |> potentiallyDispatchWorkflow)
             .Elt()
