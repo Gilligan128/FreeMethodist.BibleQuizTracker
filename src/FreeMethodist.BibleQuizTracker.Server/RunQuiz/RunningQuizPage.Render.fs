@@ -16,7 +16,11 @@ open FreeMethodist.BibleQuizTracker.Server.Common_Page
 type private quizPage = Template<"wwwroot/Quiz.html">
 
 let prejumpMessage capability =
-    capability ()
+    capability
+    |> fun cap ->
+        printfn "Prejump MEssage!"
+        cap
+    |> fun cap -> cap ()
     |> AsyncResult.map (
         List.map (fun event ->
             match event with
@@ -33,8 +37,7 @@ let prejumpMessage capability =
         | Prejump.Error.WrongQuizState quizStateError -> "Quiz is not running")
 
 let changeCurrentQuestionMessage questionNumber (capability: ChangeCurrentQuestionCap) =
-    let questionNumber =
-        (questionNumber |> PositiveNumber.numberOrOne)
+    let questionNumber = (questionNumber |> PositiveNumber.numberOrOne)
 
     capability { Question = questionNumber }
     |> AsyncResult.map RunQuizEvent.CurrentQuestionChanged
@@ -66,8 +69,7 @@ let answerCorrectlyMessage capability =
         | AnswerCorrectly.Error.DbError dbError -> dbError |> mapDbErrorToString)
 
 let quizzerView removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (quizzer: QuizzerModel, jumpPosition: int) =
-    let removeCap =
-        removeQuizzerCap |> fun cap -> cap quizzer.Name
+    let removeCap = removeQuizzerCap |> fun cap -> cap quizzer.Name
 
     quizPage
         .Quizzer()
@@ -122,7 +124,8 @@ let quizzerView removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (quiz
         .PrejumpBadgeVisible(
             match quizzer.PrejumpState with
             | NoPrejump -> "is-hidden"
-            | Prejumped -> "")
+            | Prejumped -> ""
+        )
         .Elt()
 
 let private getJumpPosition jumpOrder (quizzer: QuizzerModel) =
@@ -152,8 +155,7 @@ let private teamView
         .Quizzers(
             concat {
                 for quizzer in teamModel.Quizzers do
-                    let jumpPosition =
-                        quizzer |> getJumpPosition jumpOrder
+                    let jumpPosition = quizzer |> getJumpPosition jumpOrder
 
                     quizzerView (quizzer, jumpPosition)
             }
@@ -163,8 +165,7 @@ let private teamView
 let individualSideView removeQuizzerCap quizzerView (jumpOrder: string list) quizzerModels =
     forEach quizzerModels
     <| fun quizzer ->
-        let jumpPosition =
-            quizzer |> getJumpPosition jumpOrder
+        let jumpPosition = quizzer |> getJumpPosition jumpOrder
 
         quizzerView (quizzer, jumpPosition)
 
@@ -198,27 +199,22 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             resolved.Capabilities.RemoveQuizzer
             |> Option.map (fun remove -> fun () -> remove { Quizzer = quizzer })
 
-        let quizzerView =
-            quizzerView removeQuizzerCap dispatch resolved.CurrentQuizzer
+        let quizzerView = quizzerView removeQuizzerCap dispatch resolved.CurrentQuizzer
 
         let individualSideView =
             individualSideView removeQuizzerCap quizzerView resolved.JumpOrder
 
         let nextQuestionCap capability =
             fun () ->
-                let questionNumber =
-                    resolved.CurrentQuestion + 1
+                let questionNumber = resolved.CurrentQuestion + 1
 
-                capability
-                |> changeCurrentQuestionMessage questionNumber
+                capability |> changeCurrentQuestionMessage questionNumber
 
         let previousQuestionCap capability =
             fun () ->
-                let questionNumber =
-                    Math.Max(resolved.CurrentQuestion - 1, 1)
+                let questionNumber = Math.Max(resolved.CurrentQuestion - 1, 1)
 
-                capability
-                |> changeCurrentQuestionMessage questionNumber
+                capability |> changeCurrentQuestionMessage questionNumber
 
         let potentiallyDispatchWorkflow workflowOpt =
             workflowOpt
@@ -239,16 +235,14 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                 | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
                     teamView TeamPosition.TeamOne quizzerView (teamOne, resolved.JumpOrder) dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
-                    quizzerModels
-                    |> sideViewSplit individualSideView 0
+                    quizzerModels |> sideViewSplit individualSideView 0
             )
             .SideTwo(
                 match resolved.CompetitionStyle with
                 | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
                     teamView TeamPosition.TeamTwo quizzerView (teamTwo, resolved.JumpOrder) dispatch
                 | LoadedCompetitionStyle.Individuals quizzerModels ->
-                    quizzerModels
-                    |> sideViewSplit individualSideView 1
+                    quizzerModels |> sideViewSplit individualSideView 1
             )
             .CurrentQuestion(string resolved.CurrentQuestion)
             .NextQuestion(fun _ ->
@@ -285,20 +279,11 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                 (match resolved.AddQuizzer with
                  | RunningQuizPage_Model.Active (name, _) -> name
                  | Inert -> ""),
-                (fun name ->
-                    dispatch (
-                        AddQuizzerMessage.SetName name
-                        |> Message.AddQuizzer
-                    ))
+                (fun name -> dispatch (AddQuizzerMessage.SetName name |> Message.AddQuizzer))
             )
             .AddQuizzerStart(fun _ -> dispatch (AddQuizzer Start))
             .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
-            .AddQuizzerActive(
-                if resolved.AddQuizzer = Inert then
-                    ""
-                else
-                    "is-active"
-            )
+            .AddQuizzerActive(if resolved.AddQuizzer = Inert then "" else "is-active")
             .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
             .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
             .AnswerCorrectly(fun _ ->
@@ -315,9 +300,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                             (mapItemizedTeam teamOne, mapItemizedTeam teamTwo)
                             |> ItemizedCompetitionStyle.Team
                         | LoadedCompetitionStyle.Individuals quizzers ->
-                            quizzers
-                            |> List.map (fun q -> q.Name)
-                            |> ItemizedCompetitionStyle.Individual
+                            quizzers |> List.map (fun q -> q.Name) |> ItemizedCompetitionStyle.Individual
                       NumberOfQuestions = resolved.NumberOfQuestions
                       QuestionsWithEvents = resolved.QuestionScores }
                     dispatch
