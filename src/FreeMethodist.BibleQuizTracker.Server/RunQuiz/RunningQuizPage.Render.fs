@@ -218,6 +218,8 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
 
         let potentiallyDispatchWorkflow workflowOpt =
             workflowOpt
+            |> fun workflowOpt ->
+                printfn $"Dispatching workflow: {workflowOpt}"; workflowOpt
             |> Option.iter (fun workflow -> workflow |> Started |> ExecuteWorkflow |> dispatch)
 
         quizPage()
