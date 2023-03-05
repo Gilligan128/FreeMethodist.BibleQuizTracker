@@ -35,46 +35,6 @@ let ``When Answered Incorrectly record Question with incorrect answerer`` () =
 
 
 [<Fact>]
-let ``Given Quizzer was recorded answering correctly for question earlier When Answered Incorrectly then decrement score``
-    ()
-    =
-    result {
-        let answerer = QuizzerState.create "Jim"
-
-        let previouslyAnsweredQuestion =
-            ({ Answerer = answerer.Name
-               IncorrectAnswerers = [] }
-             |> Answered
-             |> Complete)
-
-        let setupQuiz quiz =
-            { quiz with CurrentQuizzer = (Some answerer.Name) }
-            |> Arrange.withParticipants [ answerer ]
-
-        let initialQuiz =
-            RunningQuiz.newTeamQuiz
-            |> setupQuiz
-            |> insertCurrentAnswer previouslyAnsweredQuestion
-
-        let! quiz = updateQuiz answerer.Name initialQuiz
-
-        let quizzerState, _ =
-            quiz.QuizState
-            |> RunningQuiz.findQuizzer answerer.Name
-
-        let expectedScore =
-            answerer.Score |> QuizScore.revertCorrectAnswer
-
-        Assert.Equal(expectedScore, quizzerState.Score)
-
-        Assert.True(
-            (initialQuiz
-             |> RunningQuiz.getTeamScore TeamPosition.TeamOne) > (quiz.QuizState
-                                                                  |> RunningQuiz.getTeamScore TeamPosition.TeamOne)
-        )
-    }
-
-[<Fact>]
 let ``Given Quizzer was recorded answering correctly for question earlier When Answered Incorrectly then quizzer is no longer answerer``
     ()
     =

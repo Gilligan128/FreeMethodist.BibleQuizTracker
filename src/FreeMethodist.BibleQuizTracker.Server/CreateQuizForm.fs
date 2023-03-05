@@ -43,7 +43,6 @@ module CreateQuizForm =
         | SetTeamOneName of string
         | SetTeamTwoName of string
         | SetTournamentName of string
-        | SetTournamentChurch of string
         | SetTournamentRoom of string
         | SetTournamentRound of string
         | SetTournamentGradeDivision of GradeDivision option
@@ -151,8 +150,6 @@ module CreateQuizForm =
             Cmd.none
         | SetTournamentName name, Active model ->
             Active { model with TournamentInfo = { model.TournamentInfo with Name = name } }, Cmd.none
-        | SetTournamentChurch church, Active model ->
-            Active { model with TournamentInfo = { model.TournamentInfo with Church = church } }, Cmd.none
         | SetTournamentRoom room, Active model ->
             Active { model with TournamentInfo = { model.TournamentInfo with Room = room } }, Cmd.none
         | SetTournamentRound round, Active model ->
@@ -318,9 +315,6 @@ module CreateQuizForm =
 
                         labeledField "Tournament" formData.TournamentInfo.Name (fun name ->
                             dispatch <| SetTournamentName name)
-
-                        labeledField "Church" formData.TournamentInfo.Church (fun church ->
-                            dispatch <| SetTournamentChurch church)
 
                         div {
                             attr.``class`` "field is-grouped"
