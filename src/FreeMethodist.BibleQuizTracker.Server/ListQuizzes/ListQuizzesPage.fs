@@ -6,6 +6,7 @@ open Common_Page
 open Bolero.Html
 open FreeMethodist.BibleQuizTracker.Server.Common_Page
 open FreeMethodist.BibleQuizTracker.Server.Routing
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Common.Pipeline
 
@@ -31,6 +32,18 @@ let update getQuizzes model message : ListQuizModel * Cmd<Message> * ExternalMes
         { model with Quizzes = InProgress }, cmd, ExternalMessage.NoError
     | Initialize (Finished result) -> { model with Quizzes = Resolved result }, Cmd.none, NoError
 
+let private humanReadableCompetitionDivision division =
+    match division with
+    | CompetitionDivision.Rookie -> "Rookie"
+    | CompetitionDivision.Veteran -> "Veteran"
+
+let private humanReadableGradeDivision division =
+    match division with
+    | GradeDivision.YoungTeen -> "Young Teen"
+    | GradeDivision.SeniorTeen -> "Senior Teen"
+    | GradeDivision.QUIC -> "QUIC"
+    | GradeDivision.Kids -> "Kids"
+    | GradeDivision.Custom name -> name
 
 let render link dispatch model =
     match model.Quizzes with
@@ -84,25 +97,45 @@ let render link dispatch model =
                                         a {
                                             attr.href (link (Page.QuizDetails(quiz.Code, Router.noModel)))
 
-                                            let roomRoundDescription =
-                                                match quiz.Room, quiz.Round with
-                                                | Some room, Some round -> $"Room: {room} Round: {round}"
-                                                | Some room, None -> $"Room: {room}"
-                                                | None, Some round -> $"Round: {round}"
-                                                | None, None -> $"Random Quiz: {quiz.Code}"
-                                                
                                             p {
-                                                roomRoundDescription
+                                      
+                                                let competitionDivision =
+                                                    quiz.CompetitionDivision
+                                                    |> Option.map humanReadableCompetitionDivision
+
+                                                let gradeDivision =
+                                                    quiz.GradeDivision |> Option.map humanReadableGradeDivision
+
+                                                text (
+                                                    match competitionDivision, gradeDivision with
+                                                    | Some competitionDivision, Some gradeDivision ->
+                                                        $"{gradeDivision} {competitionDivision}"
+                                                    | Some competitionDivision, None -> $"{competitionDivision}"
+                                                    | None, Some gradeDivision -> $"{gradeDivision}"
+                                                    | None, None -> $"Arbitrary Quiz: {quiz.Code}"
+                                                )
                                             }
+
                                             p {
-                                                attr.``class`` "subtitle"
+
                                                 text (
                                                     match quiz.CompetitionStyle with
                                                     | ListCompetitionStyle.Team (teamOne, teamTwo) ->
                                                         $"{teamOne} vs {teamTwo}"
-                                                    | ListCompetitionStyle.Individual count -> $"Individuals ({count})"
+                                                    | ListCompetitionStyle.Individual count -> $"Individuals"
                                                 )
                                             }
+
+                                            p {
+                                                text (
+                                                    match quiz.Room, quiz.Round with
+                                                    | Some room, Some round -> $"Room: {room} Round: {round}"
+                                                    | Some room, None -> $"Room: {room}"
+                                                    | None, Some round -> $"Round: {round}"
+                                                    | None, None -> ""
+                                                )
+                                            }
+
                                         }
                                     }
                                 }

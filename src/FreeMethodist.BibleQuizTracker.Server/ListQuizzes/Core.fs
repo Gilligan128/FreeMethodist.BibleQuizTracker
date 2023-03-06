@@ -10,11 +10,14 @@ let private mapTournamentLink tournament =
     | TournamentLink.Id _ -> None
     | TournamentLink.Name code -> Some code
 
+
 let private mapTournamentInfo tournamentInfo quizItem =
     { quizItem with
         Tournament = tournamentInfo.Link |> Option.bind mapTournamentLink
         Room = tournamentInfo.Room
-        Round = tournamentInfo.Round }
+        Round = tournamentInfo.Round
+        CompetitionDivision = tournamentInfo.CompetitionDivision
+        GradeDivision = tournamentInfo.GradeDivision }
 
 let private initialQuizItem =
     { Code = ""
@@ -22,7 +25,9 @@ let private initialQuizItem =
       State = ListQuizState.Running
       CompetitionStyle = ListCompetitionStyle.Individual 0
       Room = None
-      Round = None }
+      Round = None
+      CompetitionDivision = None
+      GradeDivision = None }
 
 let mapQuizToListQuizItem (quiz: Quiz) : ListQuizItem =
     match quiz with

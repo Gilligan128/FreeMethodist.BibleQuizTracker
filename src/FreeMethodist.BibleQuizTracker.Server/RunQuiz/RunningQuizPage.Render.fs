@@ -17,8 +17,6 @@ type private quizPage = Template<"wwwroot/Quiz.html">
 
 let prejumpMessage capability =
     capability
-    |> fun cap ->
-        cap
     |> fun cap -> cap ()
     |> AsyncResult.map (
         List.map (fun event ->

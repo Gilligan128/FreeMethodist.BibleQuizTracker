@@ -4,6 +4,7 @@ open System
 open Elmish
 open FreeMethodist.BibleQuizTracker.Server.Capabilities
 open FreeMethodist.BibleQuizTracker.Server.Common.Pipeline
+open FreeMethodist.BibleQuizTracker.Server.Tournament
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open Microsoft.FSharp.Core
 
@@ -105,7 +106,9 @@ type ListQuizItem =
       Tournament: string option
       Round: string option
       Room: string option
-      CompetitionStyle: ListCompetitionStyle }
+      CompetitionStyle: ListCompetitionStyle
+      GradeDivision: GradeDivision option
+      CompetitionDivision: CompetitionDivision option }
 
 type ListQuizModel =
     { StateFilter: QuizStatusFilter
