@@ -129,7 +129,7 @@ let render link dispatch model =
                                             p {
                                                 text (
                                                     match quiz.Room, quiz.Round with
-                                                    | Some room, Some round -> $"Room: {room} Round: {round}"
+                                                    | Some room, Some round -> $"Round: {round} Room: {room}"
                                                     | Some room, None -> $"Room: {room}"
                                                     | None, Some round -> $"Round: {round}"
                                                     | None, None -> ""
