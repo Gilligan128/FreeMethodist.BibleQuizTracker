@@ -66,8 +66,8 @@ let render link dispatch model =
                         attr.``class`` "box"
 
                         h2 {
-                            attr.``class`` "title"
-                            tournament
+                            attr.``class`` "title 4"
+                            $"Tournament: {tournament}"
                         }
 
                         div {
@@ -80,12 +80,21 @@ let render link dispatch model =
 
                                     div {
                                         attr.``class`` "card-content"
+  
+                                        let roomRoundDescription =
+                                            match quiz.Room, quiz.Round with
+                                            | Some room, Some round -> $"Room: {room} Round: {round}"
+                                            | Some room, None -> $"Room: {room}"
+                                            | None, Some round -> $"Round: {round}"
+                                            | None, None -> quiz.Code
+
 
                                         a {
                                             attr.href (link (Page.QuizDetails(quiz.Code, Router.noModel)))
-                                            quiz.Code
+                                            roomRoundDescription
                                         }
-
+                                        
+                                        
                                     }
                                 }
                         }
