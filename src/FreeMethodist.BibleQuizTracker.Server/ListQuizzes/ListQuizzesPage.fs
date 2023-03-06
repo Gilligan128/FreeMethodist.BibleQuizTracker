@@ -80,21 +80,30 @@ let render link dispatch model =
 
                                     div {
                                         attr.``class`` "card-content"
-  
-                                        let roomRoundDescription =
-                                            match quiz.Room, quiz.Round with
-                                            | Some room, Some round -> $"Room: {room} Round: {round}"
-                                            | Some room, None -> $"Room: {room}"
-                                            | None, Some round -> $"Round: {round}"
-                                            | None, None -> quiz.Code
-
 
                                         a {
                                             attr.href (link (Page.QuizDetails(quiz.Code, Router.noModel)))
-                                            roomRoundDescription
+
+                                            let roomRoundDescription =
+                                                match quiz.Room, quiz.Round with
+                                                | Some room, Some round -> $"Room: {room} Round: {round}"
+                                                | Some room, None -> $"Room: {room}"
+                                                | None, Some round -> $"Round: {round}"
+                                                | None, None -> $"Random Quiz: {quiz.Code}"
+                                                
+                                            p {
+                                                roomRoundDescription
+                                            }
+                                            p {
+                                                attr.``class`` "subtitle"
+                                                text (
+                                                    match quiz.CompetitionStyle with
+                                                    | ListCompetitionStyle.Team (teamOne, teamTwo) ->
+                                                        $"{teamOne} vs {teamTwo}"
+                                                    | ListCompetitionStyle.Individual count -> $"Individuals ({count})"
+                                                )
+                                            }
                                         }
-                                        
-                                        
                                     }
                                 }
                         }

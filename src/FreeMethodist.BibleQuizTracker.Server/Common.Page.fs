@@ -94,12 +94,18 @@ type ListQuizState =
     | Running
     | Completed
     | Official
+
+type ListCompetitionStyle =
+    | Individual of int
+    | Team of string * string
+    
 type ListQuizItem =
     { Code: QuizCode
       State: ListQuizState 
       Tournament: string option
       Round: string option
-      Room: string option }
+      Room: string option
+      CompetitionStyle: ListCompetitionStyle }
 
 type ListQuizModel =
     { StateFilter: QuizStatusFilter
