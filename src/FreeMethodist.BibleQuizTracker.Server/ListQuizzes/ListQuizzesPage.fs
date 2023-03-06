@@ -13,24 +13,24 @@ type ExternalMessage =
     | Error of string
     | NoError
 
-type Message =
-    | Initialize of AsyncOperationStatus<unit, Result<ListQuizItem list, DbError>>
+type Message = Initialize of AsyncOperationStatus<unit, Result<ListQuizItem list, DbError>>
 
 let init =
-    {
-        StateFilter = QuizStatusFilter.All 
-        Quizzes = NotYetStarted
-    }, () |> Started |> Initialize |> Cmd.ofMsg
+    { StateFilter = QuizStatusFilter.All
+      Quizzes = NotYetStarted },
+    () |> Started |> Initialize |> Cmd.ofMsg
 
-let update getQuizzes model message : ListQuizModel*Cmd<Message>*ExternalMessage=
+let update getQuizzes model message : ListQuizModel * Cmd<Message> * ExternalMessage =
     match message with
     | Initialize (Started _) ->
-        let cmd = getQuizzes model.StateFilter
-                    |> Async.map (Initialize << Finished)
-                    |> Cmd.OfAsync.result
+        let cmd =
+            getQuizzes model.StateFilter
+            |> Async.map (Initialize << Finished)
+            |> Cmd.OfAsync.result
+
         { model with Quizzes = InProgress }, cmd, ExternalMessage.NoError
-    | Initialize (Finished result) -> {model with Quizzes = Resolved result}, Cmd.none, NoError
-                   
+    | Initialize (Finished result) -> { model with Quizzes = Resolved result }, Cmd.none, NoError
+
 
 let render link dispatch model =
     match model.Quizzes with
@@ -52,22 +52,42 @@ let render link dispatch model =
                 attr.``class`` "title"
                 "Quizzes"
             }
+
             div {
                 attr.``class`` "column"
 
-                forEach resolved
-                <| fun quiz ->
+                forEach (
+                    resolved
+                    |> List.groupBy (fun quiz -> quiz.Tournament |> Option.defaultValue "No Tournament")
+                    |> List.sortBy fst
+                )
+                <| fun (tournament, quizzes) ->
                     div {
-                        attr.``class`` "card"
+                        attr.``class`` "box"
+
+                        h2 {
+                            attr.``class`` "title"
+                            tournament
+                        }
 
                         div {
                             attr.``class`` "card-content"
-                            
-                            a {
-                                attr.href (link (Page.QuizDetails (quiz.Code, Router.noModel) ))
-                                quiz.Code
-                               }
-                            
+
+                            forEach quizzes
+                            <| fun quiz ->
+                                div {
+                                    attr.``class`` "card"
+
+                                    div {
+                                        attr.``class`` "card-content"
+
+                                        a {
+                                            attr.href (link (Page.QuizDetails(quiz.Code, Router.noModel)))
+                                            quiz.Code
+                                        }
+
+                                    }
+                                }
                         }
                     }
             }
