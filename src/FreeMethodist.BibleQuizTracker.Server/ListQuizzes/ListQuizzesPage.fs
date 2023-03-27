@@ -79,7 +79,7 @@ let render link dispatch model =
                         attr.``class`` "box"
 
                         h2 {
-                            attr.``class`` "title 4"
+                            attr.``class`` "title is-4"
                             $"Tournament: {tournament}"
                         }
 

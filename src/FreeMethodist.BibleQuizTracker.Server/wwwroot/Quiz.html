@@ -5,6 +5,24 @@
                 <div><a href="${QuizUrl}">Quiz Code: ${QuizCode}</a></div>
                 <div class="box has-background-grey-light has-text-centered">You are: <strong>${CurrentUser}</strong>
                 </div>
+                <div class="box has-text-centered" id="question-section">
+                    <div>
+                        <button class="button is-info" onclick="${UndoQuestion}">
+                    <span class="icon">
+                      <i class="fas fa-caret-left"></i>
+                    </span>
+                        </button>
+                        <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
+                        <button class="button is-info" onclick="${NextQuestion}">
+                    <span class="icon">
+                      <i class="fas fa-caret-right"></i>
+                    </span>
+                        </button>
+                    </div>
+                    <div class="buttons is-centered">
+                        <button class="button is-success is-responsive" onclick="${ClearAppeal}">Clear Appeal</button>
+                    </div>
+                </div>
                 <div class="columns">
                     <div class="column">
                         ${SideOne}
@@ -30,24 +48,6 @@
                         </button>
                         <button class="button is-danger" onclick="${FailAppeal}">Fail Appeal</button>
                         <button class="button is-danger ${PrejumpActionVisibility}" onclick="${Prejump}">Prejump</button>
-                    </div>
-                </div>
-                <div class="box has-text-centered" id="question-section">
-                    <div>
-                        <button class="button is-info" onclick="${UndoQuestion}">
-                    <span class="icon">
-                      <i class="fas fa-caret-left"></i>
-                    </span>
-                        </button>
-                        <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
-                        <button class="button is-info" onclick="${NextQuestion}">
-                    <span class="icon">
-                      <i class="fas fa-caret-right"></i>
-                    </span>
-                        </button>
-                    </div>
-                    <div class="buttons is-centered">
-                        <button class="button is-success is-responsive" onclick="${ClearAppeal}">Clear Appeal</button>
                     </div>
                 </div>
                 <div class="box">
