@@ -49,15 +49,13 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
           Info =
             Resolved
                 { emptyModel with
-                    AddQuizzer = AddQuizzerModel.Active("", TeamOne)
-                    ActiveModal = AddQuizzerModel.Active("", TeamOne) |> Modal.AddQuizzer |> Some } }
+                    ActiveModal = ("", TeamOne) |> Modal.AddQuizzer |> Some } }
 
     let resultingModel, cmd, externalMsg = sut (AddQuizzer Cancel) initialModel
 
     let resultingModel = mapToLoaded resultingModel
 
     Assert.Equal(None, resultingModel.ActiveModal)
-    Assert.Equal(Inert, resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(NoMessage, externalMsg)
 
@@ -70,34 +68,31 @@ let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
           Info =
             Resolved
                 { emptyModel with
-                    AddQuizzer = Inert
                     ActiveModal = None } }
 
     let resultingModel, cmd, externalMsg = sut (AddQuizzer Start) initialModel
 
     let resultingModel = mapToLoaded resultingModel
 
-    Assert.Equal(AddQuizzerModel.Active("", TeamOne), resultingModel.AddQuizzer)
+    Assert.Equal(Some (Modal.AddQuizzer ("", TeamOne)), resultingModel.ActiveModal)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(NoMessage, externalMsg)
 
 [<Fact>]
 let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with original data`` () =
-    let activeState = AddQuizzerModel.Active("test", TeamTwo)
-
+    
     let initialModel =
         { Code = ""
           User = Scorekeeper
           Info =
             Resolved
                 { emptyModel with
-                    AddQuizzer = activeState
-                    ActiveModal = Modal.AddQuizzer activeState |> Some } }
+                    ActiveModal = Modal.AddQuizzer ("test", TeamTwo) |> Some } }
 
     let resultingModel, cmd, externalMsg = sut (AddQuizzer Start) initialModel
 
     let resultingModel = mapToLoaded resultingModel
 
-    Assert.Equal(activeState, resultingModel.AddQuizzer)
+    Assert.Equal(Some (Modal.AddQuizzer("test", TeamTwo)), resultingModel.ActiveModal)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(NoMessage, externalMsg)

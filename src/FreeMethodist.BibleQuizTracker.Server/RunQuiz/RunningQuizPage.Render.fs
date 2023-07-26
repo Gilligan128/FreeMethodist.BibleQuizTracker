@@ -179,16 +179,15 @@ let sideViewSplit (individualsView: QuizzerModel list -> Node) index quizzerMode
     |> Option.defaultValue []
     |> individualsView
 
-let manageRosterView model dispatch =
-    Html.empty()
+let manageRosterView model dispatch = Html.empty ()
 
 let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
 
     let isTeam model teamOneValue teamTwoValue =
-        match model.AddQuizzer with
-        | Inert -> false
-        | AddQuizzerModel.Active (_, TeamOne) -> teamOneValue
-        | AddQuizzerModel.Active (_, TeamTwo) -> teamTwoValue
+        match model.ActiveModal with
+        | Some (Modal.AddQuizzer (_, TeamOne)) -> teamOneValue
+        | Some (Modal.AddQuizzer (_, TeamTwo)) -> teamTwoValue
+        | _ -> false
 
     match model.Info with
     | Deferred.NotYetStarted -> p { $"Quiz {model.Code} has not yet been loaded" }
@@ -219,7 +218,8 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
         let potentiallyDispatchWorkflow workflowOpt =
             workflowOpt
             |> fun workflowOpt ->
-                printfn $"Dispatching workflow: {workflowOpt}"; workflowOpt
+                printfn $"Dispatching workflow: {workflowOpt}"
+                workflowOpt
             |> Option.iter (fun workflow -> workflow |> Started |> ExecuteWorkflow |> dispatch)
 
         quizPage()
@@ -278,14 +278,14 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                         .Elt()
             )
             .AddQuizzerName(
-                (match resolved.AddQuizzer with
-                 | RunningQuizPage_Model.Active (name, _) -> name
-                 | Inert -> ""),
+                (match resolved.ActiveModal with
+                 | Some (Modal.AddQuizzer (name, _)) -> name
+                 | _ -> ""),
                 (fun name -> dispatch (AddQuizzerMessage.SetName name |> Message.AddQuizzer))
             )
             .AddQuizzerStart(fun _ -> dispatch (AddQuizzer Start))
             .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
-            .AddQuizzerActive(if resolved.AddQuizzer = Inert then "" else "is-active")
+            .AddQuizzerActive(if resolved.ActiveModal = None then "" else "is-active")
             .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
             .ManageRosterView(manageRosterView model dispatch)
             .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
@@ -317,7 +317,9 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             )
             .Prejump(fun _ ->
                 resolved.Capabilities.Prejump
-                |> fun cap -> printfn $"capability: {cap}; why isnt it working?"; cap
+                |> fun cap ->
+                    printfn $"capability: {cap}; why isnt it working?"
+                    cap
                 |> Option.map (fun cap -> fun () -> prejumpMessage cap)
                 |> potentiallyDispatchWorkflow)
             .Elt()

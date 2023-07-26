@@ -27,7 +27,6 @@ let public emptyModel =
       JumpOrder = []
       CurrentQuestion = 1
       JumpState = Unlocked
-      AddQuizzer = Inert
       CurrentQuizzer = None
       NumberOfQuestions = PositiveNumber.one
       QuestionScores = []
@@ -285,13 +284,7 @@ let update
 
         model, Cmd.none, externalMessage
     | Message.AddQuizzer Cancel ->
-        { model with
-            Info =
-                model.Info
-                |> mapLoaded (fun loaded ->
-                    { loaded with
-                        AddQuizzer = Inert
-                        ActiveModal = None }) },
+        { model with Info = model.Info |> mapLoaded (fun loaded -> { loaded with ActiveModal = None }) },
         Cmd.none,
         NoMessage
     | Message.AddQuizzer Start ->
@@ -300,17 +293,12 @@ let update
                 model.Info
                 |> mapLoaded (fun loaded ->
                     { loaded with
-                        AddQuizzer =
-                            match loaded.AddQuizzer with
-                            | Inert -> AddQuizzerModel.Active("", TeamOne)
-                            | AddQuizzerModel.Active (name, team) -> AddQuizzerModel.Active(name, team)
                         ActiveModal =
                             loaded.ActiveModal
                             |> fun modalOpt ->
                                 match modalOpt with
-                                | Some (Modal.AddQuizzer (AddQuizzerModel.Active (name, team))) ->
-                                    AddQuizzerModel.Active(name, team) |> Modal.AddQuizzer |> Some
-                                | _ -> AddQuizzerModel.Active("", TeamOne) |> Modal.AddQuizzer |> Some }) },
+                                | Some (Modal.AddQuizzer (name, team)) -> (name, team) |> Modal.AddQuizzer |> Some
+                                | _ -> ("", TeamOne) |> Modal.AddQuizzer |> Some }) },
 
         Cmd.none,
         NoMessage
@@ -320,17 +308,11 @@ let update
                 model.Info
                 |> mapLoaded (fun loaded ->
                     { loaded with
-                        AddQuizzer =
-                            match loaded.AddQuizzer with
-                            | Inert -> Inert
-                            | AddQuizzerModel.Active (_, team) -> AddQuizzerModel.Active(name, team)
                         ActiveModal =
                             loaded.ActiveModal
                             |> Option.bind (fun modal ->
                                 match modal with
-                                | Modal.AddQuizzer AddQuizzerModel.Inert -> None
-                                | Modal.AddQuizzer (AddQuizzerModel.Active (_, team)) ->
-                                    AddQuizzerModel.Active(name, team) |> Modal.AddQuizzer |> Some
+                                | (Modal.AddQuizzer (_, team)) -> (name, team) |> Modal.AddQuizzer |> Some
                                 | Modal.ManageRoster _ -> None) }) },
         Cmd.none,
         NoMessage
@@ -340,17 +322,11 @@ let update
                 model.Info
                 |> mapLoaded (fun loaded ->
                     { loaded with
-                        AddQuizzer =
-                            match loaded.AddQuizzer with
-                            | Inert -> Inert
-                            | AddQuizzerModel.Active (name, _) -> AddQuizzerModel.Active(name, teamPosition)
                         ActiveModal =
                             loaded.ActiveModal
                             |> Option.bind (fun modal ->
                                 match modal with
-                                | Modal.AddQuizzer AddQuizzerModel.Inert -> None
-                                | Modal.AddQuizzer (AddQuizzerModel.Active (name, _)) ->
-                                    AddQuizzerModel.Active(name, teamPosition) |> Modal.AddQuizzer |> Some
+                                | Modal.AddQuizzer (name, _) -> (name, teamPosition) |> Modal.AddQuizzer |> Some
                                 | Modal.ManageRoster _ -> None) }) },
         Cmd.none,
         NoMessage
@@ -363,11 +339,11 @@ let update
                 loaded.ActiveModal
                 |> Option.bind (fun modal ->
                     match modal with
-                    | Modal.AddQuizzer model -> Some model
+                    | Modal.AddQuizzer (name, teamPosition) -> Some(name, teamPosition)
                     | Modal.ManageRoster _ -> None)
 
         match addQuizzerState model.Info with
-        | Some (AddQuizzerModel.Active (name, team)) ->
+        | Some (name, team) ->
             let mapQuizEvent event = event |> QuizzerParticipating
 
             let startedCmd =
@@ -394,7 +370,7 @@ let update
 
         let model, cmd, externalMsg = result |> finishWorkflow mapAddQuizzerError
 
-        { model with Info = model.Info |> mapLoaded (fun loaded -> { loaded with AddQuizzer = Inert }) },
+        { model with Info = model.Info |> mapLoaded (fun loaded -> { loaded with ActiveModal = None }) },
         cmd,
         externalMsg
     | RemoveQuizzer (Started cap) ->

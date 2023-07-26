@@ -43,7 +43,7 @@ type ManageRosterModel =
     | Individuals of string
 
 type Modal =
-    | AddQuizzer of AddQuizzerModel
+    | AddQuizzer of string * TeamPosition
     | ManageRoster of ManageRosterModel
 
 type LoadedModel =
@@ -52,7 +52,6 @@ type LoadedModel =
       JumpOrder: string list
       CurrentQuestion: int
       JumpState: JumpState
-      AddQuizzer: AddQuizzerModel
       CurrentQuizzer: Quizzer option
       NumberOfQuestions: PositiveNumber
       QuestionScores: QuestionQuizzerEvents
