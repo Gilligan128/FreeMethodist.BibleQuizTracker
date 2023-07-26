@@ -13,33 +13,28 @@ open Xunit
 let publishQuiz _ _ _ = Async.retn ()
 
 let getQuizAsync code =
-    RunningQuiz.newTeamQuiz
-    |> Quiz.Running
-    |> AsyncResult.retn
+    RunningQuiz.newTeamQuiz |> Quiz.Running |> AsyncResult.retn
 
 let tryGetQuizAsync code =
-    RunningQuiz.newTeamQuiz
-    |> Quiz.Running
-    |> Some
-    |> AsyncResult.retn
+    RunningQuiz.newTeamQuiz |> Quiz.Running |> Some |> AsyncResult.retn
 
 let capabilitiesForQuizProvider: RunQuizCapabilityForQuizProvider =
-    { AddQuizzer = fun _ _-> None
-      RemoveQuizzer = fun _ _-> None
+    { AddQuizzer = fun _ _ -> None
+      RemoveQuizzer = fun _ _ -> None
       AnswerCorrectly = fun _ _ -> None
       AnswerIncorrectly = fun _ _ -> None
       FailAppeal = fun _ _ -> None
       ClearAppeal = fun _ _ -> None
       SelectQuizzer = fun _ _ -> None
-      ChangeCurrentQuestion = fun _ _-> None
+      ChangeCurrentQuestion = fun _ _ -> None
       CompleteQuiz = fun _ _ -> None
       ReopenQuiz = fun _ _ -> None
-      Prejump = fun _ _ -> None}
+      Prejump = fun _ _ -> None }
 
 let sut =
-    update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore  capabilitiesForQuizProvider
+    update (fun _ _ -> ignore) publishQuiz getQuizAsync tryGetQuizAsync ignore capabilitiesForQuizProvider
 
-let mapToLoaded (model : Model) =
+let mapToLoaded (model: Model) =
     match model.Info with
     | NotYetStarted -> failwith "not yet loaded"
     | InProgress -> failwith "loading"
@@ -51,14 +46,17 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
     let initialModel =
         { Code = ""
           User = Scorekeeper
-          Info = Resolved { emptyModel with AddQuizzer = AddQuizzerModel.Active("", TeamOne) } }
+          Info =
+            Resolved
+                { emptyModel with
+                    AddQuizzer = AddQuizzerModel.Active("", TeamOne)
+                    ActiveModal = AddQuizzerModel.Active("", TeamOne) |> Modal.AddQuizzer |> Some } }
 
-    let resultingModel, cmd, externalMsg =
-        sut (AddQuizzer Cancel) initialModel
+    let resultingModel, cmd, externalMsg = sut (AddQuizzer Cancel) initialModel
 
-    let resultingModel =
-        mapToLoaded resultingModel
+    let resultingModel = mapToLoaded resultingModel
 
+    Assert.Equal(None, resultingModel.ActiveModal)
     Assert.Equal(Inert, resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(NoMessage, externalMsg)
@@ -67,13 +65,17 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
 let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
 
     let initialModel =
-       {Code =""; User = Scorekeeper; Info = Resolved { emptyModel with AddQuizzer = Inert }}
+        { Code = ""
+          User = Scorekeeper
+          Info =
+            Resolved
+                { emptyModel with
+                    AddQuizzer = Inert
+                    ActiveModal = None } }
 
-    let resultingModel, cmd, externalMsg =
-        sut (AddQuizzer Start) initialModel
+    let resultingModel, cmd, externalMsg = sut (AddQuizzer Start) initialModel
 
-    let resultingModel =
-        mapToLoaded resultingModel
+    let resultingModel = mapToLoaded resultingModel
 
     Assert.Equal(AddQuizzerModel.Active("", TeamOne), resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
@@ -81,17 +83,20 @@ let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
 
 [<Fact>]
 let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with original data`` () =
-    let activeState =
-        AddQuizzerModel.Active("test", TeamTwo)
+    let activeState = AddQuizzerModel.Active("test", TeamTwo)
 
     let initialModel =
-        {Code =""; User = Scorekeeper; Info = Resolved { emptyModel with AddQuizzer = activeState }}
+        { Code = ""
+          User = Scorekeeper
+          Info =
+            Resolved
+                { emptyModel with
+                    AddQuizzer = activeState
+                    ActiveModal = Modal.AddQuizzer activeState |> Some } }
 
-    let resultingModel, cmd, externalMsg =
-        sut (AddQuizzer Start) initialModel
+    let resultingModel, cmd, externalMsg = sut (AddQuizzer Start) initialModel
 
-    let resultingModel =
-        mapToLoaded resultingModel
+    let resultingModel = mapToLoaded resultingModel
 
     Assert.Equal(activeState, resultingModel.AddQuizzer)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)

@@ -179,6 +179,9 @@ let sideViewSplit (individualsView: QuizzerModel list -> Node) index quizzerMode
     |> Option.defaultValue []
     |> individualsView
 
+let manageRosterView model dispatch =
+    Html.empty()
+
 let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
 
     let isTeam model teamOneValue teamTwoValue =
@@ -284,6 +287,7 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
             .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
             .AddQuizzerActive(if resolved.AddQuizzer = Inert then "" else "is-active")
             .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
+            .ManageRosterView(manageRosterView model dispatch)
             .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
             .AnswerCorrectly(fun _ ->
                 resolved.Capabilities.AnswerCorrectly

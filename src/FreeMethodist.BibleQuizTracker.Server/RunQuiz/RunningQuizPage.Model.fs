@@ -38,6 +38,14 @@ type JumpOrder =
     | Prejump of Quizzer
     | Standard of Quizzer list
 
+type ManageRosterModel =
+    | Team of string*string
+    | Individuals of string
+
+type Modal =
+    | AddQuizzer of AddQuizzerModel
+    | ManageRoster of ManageRosterModel
+
 type LoadedModel =
     { JoiningQuizzer: string
       CompetitionStyle: LoadedCompetitionStyle
@@ -48,7 +56,8 @@ type LoadedModel =
       CurrentQuizzer: Quizzer option
       NumberOfQuestions: PositiveNumber
       QuestionScores: QuestionQuizzerEvents
-      Capabilities: RunQuizCapabilities }
+      Capabilities: RunQuizCapabilities
+      ActiveModal: Modal option }
 
 type Model =
     { Code: QuizCode
