@@ -64,13 +64,13 @@ let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
 
     let initialModel =
         { Code = ""
-          User = Scorekeeper
+          User = Scorekeeper    
           Info =
             Resolved
                 { emptyModel with
                     ActiveModal = None } }
 
-    let resultingModel, cmd, externalMsg = sut (AddQuizzer Start) initialModel
+    let resultingModel, cmd, externalMsg = sut (AddQuizzer AddQuizzerMessage.Start) initialModel
 
     let resultingModel = mapToLoaded resultingModel
 
@@ -89,7 +89,7 @@ let ``Given AddQuizzer is Active when Started then AddQuizzer is Active with ori
                 { emptyModel with
                     ActiveModal = Modal.AddQuizzer ("test", TeamTwo) |> Some } }
 
-    let resultingModel, cmd, externalMsg = sut (AddQuizzer Start) initialModel
+    let resultingModel, cmd, externalMsg = sut (AddQuizzer AddQuizzerMessage.Start) initialModel
 
     let resultingModel = mapToLoaded resultingModel
 

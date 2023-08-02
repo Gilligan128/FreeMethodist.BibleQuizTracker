@@ -187,7 +187,12 @@ let startWorkflow getQuiz publishEvents message workflow =
 
 
 
-
+let manageRosterUpdate message model =
+    match message with
+    | ManageRosterMessage.Start ->
+        match model with
+        | Some modal -> modal, Cmd.none
+        | None -> ManageRosterModel.View, Cmd.none
 
 let update
     connectAndHandle
@@ -287,7 +292,7 @@ let update
         { model with Info = model.Info |> mapLoaded (fun loaded -> { loaded with ActiveModal = None }) },
         Cmd.none,
         NoMessage
-    | Message.AddQuizzer Start ->
+    | Message.AddQuizzer AddQuizzerMessage.Start ->
         { model with
             Info =
                 model.Info
@@ -302,7 +307,7 @@ let update
 
         Cmd.none,
         NoMessage
-    | AddQuizzer (SetName name) ->
+    | AddQuizzer (AddQuizzerMessage.SetName name) ->
         { model with
             Info =
                 model.Info
@@ -373,6 +378,8 @@ let update
         { model with Info = model.Info |> mapLoaded (fun loaded -> { loaded with ActiveModal = None }) },
         cmd,
         externalMsg
+    | ManageRoster message -> 
+        model, Cmd.none, NoMessage
     | RemoveQuizzer (Started cap) ->
 
         let mapEvent event =
