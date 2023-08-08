@@ -179,51 +179,8 @@ let sideViewSplit (individualsView: QuizzerModel list -> Node) index quizzerMode
     |> Option.defaultValue []
     |> individualsView
 
-let manageRosterView model dispatch =
-    div {
-        attr.``class`` (
-            match model.ActiveModal with
-            | Some (Modal.ManageRoster _) -> "modal is-active"
-            | _ -> "modal"
-        )
 
-        attr.id "manage-roster-modal"
-        div { attr.``class`` "modal-background" }
-
-        div {
-            attr.``class`` "modal-card"
-
-            header {
-                attr.``class`` "modal-card-head"
-
-                p {
-                    attr.``class`` "modal-card-title"
-                    "Manage Roster"
-                }
-                button {
-                    attr.``class`` "delete"
-                    on.click (fun _ -> dispatch (Message.ManageRoster ManageRosterMessage.Close))
-                }
-            }
-        }
-        section {
-            attr.``class`` "modal-card-body"
-            //Add team rosters and buttons to "newquizzer" state
-            //NewQuizzer state - no new is a button to add a new quizzer for either team, or in individuals for the next quizzer.
-            //NewQuizzer state - adding is a field for the quizzer name, a button to save, and a button to cancel.
-        }
-        footer {
-            attr.``class`` "modal-card-foot"
-            div {
-                button {
-                    attr.``class`` "button"
-                    "Close"
-                }
-            }
-        }
-    }
-
-let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
+let render linkToQuiz (model: RunningQuizPage_Model.Model) (dispatch: Dispatch<Message>) =
 
     let isTeam model teamOneValue teamTwoValue =
         match model.ActiveModal with
@@ -325,12 +282,29 @@ let render linkToQuiz (model: Model) (dispatch: Dispatch<Message>) =
                  | _ -> ""),
                 (fun name -> dispatch (AddQuizzerMessage.SetName name |> Message.AddQuizzer))
             )
-            .AddQuizzerStart(fun _ -> dispatch (AddQuizzer AddQuizzerMessage.Start))
+            .AddQuizzerStart(fun _ -> dispatch (Message.AddQuizzer AddQuizzerMessage.Start))
             .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
             .AddQuizzerActive(if resolved.ActiveModal = None then "" else "is-active")
             .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
-            .ManageRosterView(manageRosterView resolved dispatch)
-            .ManageRosterStart(fun _ -> dispatch (ManageRoster(Start)))
+            .ManageRosterView(
+                ManageRoster.render resolved.ActiveModal (fun msg -> msg |> Message.ManageRoster |> dispatch)
+            )
+            .ManageRosterStart(fun _ ->
+                dispatch (
+                    match resolved.CompetitionStyle with
+                    | LoadedCompetitionStyle.Individuals individuals ->
+                        individuals
+                        |> List.map (fun ind -> ind.Name)
+                        |> ManageRoster.ModelRoster.Individual
+                    | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
+                        ManageRoster.ModelRoster.Team(
+                            { Name = teamOne.Name
+                              Quizzers = teamOne.Quizzers |> List.map (fun q -> q.Name) },
+                            { Name = teamTwo.Name
+                              Quizzers = teamTwo.Quizzers |> List.map (fun q -> q.Name) }
+                        )
+                    |> Message.StartManagingRoster
+                ))
             .AnswerIncorrectly(fun _ -> dispatch (AnswerIncorrectly(Started())))
             .AnswerCorrectly(fun _ ->
                 resolved.Capabilities.AnswerCorrectly

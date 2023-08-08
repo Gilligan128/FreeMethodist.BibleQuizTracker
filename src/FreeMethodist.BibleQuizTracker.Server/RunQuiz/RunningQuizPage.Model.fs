@@ -37,18 +37,11 @@ type RunQuizCapabilities =
 type JumpOrder =
     | Prejump of Quizzer
     | Standard of Quizzer list
-type ManageRosterModelNewQuizzer =
-    | Team of string*TeamPosition
-    | Individual of string
 
-type ManageRosterModel =
-    | NewQuizzer of ManageRosterModelNewQuizzer
-    | View  
-    
 
 type Modal =
     | AddQuizzer of string * TeamPosition
-    | ManageRoster of ManageRosterModel
+    | ManageRoster of ManageRoster.Model
 
 type LoadedModel =
     { JoiningQuizzer: string
@@ -69,25 +62,15 @@ type Model =
 
 type WorkflowResult<'a> = Result<Quiz, WorkflowError<'a>>
 
+type ShouldBeRunningError = ShouldBeRunningError
+
+
 type AddQuizzerMessage =
     | Start
     | Cancel
     | Submit of AsyncOperationStatus<unit, WorkflowResult<AddQuizzer.Error>>
     | SetName of string
     | SetTeam of TeamPosition
-
-type ManageRosterNewQuizzer =
-    | Team of TeamPosition
-    | Individual
-
-type ManageRosterMessage =
-    | Start
-    | Close
-    | NewQuizzer of ManageRosterNewQuizzer
-    | AddQuizzer of AsyncOperationStatus<unit, WorkflowResult<AddQuizzer.Error>>
-    | RemoveQuizzer of AsyncOperationStatus<unit, WorkflowResult<RemoveQuizzer.Error>>
-    | SetName of string
-    | CancelNewQuizzer 
 
 type ChangeQuestionError =
     | FormError of string
@@ -106,7 +89,8 @@ type Message =
     | CompleteQuiz of AsyncOperationStatus<unit, WorkflowResult<CompleteQuiz.Error>>
     | ReopenQuiz of AsyncOperationStatus<unit, WorkflowResult<ReopenQuiz.Error>>
     | ExecuteWorkflow of AsyncOperationStatus<unit -> AsyncResult<RunQuizEvent list, string>, WorkflowResult<string>>
-    | ManageRoster of ManageRosterMessage
+    | ManageRoster of ManageRoster.Message
+    | StartManagingRoster of ManageRoster.ModelRoster
 
 
 type ExternalMessage =

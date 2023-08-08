@@ -44,10 +44,10 @@ let public emptyModel =
           Prejump = None }
       ActiveModal = None }
 
-let mapLoaded mapper model =
+let mapLoaded (mapper: 'T -> 'U) (model: Deferred<'T>) : Deferred<'U> =
     match model with
-    | NotYetStarted _ -> model
-    | InProgress _ -> model
+    | NotYetStarted _ -> NotYetStarted
+    | InProgress _ -> InProgress
     | Resolved loaded -> Resolved(mapper loaded)
 
 let getAppealStateNew appeals quizzer =
@@ -184,15 +184,12 @@ let startWorkflow getQuiz publishEvents message workflow =
     |> reloadQuizAsync getQuiz
     |> mapToAsyncOperationCmd message
 
+let private shouldBeRunning quiz =
+    match quiz with
+    | Quiz.Running quiz -> Ok quiz
+    | _ -> Error ShouldBeRunningError
 
 
-
-let manageRosterUpdate message model =
-    match message with
-    | ManageRosterMessage.Start ->
-        match model with
-        | Some modal -> modal, Cmd.none
-        | None -> ManageRosterModel.View, Cmd.none
 
 let update
     connectAndHandle
@@ -225,16 +222,23 @@ let update
     let startWorkflow message workflow =
         startWorkflow getQuiz publishEvents message workflow
 
+    let finishWorkflowCore result =
+        (match result with
+         | Ok quiz -> quiz |> shouldBeRunning |> Result.mapError Choice1Of2
+         | Error error -> error |> Choice2Of2 |> Error)
+        |> fun result ->
+            match result with
+            | Ok quiz -> { model with Info = refreshModel quiz }, Cmd.none, ExternalMessage.NoMessage
+            | Error (Choice1Of2 _) ->
+                model,
+                navigate |> subOfFunc Page.Home |> Cmd.ofSub,
+                "Quiz is not running" |> ExternalMessage.ErrorMessage
+            | Error (Choice2Of2 errorString) -> errorString |> updateResultWithExternalError
+
     let finishWorkflow mapWorkflowSpecificErrors result =
-        match result with
-        | Ok (Quiz.Running quiz) -> { model with Info = refreshModel quiz }, Cmd.none, NoMessage
-        | Ok (Quiz.Completed _)
-        | Ok (Quiz.Official _) ->
-            model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, "Quiz is not running" |> ExternalMessage.ErrorMessage
-        | Result.Error error ->
-            error
-            |> mapWorkflowErrors mapWorkflowSpecificErrors
-            |> fun errorString -> errorString |> updateResultWithExternalError
+        result
+        |> Result.mapError (mapWorkflowErrors mapWorkflowSpecificErrors)
+        |> finishWorkflowCore
 
     let matchOptionalCommand cmdOpt =
         let cmd = cmdOpt |> Option.defaultValue Cmd.none
@@ -369,16 +373,45 @@ let update
     | AddQuizzer (Submit (Finished result)) ->
         let mapAddQuizzerError error =
             match error with
-            | AddQuizzer.Error.QuizState quizStateError -> $"Wrong Quiz State: {quizStateError}"
-            | AddQuizzer.Error.QuizzerAlreadyAdded quizzer -> $"Quizzer {quizzer} already added"
-            | AddQuizzer.DbError dbError -> dbError |> mapDbErrorToString
+            | DbError dbError -> mapDbErrorToString dbError
+            | Workflow (AddQuizzer.Error.QuizState quizStateError) -> $"Wrong Quiz State: {quizStateError}"
+            | Workflow (AddQuizzer.Error.QuizzerAlreadyAdded quizzer) -> $"Quizzer {quizzer} already added"
+            | Workflow (AddQuizzer.DbError dbError) -> dbError |> mapDbErrorToString
 
-        let model, cmd, externalMsg = result |> finishWorkflow mapAddQuizzerError
+        let model, cmd, externalMsg =
+            result |> Result.mapError mapAddQuizzerError |> finishWorkflowCore
 
         { model with Info = model.Info |> mapLoaded (fun loaded -> { loaded with ActiveModal = None }) },
         cmd,
         externalMsg
-    | ManageRoster message -> 
+    | StartManagingRoster message ->
+        let modal, cmd = ManageRoster.init message
+
+        let info =
+            model.Info
+            |> mapLoaded (fun m -> { m with ActiveModal = Modal.ManageRoster modal |> Some })
+
+        { model with Info = info }, cmd |> Cmd.map Message.ManageRoster, NoMessage
+
+    | ManageRoster message ->
+        let updateManageRoster loaded =
+            match loaded.ActiveModal with
+            | Some (Modal.ManageRoster modal) ->
+                let modal, cmd, external =
+                    ManageRoster.update (fun msg -> msg |> Message.ManageRoster) message modal
+
+                let newModel = { loaded with ActiveModal = modal }
+
+                let wflwCmd, externMsg =
+                    match external with
+                    | ManageRoster.ExternalMessage.Error error -> Cmd.none, ExternalMessage.ErrorMessage error
+                    | ManageRoster.ExternalMessage.WorkflowSuccess events -> Cmd.none, ExternalMessage.NoMessage
+                    | ManageRoster.ExternalMessage.NoOp -> Cmd.none, ExternalMessage.NoMessage
+
+                newModel, Cmd.batch [ cmd; wflwCmd ], externMsg
+            | _ -> loaded, Cmd.none, NoMessage
+
+        let info = model.Info |> mapLoaded updateManageRoster
         model, Cmd.none, NoMessage
     | RemoveQuizzer (Started cap) ->
 

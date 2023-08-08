@@ -47,6 +47,7 @@
         <Compile Include="Deferred.fs" />
         <Compile Include="ItemizedScoreView.fs" />
         <Compile Include="Routing.fs" />
+        <Compile Include="ManageRoster.fs" />
         <Compile Include="RunQuiz\RunningQuizPage.Model.fs" />
         <Compile Include="RunQuiz\RunningQuizPage.Update.fs" />
         <Compile Include="RunQuiz\RunningQuizPage.Render.fs" />
