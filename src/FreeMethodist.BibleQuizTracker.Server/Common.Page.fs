@@ -121,4 +121,3 @@ type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
 
 type ConnectAndHandleQuizEvents<'T, 'Msg> = HandleEventSub<'T, 'Msg> -> QuizCode * QuizCode option -> Sub<'Msg>
 
-s
