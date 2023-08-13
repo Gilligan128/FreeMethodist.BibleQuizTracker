@@ -49,8 +49,25 @@ module ManageRoster =
     let update message model =
         match message with
         | Message.Close -> None, Cmd.none, ExternalMessage.NoOp
-
-
+     
+    
+    let private renderTeam team =
+        empty()
+    
+    let private renderTeams (teamRoster1,teamRoster2) =
+        div {
+            attr.``class`` "columns"
+            
+            div {
+                attr.``class`` "column"
+                renderTeam teamRoster1
+            }
+            div {
+                 attr.``class`` "column"
+                 renderTeam teamRoster2
+            }
+        }
+    
     let render model dispatch =
         div {
             attr.``class`` (
@@ -81,7 +98,13 @@ module ManageRoster =
 
                 section {
                     attr.``class`` "modal-card-body"
-                    div { "TBD" }
+                     
+                    match model with
+                    | Some model ->
+                       match model.Roster with
+                       | ModelRoster.Team (teamRoster1, teamRoster2) -> renderTeams (teamRoster1, teamRoster2)
+                       | ModelRoster.Individual quizzers -> empty()
+                    | None -> empty()
                 //Add team rosters and buttons to "newquizzer" state
                 //NewQuizzer state - no new is a button to add a new quizzer for either team, or in individuals for the next quizzer.
                 //NewQuizzer state - adding is a field for the quizzer name, a button to save, and a button to cancel.
