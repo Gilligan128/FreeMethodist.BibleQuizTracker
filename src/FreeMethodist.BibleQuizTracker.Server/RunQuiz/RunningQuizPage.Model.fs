@@ -91,6 +91,7 @@ type Message =
     | ExecuteWorkflow of AsyncOperationStatus<unit -> AsyncResult<RunQuizEvent list, string>, WorkflowResult<string>>
     | ManageRoster of ManageRoster.Message
     | StartManagingRoster of ManageRoster.ModelRoster
+    | RefreshQuizFromRoster of Result<Quiz, DbError>
 
 
 type ExternalMessage =

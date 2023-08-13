@@ -173,7 +173,6 @@ let private publishEvents publishRunQuizEvent events =
 let private publishWorkflowEventsAsync publishEvents events =
     asyncResult {
         let! runQuizEvents = events
-
         do! runQuizEvents |> publishEvents |> AsyncResult.ofAsync
     }
     |> AsyncResult.mapError WorkflowError.Workflow
@@ -392,27 +391,48 @@ let update
             |> mapLoaded (fun m -> { m with ActiveModal = Modal.ManageRoster modal |> Some })
 
         { model with Info = info }, cmd |> Cmd.map Message.ManageRoster, NoMessage
-
     | ManageRoster message ->
-        let updateManageRoster loaded =
+        match model.Info with
+        | NotYetStarted _ -> model, Cmd.none, NoMessage
+        | InProgress _ -> model, Cmd.none, NoMessage
+        | Resolved loaded ->
             match loaded.ActiveModal with
             | Some (Modal.ManageRoster modal) ->
-                let modal, cmd, external =
-                    ManageRoster.update (fun msg -> msg |> Message.ManageRoster) message modal
-
-                let newModel = { loaded with ActiveModal = modal }
+                let modal, cmd, external = ManageRoster.update message modal
+                let newLoaded = { loaded with ActiveModal = modal }
 
                 let wflwCmd, externMsg =
                     match external with
                     | ManageRoster.ExternalMessage.Error error -> Cmd.none, ExternalMessage.ErrorMessage error
-                    | ManageRoster.ExternalMessage.WorkflowSuccess events -> Cmd.none, ExternalMessage.NoMessage
+                    | ManageRoster.ExternalMessage.WorkflowSuccess events ->
+                        let cmd =
+                            events
+                            |> publishEvents
+                            |> AsyncResult.ofAsync
+                            |> AsyncResult.bind (fun _ -> getQuiz ())
+                            |> Async.map (RefreshQuizFromRoster)
+                            |> Cmd.OfAsync.result
+
+                        cmd, NoMessage
                     | ManageRoster.ExternalMessage.NoOp -> Cmd.none, ExternalMessage.NoMessage
 
-                newModel, Cmd.batch [ cmd; wflwCmd ], externMsg
-            | _ -> loaded, Cmd.none, NoMessage
+                { model with Info = Resolved newLoaded }, Cmd.batch [ cmd; wflwCmd ], externMsg
+            | _ -> model, Cmd.none, NoMessage
+    | RefreshQuizFromRoster quizResult ->
+        match quizResult with
+        | Ok quiz ->
+            match quiz with
+            | Quiz.Running quiz ->
+                let newInfo =
+                    quiz
+                    |> refreshModel
+                    |> Deferred.map (fun r ->
+                        { r with ActiveModal = model.Info |> Deferred.toOption |> Option.bind (fun r -> r.ActiveModal) })
 
-        let info = model.Info |> mapLoaded updateManageRoster
-        model, Cmd.none, NoMessage
+                { model with Info = newInfo }, Cmd.none, NoMessage
+            | _ -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, NoMessage
+        | Error error -> model, Cmd.none, mapDbErrorToString error |> ExternalMessage.ErrorMessage
+
     | RemoveQuizzer (Started cap) ->
 
         let mapEvent event =

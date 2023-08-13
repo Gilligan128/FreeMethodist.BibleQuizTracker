@@ -284,10 +284,19 @@ let render linkToQuiz (model: RunningQuizPage_Model.Model) (dispatch: Dispatch<M
             )
             .AddQuizzerStart(fun _ -> dispatch (Message.AddQuizzer AddQuizzerMessage.Start))
             .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
-            .AddQuizzerActive(if resolved.ActiveModal = None then "" else "is-active")
+            .AddQuizzerActive(
+                match resolved.ActiveModal with
+                | Some (Modal.AddQuizzer _) -> "is-active"
+                | _ -> ""
+            )
             .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
             .ManageRosterView(
-                ManageRoster.render resolved.ActiveModal (fun msg -> msg |> Message.ManageRoster |> dispatch)
+                let modalModel =
+                    match resolved.ActiveModal with
+                    | Some (Modal.ManageRoster modal) -> Some modal
+                    | _ -> None
+
+                ManageRoster.render modalModel (fun msg -> msg |> Message.ManageRoster |> dispatch)
             )
             .ManageRosterStart(fun _ ->
                 dispatch (
