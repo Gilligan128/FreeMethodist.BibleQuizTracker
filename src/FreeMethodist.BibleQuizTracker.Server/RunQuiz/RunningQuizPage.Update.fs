@@ -136,7 +136,7 @@ let init user quizCode previousQuizCode =
 
 let private hubStub = Unchecked.defaultof<QuizHub.Hub>
 
-let subOfFunc arg (func: 'a -> unit) : Sub<Message> = Unchecked.defaultof<Sub<Message>>
+let subOfFunc arg (func: 'a -> unit) : Sub<Message> = fun _ -> func arg
 
 let notFoundMessage quizCode =
     $"Quiz {quizCode} not found" |> ExternalMessage.ErrorMessage

@@ -72,8 +72,8 @@
         <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
         <PackageReference Include="Azure.Storage.Files.Shares" Version="12.1.0" />
         <PackageReference Include="Azure.Storage.Queues" Version="12.12.0" />
-        <PackageReference Include="Bolero.Server" Version="0.*" />
-        <PackageReference Include="Bolero.HotReload.Server" Version="0.*" />
+        <PackageReference Include="Bolero.Server" Version="0.20.18" />
+        <PackageReference Include="Bolero.HotReload.Server" Version="0.20.4" />
         <PackageReference Include="Hashids.net" Version="1.6.1" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="6.0.*" />
         <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.31.2" />

@@ -122,11 +122,10 @@ type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
 type ConnectAndHandleQuizEvents<'T, 'Msg> = HandleEventSub<'T, 'Msg> -> QuizCode * QuizCode option -> Sub<'Msg>
 
 let connectAndHandleQuizEvents connectToQuiz onEvent : ConnectAndHandleQuizEvents<'T, 'Msg> =
-    Unchecked.defaultof<ConnectAndHandleQuizEvents<'T, 'Msg>>
-    // fun handleEvent (quizCode, previousCode) ->
-    //     fun dispatch ->
-    //         let connectTask = connectToQuiz quizCode previousCode
-    //
-    //         connectTask |> Async.Ignore |> Async.StartImmediate
-    //
-    //         onEvent (handleEvent dispatch)
+    fun handleEvent (quizCode, previousCode) ->
+        fun dispatch ->
+            let connectTask = connectToQuiz quizCode previousCode
+    
+            connectTask |> Async.Ignore |> Async.StartImmediate
+    
+            onEvent (handleEvent dispatch)
