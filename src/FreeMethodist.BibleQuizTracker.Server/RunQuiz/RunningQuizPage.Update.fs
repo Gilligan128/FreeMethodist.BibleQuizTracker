@@ -384,7 +384,15 @@ let update
         cmd,
         externalMsg
     | StartManagingRoster message ->
-        let modal, cmd = ManageRoster.init message
+        let modal, cmd =
+            let capabilities: ManageRoster.ManageRosterCapabilities option =
+                model.Info
+                |> Deferred.toOption
+                |> Option.map (fun model ->
+                    { RemoveQuizzer = model.Capabilities.RemoveQuizzer
+                      AddQuizzer = model.Capabilities.AddQuizzer })
+
+            ManageRoster.init (capabilities |> Option.defaultValue {RemoveQuizzer = None; AddQuizzer = None}) message
 
         let info =
             model.Info
