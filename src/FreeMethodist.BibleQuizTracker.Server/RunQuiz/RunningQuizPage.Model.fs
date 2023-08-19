@@ -38,7 +38,6 @@ type JumpOrder =
     | Prejump of Quizzer
     | Standard of Quizzer list
 
-
 type Modal =
     | AddQuizzer of string * TeamPosition
     | ManageRoster of ManageRoster.Model

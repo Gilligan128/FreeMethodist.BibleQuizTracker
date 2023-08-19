@@ -7,6 +7,7 @@ open FreeMethodist.BibleQuizTracker.Server.RunQuiz.Workflows
 open FreeMethodist.BibleQuizTracker.Server.Workflow
 open FreeMethodist.BibleQuizTracker.Server
 open Bolero.Html
+open Bolero
 
 
 [<RequireQualifiedAccess>]
@@ -22,15 +23,15 @@ module ManageRoster =
     type ModelRoster =
         | Team of TeamRoster * TeamRoster
         | Individual of Quizzer list
-        
+
     type ManageRosterCapabilities =
         { RemoveQuizzer: (RemoveQuizzer.Data -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>) option
           AddQuizzer: (AddQuizzer.Data -> AsyncResult<QuizzerParticipating, AddQuizzer.Error>) option }
-
+    
     type Model =
         { Roster: ModelRoster
           NewQuizzer: ManageRosterModelNewQuizzer option
-          Capabilities: ManageRosterCapabilities }
+        }
 
     type MessageNewQuizzer =
         | Team of string * TeamPosition
@@ -52,13 +53,26 @@ module ManageRoster =
 
     let init (capabilities: ManageRosterCapabilities) roster =
         { Roster = roster
-          NewQuizzer = None
-          Capabilities = capabilities },
+          NewQuizzer = None},
         Cmd.none
+
+    let private mapToAsyncOperationCmd asyncOperation resultAsync =
+        resultAsync
+        |> Async.map (fun result -> asyncOperation (Finished result))
+        |> Cmd.OfAsync.result
+
 
     let update message model =
         match message with
         | Message.Close -> None, Cmd.none, ExternalMessage.NoOp
+        | Message.RemoveQuizzer (Started cap) ->
+            let mapEvent event =
+                match event with
+                | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
+                | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
+
+            let cmd = cap () |> mapToAsyncOperationCmd Message.RemoveQuizzer
+            Some model, cmd, ExternalMessage.NoOp
 
     let private renderTeam removeCap dispatch team =
         div {
@@ -100,21 +114,21 @@ module ManageRoster =
 
             div {
                 attr.``class`` "column"
-                
+
                 renderTeam teamRoster1
             }
 
             div {
                 attr.``class`` "column"
-                
+
                 renderTeam teamRoster2
             }
         }
 
-    let render (model: Model option) dispatch =
+    let render capabilities (model: Model option) dispatch =
         let removeCap quizzer =
             model
-            |> Option.bind (fun model -> model.Capabilities.RemoveQuizzer)
+            |> Option.bind (fun model -> capabilities.RemoveQuizzer)
             |> Option.map (fun remove -> fun () -> remove { Quizzer = quizzer })
 
         let renderTeam = renderTeam removeCap dispatch

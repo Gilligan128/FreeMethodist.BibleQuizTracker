@@ -392,7 +392,12 @@ let update
                     { RemoveQuizzer = model.Capabilities.RemoveQuizzer
                       AddQuizzer = model.Capabilities.AddQuizzer })
 
-            ManageRoster.init (capabilities |> Option.defaultValue {RemoveQuizzer = None; AddQuizzer = None}) message
+            ManageRoster.init
+                (capabilities
+                 |> Option.defaultValue
+                     { RemoveQuizzer = None
+                       AddQuizzer = None })
+                message
 
         let info =
             model.Info
@@ -406,8 +411,10 @@ let update
         | Resolved loaded ->
             match loaded.ActiveModal with
             | Some (Modal.ManageRoster modal) ->
-                let modal, cmd, external = ManageRoster.update message modal
-                let newLoaded = { loaded with ActiveModal = modal }
+                let modelOption, cmd, external = ManageRoster.update message modal
+
+                let newLoaded =
+                    { loaded with ActiveModal = modelOption |> Option.map Modal.ManageRoster }
 
                 let wflwCmd, externMsg =
                     match external with
@@ -424,7 +431,9 @@ let update
                         cmd, NoMessage
                     | ManageRoster.ExternalMessage.NoOp -> Cmd.none, ExternalMessage.NoMessage
 
-                { model with Info = Resolved newLoaded }, Cmd.batch [ cmd; wflwCmd ], externMsg
+                { model with Info = Resolved newLoaded },
+                Cmd.batch [ cmd |> Cmd.map Message.ManageRoster; wflwCmd ],
+                externMsg
             | _ -> model, Cmd.none, NoMessage
     | RefreshQuizFromRoster quizResult ->
         match quizResult with

@@ -296,7 +296,11 @@ let render linkToQuiz (model: RunningQuizPage_Model.Model) (dispatch: Dispatch<M
                     | Some (Modal.ManageRoster modal) -> Some modal
                     | _ -> None
 
-                ManageRoster.render modalModel (fun msg -> msg |> Message.ManageRoster |> dispatch)
+                let capabilities: ManageRoster.ManageRosterCapabilities =
+                    { AddQuizzer = resolved.Capabilities.AddQuizzer
+                      RemoveQuizzer = resolved.Capabilities.RemoveQuizzer }
+
+                ManageRoster.render capabilities modalModel (fun msg -> msg |> Message.ManageRoster |> dispatch)
             )
             .ManageRosterStart(fun _ ->
                 dispatch (

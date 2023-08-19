@@ -54,7 +54,7 @@ let ``When Cancelled then AddQuizzer is Inert`` () =
     let resultingModel, cmd, externalMsg = sut (AddQuizzer Cancel) initialModel
 
     let resultingModel = mapToLoaded resultingModel
-
+    
     Assert.Equal(None, resultingModel.ActiveModal)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(NoMessage, externalMsg)
@@ -73,7 +73,9 @@ let ``Given AddQuizzer is Inert when Started then AddQuizzer is Active`` () =
     let resultingModel, cmd, externalMsg = sut (AddQuizzer AddQuizzerMessage.Start) initialModel
 
     let resultingModel = mapToLoaded resultingModel
-
+    
+    Assert.True(resultingModel.ActiveModal = Some (Modal.AddQuizzer ("", TeamOne)))
+    
     Assert.Equal(Some (Modal.AddQuizzer ("", TeamOne)), resultingModel.ActiveModal)
     Assert.Equal<Cmd<Message>>(Cmd.none, cmd)
     Assert.Equal(NoMessage, externalMsg)
