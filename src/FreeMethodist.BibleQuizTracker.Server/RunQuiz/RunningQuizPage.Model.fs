@@ -40,7 +40,7 @@ type JumpOrder =
 
 type Modal =
     | AddQuizzer of string * TeamPosition
-    | ManageRoster of ManageRoster.Model
+    | ManageRoster of ManageRosterForm.Model
 
 type LoadedModel =
     { JoiningQuizzer: string
@@ -88,8 +88,8 @@ type Message =
     | CompleteQuiz of AsyncOperationStatus<unit, WorkflowResult<CompleteQuiz.Error>>
     | ReopenQuiz of AsyncOperationStatus<unit, WorkflowResult<ReopenQuiz.Error>>
     | ExecuteWorkflow of AsyncOperationStatus<unit -> AsyncResult<RunQuizEvent list, string>, WorkflowResult<string>>
-    | ManageRoster of ManageRoster.Message
-    | StartManagingRoster of ManageRoster.ModelRoster
+    | ManageRoster of ManageRosterForm.Message
+    | StartManagingRoster of ManageRosterForm.ModelRoster
     | RefreshQuizFromRoster of Result<Quiz, DbError>
 
 

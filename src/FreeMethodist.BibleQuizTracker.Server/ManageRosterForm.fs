@@ -11,7 +11,7 @@ open Bolero
 
 
 [<RequireQualifiedAccess>]
-module ManageRoster =
+module ManageRosterForm =
 
     type ManageRosterModelNewQuizzer =
         | Team of string * TeamPosition

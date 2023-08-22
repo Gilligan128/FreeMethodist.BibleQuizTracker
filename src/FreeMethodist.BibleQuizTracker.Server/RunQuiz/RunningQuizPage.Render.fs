@@ -296,11 +296,11 @@ let render linkToQuiz (model: RunningQuizPage_Model.Model) (dispatch: Dispatch<M
                     | Some (Modal.ManageRoster modal) -> Some modal
                     | _ -> None
 
-                let capabilities: ManageRoster.ManageRosterCapabilities =
+                let capabilities: ManageRosterForm.ManageRosterCapabilities =
                     { AddQuizzer = resolved.Capabilities.AddQuizzer
                       RemoveQuizzer = resolved.Capabilities.RemoveQuizzer }
 
-                ManageRoster.render capabilities modalModel (fun msg -> msg |> Message.ManageRoster |> dispatch)
+                ManageRosterForm.render capabilities modalModel (fun msg -> msg |> Message.ManageRoster |> dispatch)
             )
             .ManageRosterStart(fun _ ->
                 dispatch (
@@ -308,9 +308,9 @@ let render linkToQuiz (model: RunningQuizPage_Model.Model) (dispatch: Dispatch<M
                     | LoadedCompetitionStyle.Individuals individuals ->
                         individuals
                         |> List.map (fun ind -> ind.Name)
-                        |> ManageRoster.ModelRoster.Individual
+                        |> ManageRosterForm.ModelRoster.Individual
                     | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
-                        ManageRoster.ModelRoster.Team(
+                        ManageRosterForm.ModelRoster.Team(
                             { Name = teamOne.Name
                               Quizzers = teamOne.Quizzers |> List.map (fun q -> q.Name) },
                             { Name = teamTwo.Name
