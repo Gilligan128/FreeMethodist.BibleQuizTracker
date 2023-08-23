@@ -90,7 +90,32 @@ module ManageRosterForm =
 
                 Some model, Cmd.none, ExternalMessage.Error errorText
 
-    let private renderTeam removeCap dispatch team =
+    let private renderQuizzers removeCap dispatch quizzers =
+        ul {
+            for quizzer in quizzers do
+                let removeCap = removeCap |> fun cap -> cap quizzer
+
+                li {
+                    text quizzer
+
+                    button {
+                        attr.``class`` "button is-info is-light"
+
+                        removeCap |> Html.disabledIfNone
+
+                        on.click (fun _ ->
+                            removeCap
+                            |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
+
+                        span {
+                            attr.``class`` "icon"
+                            i { attr.``class`` "fas fa-times-circle" }
+                        }
+                    }
+                }
+        }
+
+    let private renderTeam (renderQuizzers: Quizzer list -> Node) team =
         div {
             attr.``class`` "columns"
 
@@ -98,29 +123,7 @@ module ManageRosterForm =
                 attr.``class`` "column"
                 h3 { text team.Name }
 
-                ul {
-                    for quizzer in team.Quizzers do
-                        let removeCap = removeCap |> fun cap -> cap quizzer
-
-                        li {
-                            text quizzer
-
-                            button {
-                                attr.``class`` "button is-info is-light"
-
-                                removeCap |> Html.disabledIfNone
-
-                                on.click (fun _ ->
-                                    removeCap
-                                    |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
-
-                                span {
-                                    attr.``class`` "icon"
-                                    i { attr.``class`` "fas fa-times-circle" }
-                                }
-                            }
-                        }
-                }
+                renderQuizzers team.Quizzers
             }
         }
 
@@ -147,7 +150,8 @@ module ManageRosterForm =
             |> Option.bind (fun model -> capabilities.RemoveQuizzer)
             |> Option.map (fun remove -> fun () -> remove { Quizzer = quizzer })
 
-        let renderTeam = renderTeam removeCap dispatch
+        let renderQuizzers = renderQuizzers removeCap dispatch
+        let renderTeam = renderTeam renderQuizzers
 
         div {
             attr.``class`` (
@@ -184,7 +188,22 @@ module ManageRosterForm =
                         match model.Roster with
                         | ModelRoster.Team(teamRoster1, teamRoster2) ->
                             renderTeams renderTeam (teamRoster1, teamRoster2)
-                        | ModelRoster.Individual quizzers -> empty ()
+                        | ModelRoster.Individual quizzers ->
+                            renderQuizzers quizzers
+
+                            match model.NewQuizzer with
+                            | None ->
+                                button {
+                                    attr.``class`` "button is-info is-light"
+
+                                    on.click (fun _ -> dispatch (Message.NewQuizzer(Individual "")))
+
+                                    span {
+                                        attr.``class`` "icon"
+                                        i { attr.``class`` "fas fa-solid fa-plus" }
+                                    }
+                                }
+                            | Some _-> empty()
                     | None -> empty ()
                 //Add team rosters and buttons to "newquizzer" state
                 //NewQuizzer state - no new is a button to add a new quizzer for either team, or in individuals for the next quizzer.
