@@ -109,16 +109,18 @@ let provideCapabilitiesModel (capabilityProvider: RunQuizCapabilityForQuizProvid
 let private refreshRoster competitionStyle : ManageRosterForm.ModelRoster =
     match competitionStyle with
     | RunningCompetitionStyle.Team(teamOne, teamTwo) ->
-        let rosters : ManageRosterForm.TeamRoster*ManageRosterForm.TeamRoster =
+        let rosters: ManageRosterForm.TeamRoster * ManageRosterForm.TeamRoster =
             { Name = teamOne.Name
               Quizzers = teamOne.Quizzers |> List.map (fun q -> q.Name) },
             { Name = teamOne.Name
               Quizzers = teamTwo.Quizzers |> List.map (fun q -> q.Name) }
-        rosters
-        |> ManageRosterForm.ModelRoster.Team
+
+        rosters |> ManageRosterForm.ModelRoster.Team
     | RunningCompetitionStyle.Individuals quizzers ->
-        quizzers |> List.map (fun q -> q.Name) |> ManageRosterForm.ModelRoster.Individual
-        
+        quizzers
+        |> List.map (fun q -> q.Name)
+        |> ManageRosterForm.ModelRoster.Individual
+
 
 let private refreshModel capabilitiesProvider (quiz: RunningQuiz, modal) =
     let currentQuestion =
@@ -141,9 +143,12 @@ let private refreshModel capabilitiesProvider (quiz: RunningQuiz, modal) =
             QuestionScores = quiz.Questions |> Score.createScoreModel
             ActiveModal =
                 match modal with
-                | Some(Modal.ManageRoster value) -> value |> Modal.ManageRoster |> Some
-                | Some(Modal.AddQuizzer(s, teamPosition)) -> (s, teamPosition) |> Modal.AddQuizzer |> Some
-                | None -> None
+                | Some(Modal.ManageRoster value) ->
+                    { value with
+                        Roster = refreshRoster quiz.CompetitionStyle }
+                    |> Modal.ManageRoster
+                    |> Some
+                | _ -> modal
             Capabilities = capabilitiesProvider quiz }
 
     stateMatchedModel
@@ -488,9 +493,6 @@ let update
                 let newInfo =
                     (quiz, activeModal)
                     |> refreshModel
-                    |> Deferred.map (fun r ->
-                        { r with
-                            ActiveModal = model.Info |> Deferred.toOption |> Option.bind (fun r -> r.ActiveModal) })
 
                 { model with Info = newInfo }, Cmd.none, NoMessage
             | _ -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, NoMessage

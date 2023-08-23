@@ -27,11 +27,10 @@ module ManageRosterForm =
     type ManageRosterCapabilities =
         { RemoveQuizzer: (RemoveQuizzer.Data -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>) option
           AddQuizzer: (AddQuizzer.Data -> AsyncResult<QuizzerParticipating, AddQuizzer.Error>) option }
-    
+
     type Model =
         { Roster: ModelRoster
-          NewQuizzer: ManageRosterModelNewQuizzer option
-        }
+          NewQuizzer: ManageRosterModelNewQuizzer option }
 
     type MessageNewQuizzer =
         | Team of string * TeamPosition
@@ -52,9 +51,7 @@ module ManageRosterForm =
         | NoOp
 
     let init (capabilities: ManageRosterCapabilities) roster =
-        { Roster = roster
-          NewQuizzer = None},
-        Cmd.none
+        { Roster = roster; NewQuizzer = None }, Cmd.none
 
     let private mapToAsyncOperationCmd asyncOperation resultAsync =
         resultAsync
@@ -65,7 +62,7 @@ module ManageRosterForm =
     let update message model =
         match message with
         | Message.Close -> None, Cmd.none, ExternalMessage.NoOp
-        | Message.RemoveQuizzer (Started cap) ->
+        | Message.RemoveQuizzer(Started cap) ->
             let mapEvent event =
                 match event with
                 | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
@@ -73,6 +70,25 @@ module ManageRosterForm =
 
             let cmd = cap () |> mapToAsyncOperationCmd Message.RemoveQuizzer
             Some model, cmd, ExternalMessage.NoOp
+        | Message.RemoveQuizzer(Finished result) ->
+            match result with
+            | Ok events ->
+                let events =
+                    events
+                    |> List.map (fun event ->
+                        match event with
+                        | RemoveQuizzer.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
+                        | RemoveQuizzer.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e)
+
+                Some model, Cmd.none, ExternalMessage.WorkflowSuccess events
+            | Result.Error error ->
+                let errorText =
+                    match error with
+                    | RemoveQuizzer.DbError(error) -> error |> mapDbErrorToString
+                    | RemoveQuizzer.QuizStateError error -> "Quiz is in the wrong state"
+                    | RemoveQuizzer.QuizzerNotParticipating error -> $"{error} is not participating in the quiz"
+
+                Some model, Cmd.none, ExternalMessage.Error errorText
 
     let private renderTeam removeCap dispatch team =
         div {
@@ -166,7 +182,7 @@ module ManageRosterForm =
                     match model with
                     | Some model ->
                         match model.Roster with
-                        | ModelRoster.Team (teamRoster1, teamRoster2) ->
+                        | ModelRoster.Team(teamRoster1, teamRoster2) ->
                             renderTeams renderTeam (teamRoster1, teamRoster2)
                         | ModelRoster.Individual quizzers -> empty ()
                     | None -> empty ()
