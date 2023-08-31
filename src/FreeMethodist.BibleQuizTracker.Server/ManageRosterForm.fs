@@ -13,7 +13,7 @@ open Bolero
 [<RequireQualifiedAccess>]
 module ManageRosterForm =
 
-    type ManageRosterModelNewQuizzer =
+    type ModelNewQuizzer =
         | Team of string * TeamPosition
         | Individual of string
 
@@ -30,16 +30,15 @@ module ManageRosterForm =
 
     type Model =
         { Roster: ModelRoster
-          NewQuizzer: ManageRosterModelNewQuizzer option }
+          NewQuizzer: ModelNewQuizzer option }
 
-    type MessageNewQuizzer =
-        | Team of string * TeamPosition
-        | Individual of string
+    type AsyncOperationOfCapacity<'success, 'error> =
+        AsyncOperationStatus<unit -> AsyncResult<'success, 'error>, Result<'success, 'error>>
 
     type Message =
         | Close
-        | NewQuizzer of MessageNewQuizzer
-        | AddQuizzer of AsyncOperationStatus<AddQuizzer.Data, Result<QuizzerParticipating, AddQuizzer.Error>>
+        | NewQuizzer of ModelNewQuizzer
+        | AddQuizzer of AsyncOperationOfCapacity<QuizzerParticipating, AddQuizzer.Error>
         | RemoveQuizzer of
             AsyncOperationStatus<unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>, Result<RemoveQuizzer.Event list, RemoveQuizzer.Error>>
         | SetName of string
@@ -85,10 +84,26 @@ module ManageRosterForm =
                 let errorText =
                     match error with
                     | RemoveQuizzer.DbError(error) -> error |> mapDbErrorToString
-                    | RemoveQuizzer.QuizStateError error -> "Quiz is in the wrong state"
+                    | RemoveQuizzer.QuizStateError _ -> "Quiz is in the wrong state"
                     | RemoveQuizzer.QuizzerNotParticipating error -> $"{error} is not participating in the quiz"
 
                 Some model, Cmd.none, ExternalMessage.Error errorText
+        | Message.NewQuizzer modelNewQuizzer ->
+            Some
+                { model with
+                    NewQuizzer = Some modelNewQuizzer },
+            Cmd.none,
+            ExternalMessage.NoOp
+        | Message.AddQuizzer asyncOperationStatus -> failwith "todo"
+        | Message.SetName s ->
+            let newQuizzer =
+                match model.NewQuizzer with
+                | Some(ModelNewQuizzer.Individual _) -> Some(ModelNewQuizzer.Individual s)
+                | Some(ModelNewQuizzer.Team(_, position)) -> Some(ModelNewQuizzer.Team(s, position))
+                | None -> None
+
+            Some { model with NewQuizzer = newQuizzer }, Cmd.none, ExternalMessage.NoOp
+        | Message.CancelNewQuizzer -> failwith "todo"
 
     let private renderQuizzers removeCap dispatch quizzers =
         ul {
@@ -115,7 +130,7 @@ module ManageRosterForm =
                 }
         }
 
-    let private renderTeam (renderQuizzers: Quizzer list -> Node) team =
+    let private renderTeam (renderQuizzers: Quizzer list -> Node) dispatch newQuizzer team =
         div {
             attr.``class`` "columns"
 
@@ -124,6 +139,20 @@ module ManageRosterForm =
                 h3 { text team.Name }
 
                 renderQuizzers team.Quizzers
+
+                match newQuizzer with
+                | None ->
+                    button {
+                        attr.``class`` "button is-info is-light"
+
+                        on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Individual "")))
+
+                        span {
+                            attr.``class`` "icon"
+                            i { attr.``class`` "fas fa-solid fa-plus" }
+                        }
+                    }
+                | Some _ -> empty ()
             }
         }
 
@@ -144,6 +173,49 @@ module ManageRosterForm =
             }
         }
 
+    let private renderAddQuizzerForm addQuizzerCap dispatch (name, teamPosOpt) =
+        div {
+            attr.``class`` "field has-addons"
+
+            div {
+                attr.``class`` "control is-expanded"
+
+                input {
+                    attr.``class`` "input"
+                    attr.``type`` "text"
+                    attr.placeholder "Quizzer Name"
+
+                    bind.input.string name (fun e -> dispatch (Message.SetName e))
+                }
+            }
+
+            div {
+                attr.``class`` "control"
+
+                button {
+                    attr.``class`` "button is-info"
+                    let addQuizzerData: AddQuizzer.Data = { Name = name; Team = teamPosOpt }
+
+                    addQuizzerCap
+                    |> Option.map (fun cap -> (fun () -> cap addQuizzerData))
+                    |> Option.map (fun cap -> on.click (fun _ -> dispatch (Message.AddQuizzer(Started(cap)))))
+                    |> Option.defaultValue (attr.empty ())
+
+                    text "Save"
+                }
+            }
+
+            div {
+                attr.``class`` "control"
+
+                button {
+                    attr.``class`` "button is-danger"
+                    on.click (fun _ -> dispatch Message.CancelNewQuizzer)
+                    text "Cancel"
+                }
+            }
+        }
+
     let render capabilities (model: Model option) dispatch =
         let removeCap quizzer =
             model
@@ -151,7 +223,11 @@ module ManageRosterForm =
             |> Option.map (fun remove -> fun () -> remove { Quizzer = quizzer })
 
         let renderQuizzers = renderQuizzers removeCap dispatch
-        let renderTeam = renderTeam renderQuizzers
+
+        let renderTeam =
+            renderTeam renderQuizzers dispatch (model |> Option.bind (fun m -> m.NewQuizzer))
+
+        let renderAddQuizzer = renderAddQuizzerForm capabilities.AddQuizzer dispatch
 
         div {
             attr.``class`` (
@@ -196,14 +272,24 @@ module ManageRosterForm =
                                 button {
                                     attr.``class`` "button is-info is-light"
 
-                                    on.click (fun _ -> dispatch (Message.NewQuizzer(Individual "")))
+                                    on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Individual "")))
 
                                     span {
                                         attr.``class`` "icon"
                                         i { attr.``class`` "fas fa-solid fa-plus" }
                                     }
                                 }
-                            | Some _-> empty()
+                            | Some _ -> empty ()
+
+                        match model.NewQuizzer with
+                        | Some(ModelNewQuizzer.Individual name) -> renderAddQuizzer (name, None)
+                        | None -> empty ()
+                        | Some(ModelNewQuizzer.Team(name, teamPos)) -> renderAddQuizzer (name, Some teamPos)
+
+
+
+
+
                     | None -> empty ()
                 //Add team rosters and buttons to "newquizzer" state
                 //NewQuizzer state - no new is a button to add a new quizzer for either team, or in individuals for the next quizzer.
