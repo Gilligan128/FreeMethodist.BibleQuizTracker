@@ -62,11 +62,6 @@ module ManageRosterForm =
         match message with
         | Message.Close -> None, Cmd.none, ExternalMessage.NoOp
         | Message.RemoveQuizzer(Started cap) ->
-            let mapEvent event =
-                match event with
-                | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
-                | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
-
             let cmd = cap () |> mapToAsyncOperationCmd Message.RemoveQuizzer
             Some model, cmd, ExternalMessage.NoOp
         | Message.RemoveQuizzer(Finished result) ->
@@ -94,7 +89,22 @@ module ManageRosterForm =
                     NewQuizzer = Some modelNewQuizzer },
             Cmd.none,
             ExternalMessage.NoOp
-        | Message.AddQuizzer asyncOperationStatus -> failwith "todo"
+        | Message.AddQuizzer (Started cap) -> 
+            let cmd = cap () |> mapToAsyncOperationCmd Message.AddQuizzer
+            Some model, cmd, ExternalMessage.NoOp
+        | Message.AddQuizzer (Finished result) ->
+            match result with
+            | Ok events ->
+                let events = RunQuizEvent.QuizzerParticipating events
+                Some {model with NewQuizzer = None }, Cmd.none, ExternalMessage.WorkflowSuccess [events]
+            | Result.Error error ->
+                let errorText =
+                    match error with
+                    | AddQuizzer.DbError(error) -> error |> mapDbErrorToString
+                    | AddQuizzer.QuizState _ -> "Quiz is in the wrong state"
+                    | AddQuizzer.QuizzerAlreadyAdded error -> $"{error} is not participating in the quiz"
+
+                Some model, Cmd.none, ExternalMessage.Error errorText
         | Message.SetName s ->
             let newQuizzer =
                 match model.NewQuizzer with
@@ -103,7 +113,7 @@ module ManageRosterForm =
                 | None -> None
 
             Some { model with NewQuizzer = newQuizzer }, Cmd.none, ExternalMessage.NoOp
-        | Message.CancelNewQuizzer -> failwith "todo"
+        | Message.CancelNewQuizzer -> Some { model with NewQuizzer = None }, Cmd.none, ExternalMessage.NoOp
 
     let private renderQuizzers removeCap dispatch quizzers =
         ul {
@@ -130,7 +140,7 @@ module ManageRosterForm =
                 }
         }
 
-    let private renderTeam (renderQuizzers: Quizzer list -> Node) dispatch newQuizzer team =
+    let private renderTeam (renderQuizzers: Quizzer list -> Node) dispatch newQuizzer (team, position) =
         div {
             attr.``class`` "columns"
 
@@ -145,7 +155,7 @@ module ManageRosterForm =
                     button {
                         attr.``class`` "button is-info is-light"
 
-                        on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Individual "")))
+                        on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Team ("", position))))
 
                         span {
                             attr.``class`` "icon"
@@ -156,20 +166,20 @@ module ManageRosterForm =
             }
         }
 
-    let private renderTeams (renderTeam: TeamRoster -> Bolero.Node) (teamRoster1, teamRoster2) =
+    let private renderTeams (renderTeam: TeamRoster*TeamPosition -> Node) (teamRoster1, teamRoster2) =
         div {
             attr.``class`` "columns"
 
             div {
                 attr.``class`` "column"
 
-                renderTeam teamRoster1
+                renderTeam (teamRoster1, TeamPosition.TeamOne)
             }
 
             div {
                 attr.``class`` "column"
 
-                renderTeam teamRoster2
+                renderTeam (teamRoster2, TeamPosition.TeamTwo)
             }
         }
 

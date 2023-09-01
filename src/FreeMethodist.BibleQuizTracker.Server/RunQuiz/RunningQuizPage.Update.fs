@@ -112,7 +112,7 @@ let private refreshRoster competitionStyle : ManageRosterForm.ModelRoster =
         let rosters: ManageRosterForm.TeamRoster * ManageRosterForm.TeamRoster =
             { Name = teamOne.Name
               Quizzers = teamOne.Quizzers |> List.map (fun q -> q.Name) },
-            { Name = teamOne.Name
+            { Name = teamTwo.Name
               Quizzers = teamTwo.Quizzers |> List.map (fun q -> q.Name) }
 
         rosters |> ManageRosterForm.ModelRoster.Team
@@ -493,7 +493,6 @@ let update
                 let newInfo =
                     (quiz, activeModal)
                     |> refreshModel
-
                 { model with Info = newInfo }, Cmd.none, NoMessage
             | _ -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, NoMessage
         | Error error -> model, Cmd.none, mapDbErrorToString error |> ExternalMessage.ErrorMessage
