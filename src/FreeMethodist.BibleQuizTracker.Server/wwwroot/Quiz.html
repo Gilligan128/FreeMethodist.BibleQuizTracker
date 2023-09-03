@@ -57,41 +57,12 @@
                         </button>
                         <button class="button is-primary" onclick="${ReopenQuiz}">Reopen</button>
                         <button class="button is-danger " disabled>Reset</button>
-                        <button class="button is-info" onclick="${AddQuizzerStart}">Add Quizzer</button>
                         <button class="button is-info" onclick="${ManageRosterStart}">Manage Roster</button>
                     </div>
                 </div>
             </div>
         </div>
         ${ManageRosterView}
-        <div class="modal ${AddQuizzerActive}" id="addquizzer-modal">
-            <div class="modal-background"></div>
-            <div class="modal-card">
-                <header class="modal-card-head">
-                    <p class="modal-card-title">Add Quizzer</p>
-                    <button aria-label="close" class="delete" onclick="${AddQuizzerCancel}"></button>
-                </header>
-                <section class="modal-card-body">
-                    <div class="field">
-                        <label class="label">Name</label>
-                        <div class="control">
-                            <input bind-onchange="${AddQuizzerName}" class="input" placeholder="Text input" type="text">
-                        </div>
-                    </div>
-                    ${AddQuizzerTeamView}
-                </section>
-                <footer class="modal-card-foot">
-                    <div class="field is-grouped">
-                        <div class="control">
-                            <button class="button is-link" onclick="${AddQuizzerSubmit}">Submit</button>
-                        </div>
-                        <div class="control">
-                            <button class="button is-link is-light" onclick="${AddQuizzerCancel}">Cancel</button>
-                        </div>
-                    </div>
-                </footer>
-            </div>
-        </div>
         <template id="Team">
             <div class="box has-background-${TeamColor}-dark">
                 <div class="box">
@@ -112,21 +83,18 @@
         <template id="Quizzer">
             <div class="box  ${BackgroundColor} my-2 py-3 " onclick="${Select}">
                 <div class="columns is-mobile is-centered">
-                    <div class="column">
+                    <div class="column is-one-fifth">
                         <div class="tags">
                             <span class="tag has-background-grey-light is-medium is-rounded ${HiddenClass}">${JumpOrder}</span>
                             <span class="tag is-warning ${AppealVisible}  is-rounded ">A</span>
                             <span class="tag is-warning ${PrejumpBadgeVisible}  is-rounded ">P</span>
                         </div>
                     </div>
-                    <div class="column is-one-third has-text-primary-dark">
+                    <div class="column has-text-primary-dark">
                         ${Name}
                     </div>
-                    <div class="column is-one-third ">
+                    <div class="column is-one-fifth">
                         <p class=" px-2 py-2 has-background-${AnswerColor} has-text-color-${AnswerColor}">${Score}</p>
-                    </div>
-                    <div class="column">
-                        ${RemoveButton}
                     </div>
                 </div>
             </div>

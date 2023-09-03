@@ -78,22 +78,6 @@ let quizzerView removeQuizzerCap dispatch (currentQuizzer: Quizzer option) (quiz
             | 0 -> "is-invisible"
             | _ -> ""
         )
-        .RemoveButton(
-            button {
-                attr.``class`` "button is-info is-light"
-
-                removeCap |> Html.disabledIfNone
-
-                on.click (fun _ ->
-                    removeCap
-                    |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
-
-                span {
-                    attr.``class`` "icon"
-                    i { attr.``class`` "fas fa-times-circle" }
-                }
-            }
-        )
         .Select(fun _ -> dispatch (SelectQuizzer(Started quizzer.Name)))
         .BackgroundColor(
             currentQuizzer
@@ -262,34 +246,6 @@ let render linkToQuiz (model: RunningQuizPage_Model.Model) (dispatch: Dispatch<M
                 | Locked -> "Unlock"
                 | Unlocked -> "Lock"
             )
-            .AddQuizzerTeamView(
-                match resolved.CompetitionStyle with
-                | LoadedCompetitionStyle.Individuals _ -> Html.empty ()
-                | LoadedCompetitionStyle.Team (teamOne, teamTwo) ->
-                    quizPage
-                        .AddQuizzerTeam()
-                        .TeamOneName(teamOne.Name)
-                        .TeamTwoName(teamTwo.Name)
-                        .SetAddQuizzerTeamOne(fun _ -> dispatch (AddQuizzer(SetTeam TeamOne)))
-                        .SetAddQuizzerTeamTwo(fun _ -> dispatch (AddQuizzer(SetTeam TeamTwo)))
-                        .AddQuizzerIsTeamOne(isTeam resolved true false)
-                        .AddQuizzerIsTeamTwo(isTeam resolved false true)
-                        .Elt()
-            )
-            .AddQuizzerName(
-                (match resolved.ActiveModal with
-                 | Some (Modal.AddQuizzer (name, _)) -> name
-                 | _ -> ""),
-                (fun name -> dispatch (AddQuizzerMessage.SetName name |> Message.AddQuizzer))
-            )
-            .AddQuizzerStart(fun _ -> dispatch (Message.AddQuizzer AddQuizzerMessage.Start))
-            .AddQuizzerCancel(fun _ -> dispatch (AddQuizzer Cancel))
-            .AddQuizzerActive(
-                match resolved.ActiveModal with
-                | Some (Modal.AddQuizzer _) -> "is-active"
-                | _ -> ""
-            )
-            .AddQuizzerSubmit(fun _ -> dispatch (AddQuizzer(Submit(Started()))))
             .ManageRosterView(
                 let modalModel =
                     match resolved.ActiveModal with

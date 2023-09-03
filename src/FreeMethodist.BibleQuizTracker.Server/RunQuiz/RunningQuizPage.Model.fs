@@ -78,9 +78,6 @@ type ChangeQuestionError =
 type Message =
     | InitializeQuizAndConnections of AsyncOperationStatus<QuizCode option, Result<Quiz option, DbError>>
     | OnQuizEvent of AsyncOperationStatus<unit, Result<Quiz, DbError>>
-    | AddQuizzer of AddQuizzerMessage
-    | RemoveQuizzer of
-        AsyncOperationStatus<unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>, WorkflowResult<RemoveQuizzer.Error>>
     | SelectQuizzer of AsyncOperationStatus<Quizzer, WorkflowResult<SelectQuizzer.Error>>
     | AnswerIncorrectly of AsyncOperationStatus<unit, WorkflowResult<AnswerIncorrectly.Error>>
     | FailAppeal of AsyncOperationStatus<unit, WorkflowResult<FailAppeal.Error>>

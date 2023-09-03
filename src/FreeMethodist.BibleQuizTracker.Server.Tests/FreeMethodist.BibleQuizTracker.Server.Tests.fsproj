@@ -13,7 +13,6 @@
         <Compile Include="Quiz.fs" />
         <Compile Include="Arrange.fs" />
         <Compile Include="Assert.fs" />
-        <Compile Include="AddQuizzerComponentTests.fs" />
         <Compile Include="SelectQuizzerWorkflowTests.fs" />
         <Compile Include="RemoveQuizzerWorkflowTests.fs" />
         <Compile Include="AnswerCorrectly.UpdateQuizStepTests.fs" />

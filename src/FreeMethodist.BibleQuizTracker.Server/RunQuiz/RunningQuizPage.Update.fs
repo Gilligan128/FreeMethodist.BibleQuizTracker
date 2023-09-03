@@ -335,100 +335,6 @@ let update
         let externalMessage = error |> mapDbErrorToString |> ExternalMessage.ErrorMessage
 
         model, Cmd.none, externalMessage
-    | Message.AddQuizzer Cancel ->
-        { model with
-            Info = model.Info |> mapLoaded (fun loaded -> { loaded with ActiveModal = None }) },
-        Cmd.none,
-        NoMessage
-    | Message.AddQuizzer AddQuizzerMessage.Start ->
-        { model with
-            Info =
-                model.Info
-                |> mapLoaded (fun loaded ->
-                    { loaded with
-                        ActiveModal =
-                            loaded.ActiveModal
-                            |> fun modalOpt ->
-                                match modalOpt with
-                                | Some(Modal.AddQuizzer(name, team)) -> (name, team) |> Modal.AddQuizzer |> Some
-                                | _ -> ("", TeamOne) |> Modal.AddQuizzer |> Some }) },
-
-        Cmd.none,
-        NoMessage
-    | AddQuizzer(AddQuizzerMessage.SetName name) ->
-        { model with
-            Info =
-                model.Info
-                |> mapLoaded (fun loaded ->
-                    { loaded with
-                        ActiveModal =
-                            loaded.ActiveModal
-                            |> Option.bind (fun modal ->
-                                match modal with
-                                | (Modal.AddQuizzer(_, team)) -> (name, team) |> Modal.AddQuizzer |> Some
-                                | Modal.ManageRoster _ -> None) }) },
-        Cmd.none,
-        NoMessage
-    | AddQuizzer(SetTeam teamPosition) ->
-        { model with
-            Info =
-                model.Info
-                |> mapLoaded (fun loaded ->
-                    { loaded with
-                        ActiveModal =
-                            loaded.ActiveModal
-                            |> Option.bind (fun modal ->
-                                match modal with
-                                | Modal.AddQuizzer(name, _) -> (name, teamPosition) |> Modal.AddQuizzer |> Some
-                                | Modal.ManageRoster _ -> None) }) },
-        Cmd.none,
-        NoMessage
-    | AddQuizzer(Submit(Started _)) ->
-        let addQuizzerState model =
-            match model with
-            | NotYetStarted _ -> None
-            | InProgress _ -> None
-            | Resolved loaded ->
-                loaded.ActiveModal
-                |> Option.bind (fun modal ->
-                    match modal with
-                    | Modal.AddQuizzer(name, teamPosition) -> Some(name, teamPosition)
-                    | Modal.ManageRoster _ -> None)
-
-        match addQuizzerState model.Info with
-        | Some(name, team) ->
-            let mapQuizEvent event = event |> QuizzerParticipating
-
-            let startedCmd =
-                model.Info
-                |> Deferred.toOption
-                |> Option.bind (fun model -> model.Capabilities.AddQuizzer)
-                |> Option.map (fun cap -> cap { Name = name; Team = Some team })
-                |> Option.map (fun workflow ->
-                    workflow
-                    |> AsyncResult.map mapQuizEvent
-                    |> AsyncResult.map List.singleton
-                    |> startWorkflow (AddQuizzerMessage.Submit >> Message.AddQuizzer))
-                |> Option.defaultValue Cmd.none
-
-            model, startedCmd, NoMessage
-        | _ ->
-            model, Cmd.none, ExternalMessage.ErrorMessage "How are you even submitting from an inert AddQuizzer state?"
-    | AddQuizzer(Submit(Finished result)) ->
-        let mapAddQuizzerError error =
-            match error with
-            | DbError dbError -> mapDbErrorToString dbError
-            | Workflow(AddQuizzer.Error.QuizState quizStateError) -> $"Wrong Quiz State: {quizStateError}"
-            | Workflow(AddQuizzer.Error.QuizzerAlreadyAdded quizzer) -> $"Quizzer {quizzer} already added"
-            | Workflow(AddQuizzer.DbError dbError) -> dbError |> mapDbErrorToString
-
-        let model, cmd, externalMsg =
-            result |> Result.mapError mapAddQuizzerError |> finishWorkflowCore
-
-        { model with
-            Info = model.Info |> mapLoaded (fun loaded -> { loaded with ActiveModal = None }) },
-        cmd,
-        externalMsg
     | StartManagingRoster message ->
         let modal, cmd =
             let capabilities: ManageRosterForm.ManageRosterCapabilities option =
@@ -496,26 +402,6 @@ let update
                 { model with Info = newInfo }, Cmd.none, NoMessage
             | _ -> model, navigate |> subOfFunc Page.Home |> Cmd.ofSub, NoMessage
         | Error error -> model, Cmd.none, mapDbErrorToString error |> ExternalMessage.ErrorMessage
-
-    | RemoveQuizzer(Started cap) ->
-
-        let mapEvent event =
-            match event with
-            | RemoveQuizzer.Event.CurrentQuizzerChanged e -> RunQuizEvent.CurrentQuizzerChanged e
-            | RemoveQuizzer.Event.QuizzerNoLongerParticipating e -> RunQuizEvent.QuizzerNoLongerParticipating e
-
-        cap ()
-        |> AsyncResult.map (List.map mapEvent)
-        |> startWorkflow RemoveQuizzer
-        |> fun cmd -> model, cmd, NoMessage
-    | RemoveQuizzer(Finished result) ->
-        let mapRemoveError error =
-            match error with
-            | RemoveQuizzer.QuizStateError quizStateError -> $"Wrong Quiz State: {quizStateError}"
-            | RemoveQuizzer.QuizzerNotParticipating quizzer -> $"Quizzer {quizzer} is already not participating"
-            | RemoveQuizzer.DbError dbError -> dbError |> mapDbErrorToString
-
-        result |> finishWorkflow mapRemoveError
     | SelectQuizzer(Started name) ->
         let mapEvent event = CurrentQuizzerChanged event
 

@@ -187,7 +187,7 @@ module ManageRosterForm =
         div {
             attr.``class`` "field has-addons"
 
-            div {
+            p {
                 attr.``class`` "control is-expanded"
 
                 input {
@@ -199,7 +199,7 @@ module ManageRosterForm =
                 }
             }
 
-            div {
+            p {
                 attr.``class`` "control"
 
                 button {
@@ -215,7 +215,7 @@ module ManageRosterForm =
                 }
             }
 
-            div {
+            p {
                 attr.``class`` "control"
 
                 button {
