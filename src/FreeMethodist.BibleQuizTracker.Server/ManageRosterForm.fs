@@ -133,10 +133,10 @@ module ManageRosterForm =
 
                         div {
                             attr.``class`` "column"
-
+                            "data-tooltip" => $"Remove {quizzer}"
                             button {
                                 attr.``class`` "delete is-medium"
-
+                               
                                 removeCap |> Html.disabledIfNone
 
                                 on.click (fun _ ->
@@ -170,7 +170,7 @@ module ManageRosterForm =
 
                     div {
                         attr.``class`` "block"
-
+                        "data-tooltip" => "Add a quizzer"
                         match newQuizzer with
                         | None ->
                             button {

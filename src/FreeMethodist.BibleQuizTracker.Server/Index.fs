@@ -25,6 +25,10 @@ let page =
                 attr.rel "stylesheet"
                 attr.href "css/index.css"
             }
+            link {
+                attr.rel "stylesheet"
+                attr.href "https://cdn.jsdelivr.net/npm/@creativebulma/bulma-tooltip@1.2.0/dist/bulma-tooltip.min.css"
+            }
         }
 
         body {
