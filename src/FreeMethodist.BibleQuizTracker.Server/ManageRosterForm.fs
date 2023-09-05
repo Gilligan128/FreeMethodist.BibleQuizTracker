@@ -89,14 +89,14 @@ module ManageRosterForm =
                     NewQuizzer = Some modelNewQuizzer },
             Cmd.none,
             ExternalMessage.NoOp
-        | Message.AddQuizzer (Started cap) -> 
+        | Message.AddQuizzer(Started cap) ->
             let cmd = cap () |> mapToAsyncOperationCmd Message.AddQuizzer
             Some model, cmd, ExternalMessage.NoOp
-        | Message.AddQuizzer (Finished result) ->
+        | Message.AddQuizzer(Finished result) ->
             match result with
             | Ok events ->
                 let events = RunQuizEvent.QuizzerParticipating events
-                Some {model with NewQuizzer = None }, Cmd.none, ExternalMessage.WorkflowSuccess [events]
+                Some { model with NewQuizzer = None }, Cmd.none, ExternalMessage.WorkflowSuccess [ events ]
             | Result.Error error ->
                 let errorText =
                     match error with
@@ -121,20 +121,28 @@ module ManageRosterForm =
                 let removeCap = removeCap |> fun cap -> cap quizzer
 
                 li {
-                    text quizzer
 
-                    button {
-                        attr.``class`` "button is-info is-light"
+                    div {
+                        attr.``class`` "columns is-mobile"
 
-                        removeCap |> Html.disabledIfNone
+                        div {
+                            attr.``class`` "column has-background-info-light"
 
-                        on.click (fun _ ->
-                            removeCap
-                            |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
+                            text quizzer
+                        }
 
-                        span {
-                            attr.``class`` "icon"
-                            i { attr.``class`` "fas fa-times-circle" }
+                        div {
+                            attr.``class`` "column"
+
+                            button {
+                                attr.``class`` "delete is-medium"
+
+                                removeCap |> Html.disabledIfNone
+
+                                on.click (fun _ ->
+                                    removeCap
+                                    |> Option.iter (fun cap -> cap |> Started |> RemoveQuizzer |> dispatch))
+                            }
                         }
                     }
                 }
@@ -146,27 +154,43 @@ module ManageRosterForm =
 
             div {
                 attr.``class`` "column"
-                h3 { text team.Name }
 
-                renderQuizzers team.Quizzers
+                h3 {
+                    attr.``class`` "title is-4"
+                    text team.Name
+                }
 
-                match newQuizzer with
-                | None ->
-                    button {
-                        attr.``class`` "button is-info is-light"
+                div {
+                    attr.``class`` "box"
 
-                        on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Team ("", position))))
-
-                        span {
-                            attr.``class`` "icon"
-                            i { attr.``class`` "fas fa-solid fa-plus" }
-                        }
+                    div {
+                        attr.``class`` "block"
+                        renderQuizzers team.Quizzers
                     }
-                | Some _ -> empty ()
+
+                    div {
+                        attr.``class`` "block"
+
+                        match newQuizzer with
+                        | None ->
+                            button {
+                                attr.``class`` "button is-info is-light"
+
+                                on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Team("", position))))
+
+                                span {
+                                    attr.``class`` "icon"
+                                    i { attr.``class`` "fas fa-solid fa-plus" }
+                                }
+                            }
+                        | Some _ -> empty ()
+                    }
+
+                }
             }
         }
 
-    let private renderTeams (renderTeam: TeamRoster*TeamPosition -> Node) (teamRoster1, teamRoster2) =
+    let private renderTeams (renderTeam: TeamRoster * TeamPosition -> Node) (teamRoster1, teamRoster2) =
         div {
             attr.``class`` "columns"
 
@@ -275,18 +299,25 @@ module ManageRosterForm =
                         | ModelRoster.Team(teamRoster1, teamRoster2) ->
                             renderTeams renderTeam (teamRoster1, teamRoster2)
                         | ModelRoster.Individual quizzers ->
-                            renderQuizzers quizzers
+                            div {
+                                attr.``class`` "block"
+                                renderQuizzers quizzers
+                            }
 
                             match model.NewQuizzer with
                             | None ->
-                                button {
-                                    attr.``class`` "button is-info is-light"
+                                div {
+                                    attr.``class`` "block"
 
-                                    on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Individual "")))
+                                    button {
+                                        attr.``class`` "button is-info is-light"
 
-                                    span {
-                                        attr.``class`` "icon"
-                                        i { attr.``class`` "fas fa-solid fa-plus" }
+                                        on.click (fun _ -> dispatch (Message.NewQuizzer(ModelNewQuizzer.Individual "")))
+
+                                        span {
+                                            attr.``class`` "icon"
+                                            i { attr.``class`` "fas fa-solid fa-plus" }
+                                        }
                                     }
                                 }
                             | Some _ -> empty ()

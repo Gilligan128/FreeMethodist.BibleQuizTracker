@@ -13,10 +13,6 @@ type JumpState =
     | Locked
     | Unlocked
 
-type AddQuizzerModel =
-    | Active of string * TeamPosition
-    | Inert
-
 type LoadedCompetitionStyle =
     | Team of TeamModel * TeamModel
     | Individuals of QuizzerModel list
@@ -38,9 +34,7 @@ type JumpOrder =
     | Prejump of Quizzer
     | Standard of Quizzer list
 
-type Modal =
-    | AddQuizzer of string * TeamPosition
-    | ManageRoster of ManageRosterForm.Model
+type Modal = ManageRoster of ManageRosterForm.Model
 
 type LoadedModel =
     { JoiningQuizzer: string

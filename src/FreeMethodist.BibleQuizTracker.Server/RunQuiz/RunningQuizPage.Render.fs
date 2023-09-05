@@ -166,12 +166,6 @@ let sideViewSplit (individualsView: QuizzerModel list -> Node) index quizzerMode
 
 let render linkToQuiz (model: RunningQuizPage_Model.Model) (dispatch: Dispatch<Message>) =
 
-    let isTeam model teamOneValue teamTwoValue =
-        match model.ActiveModal with
-        | Some (Modal.AddQuizzer (_, TeamOne)) -> teamOneValue
-        | Some (Modal.AddQuizzer (_, TeamTwo)) -> teamTwoValue
-        | _ -> false
-
     match model.Info with
     | Deferred.NotYetStarted -> p { $"Quiz {model.Code} has not yet been loaded" }
     | InProgress -> p { $"Quiz {model.Code} is loading..." }
