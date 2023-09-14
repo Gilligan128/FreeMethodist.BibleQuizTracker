@@ -7,13 +7,13 @@
                 </div>
                 <div class="box has-text-centered" id="question-section">
                     <div>
-                        <button class="button is-info" onclick="${UndoQuestion}">
+                        <button class="button is-info" data-tooltip="Go tot he previous question" onclick="${UndoQuestion}">
                     <span class="icon">
                       <i class="fas fa-caret-left"></i>
                     </span>
                         </button>
                         <span class="is-size-4 is-size-5-mobile">Question #${CurrentQuestion}</span>
-                        <button class="button is-info" onclick="${NextQuestion}">
+                        <button class="button is-info" data-tooltip="Go to the next question" onclick="${NextQuestion}">
                     <span class="icon">
                       <i class="fas fa-caret-right"></i>
                     </span>
@@ -42,22 +42,22 @@
                         </button>
                     </div>
                     <div class="buttons is-centered">
-                        <button class="button is-info" disabled>${JumpLockToggleAction} Jumps</button>
-                        <button class="button is-primary" onclick="${AnswerCorrectly}">Correct</button>
+                        <button class="button is-info" data-tooltip="Toggle whether or not Quizzers can jump" disabled>${JumpLockToggleAction} Jumps</button>
+                        <button class="button is-primary" onclick="${AnswerCorrectly}" data-tooltip="">Correct</button>
                         <button class="button is-danger" onclick="${AnswerIncorrectly}">Incorrect
                         </button>
-                        <button class="button is-danger" onclick="${FailAppeal}">Fail Appeal</button>
-                        <button class="button is-danger ${PrejumpActionVisibility}" onclick="${Prejump}">Prejump</button>
+                        <button class="button is-danger" onclick="${FailAppeal}" data-tooltip="Quizzer failed an appeal">Fail Appeal</button>
+                        <button class="button is-danger ${PrejumpActionVisibility}" onclick="${Prejump}" >Prejump</button>
                     </div>
                 </div>
                 <div class="box">
                     <div class="buttons is-centered">
                         <span class="is-size-5">Quiz Controls:</span>
-                        <button class="button is-primary " onclick="${CompleteQuiz}">Complete
+                        <button class="button is-primary " onclick="${CompleteQuiz}" data-tooltip="Mark the quiz as completed">Complete
                         </button>
-                        <button class="button is-primary" onclick="${ReopenQuiz}">Reopen</button>
-                        <button class="button is-danger " disabled>Reset</button>
-                        <button class="button is-info" onclick="${ManageRosterStart}">Manage Roster</button>
+                        <button class="button is-primary" onclick="${ReopenQuiz}" data-tooltip="Reopen a Quiz for scoring">Reopen</button>
+                        <button class="button is-danger " data-tooltip="Resets a quiz to its starting state" disabled>Reset</button>
+                        <button class="button is-info" onclick="${ManageRosterStart}" data-tooltip="Manage the roster of quizzers">Manage Roster</button>
                     </div>
                 </div>
             </div>
