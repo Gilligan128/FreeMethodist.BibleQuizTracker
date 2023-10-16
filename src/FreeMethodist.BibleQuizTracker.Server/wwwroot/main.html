@@ -18,12 +18,12 @@
                 <div>${Error}</div>
             </div>
             <template id="Home">
-                <div class="content">
+                <div class="content" _="on click call alert('This doesn't work!')">
                     <h1 class="title">Welcome to the Free Methodist Bible Quiz Tracker!</h1>
                     <div class="columns">
                         <div class="column is-one-quarter">
                             <section class="section" id="quizzes">
-                                <h2>Quizzes</h2>
+                                <h2 >Quizzes</h2>
                                 <button class="button is-link" onclick="${CreateQuizStart}">Start Quiz</button>
                                 <h4>or, if you already have a code, join or spectate quiz: </h4>
                                 <div class="field">
@@ -57,4 +57,5 @@
             </template>
         </section>
     </div>
+    <script src="https://unpkg.com/hyperscript.org@0.9.11"></script>
 </div>

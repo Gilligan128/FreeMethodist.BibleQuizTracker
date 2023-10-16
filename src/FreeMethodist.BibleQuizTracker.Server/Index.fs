@@ -29,6 +29,10 @@ let page =
                 attr.rel "stylesheet"
                 attr.href "https://cdn.jsdelivr.net/npm/@creativebulma/bulma-tooltip@1.2.0/dist/bulma-tooltip.min.css"
             }
+            link {
+                attr.rel "stylesheet"
+                attr.href "https://bulma.io/vendor/fontawesome-free-5.15.2-web/css/all.min.css"
+            }
         }
 
         body {
@@ -38,6 +42,7 @@ let page =
                 attr.aria "label" "main navigation"
 
                 div {
+
                     attr.``class`` "navbar-brand"
 
                     a {
@@ -49,21 +54,23 @@ let page =
                             attr.src "https://dev.fmquizzing.net/resources/logos/FMBQ-logo.png"
                         }
 
-                        "  Free Methodist Bible Quizzing"
+                        " Free Methodist Bible Quizzing"
                     }
                 }
             }
 
             div {
+                
                 attr.id "main"
                 rootComp<Main.MyApp>
             }
-
+            
             boleroScript
+            //
+            // script {
+            //     attr.defer ""
+            //     attr.src "https://use.fontawesome.com/releases/v5.3.1/js/all.js"
+            // }
 
-            script {
-                attr.defer ""
-                attr.src "https://use.fontawesome.com/releases/v5.3.1/js/all.js"
-            }
         }
     }

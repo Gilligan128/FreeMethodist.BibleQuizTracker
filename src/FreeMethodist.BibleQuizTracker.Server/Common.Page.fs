@@ -93,6 +93,7 @@ type ListQuizStateFilter =
     | Running
     | Completed
     | Official
+
 type ListQuizState =
     | Running
     | Completed
@@ -101,10 +102,10 @@ type ListQuizState =
 type ListCompetitionStyle =
     | Individual of int
     | Team of string * string
-    
+
 type ListQuizItem =
     { Code: QuizCode
-      State: ListQuizState 
+      State: ListQuizState
       Tournament: string option
       Round: string option
       Room: string option
@@ -112,9 +113,14 @@ type ListQuizItem =
       GradeDivision: GradeDivision option
       CompetitionDivision: CompetitionDivision option }
 
+type ListQuizTournament =
+    { IsOpen: bool
+      Name: string
+      Quizzes: ListQuizItem list }
+
 type ListQuizModel =
     { StateFilter: QuizStatusFilter
-      Quizzes: Deferred<Result<ListQuizItem list, DbError>> }
+      Tournaments: Deferred<Result<ListQuizTournament list, DbError>> }
 
 //Connecting to SignalR
 type HandleEventSub<'T, 'Msg> = Dispatch<'Msg> -> 'T -> Async<unit>
@@ -125,7 +131,7 @@ let connectAndHandleQuizEvents connectToQuiz onEvent : ConnectAndHandleQuizEvent
     fun handleEvent (quizCode, previousCode) ->
         fun dispatch ->
             let connectTask = connectToQuiz quizCode previousCode
-    
+
             connectTask |> Async.Ignore |> Async.StartImmediate
-    
+
             onEvent (handleEvent dispatch)
