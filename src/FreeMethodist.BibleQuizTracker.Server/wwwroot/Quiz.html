@@ -7,7 +7,7 @@
                 </div>
                 <div class="box has-text-centered" id="question-section">
                     <div>
-                        <button class="button is-info" data-tooltip="Go tot he previous question" onclick="${UndoQuestion}">
+                        <button class="button is-info" data-tooltip="Go to the previous question" onclick="${UndoQuestion}">
                     <span class="icon">
                       <i class="fas fa-caret-left"></i>
                     </span>
@@ -20,7 +20,7 @@
                         </button>
                     </div>
                     <div class="buttons is-centered">
-                        <button class="button is-success is-responsive" onclick="${ClearAppeal}">Clear Appeal</button>
+                        <button class="button is-success is-responsive" onclick="${ClearAppeal}" data-tooltip="Undo a Quizzer's appeal failure">Clear Appeal</button>
                     </div>
                 </div>
                 <div class="columns">
@@ -43,10 +43,10 @@
                     </div>
                     <div class="buttons is-centered">
                         <button class="button is-info" data-tooltip="Toggle whether or not Quizzers can jump" disabled>${JumpLockToggleAction} Jumps</button>
-                        <button class="button is-primary" onclick="${AnswerCorrectly}" data-tooltip="">Correct</button>
-                        <button class="button is-danger" onclick="${AnswerIncorrectly}">Incorrect
+                        <button class="button is-primary" onclick="${AnswerCorrectly}" data-tooltip="Quizzer answered the question correctly">Correct</button>
+                        <button class="button is-danger" onclick="${AnswerIncorrectly}" data-tooltip="Quizzer answered the question incorrectly">Incorrect
                         </button>
-                        <button class="button is-danger" onclick="${FailAppeal}" data-tooltip="Quizzer failed an appeal">Fail Appeal</button>
+                        <button class="button is-danger" onclick="${FailAppeal}" data-tooltip="Quizzer failed their appeal">Fail Appeal</button>
                         <button class="button is-danger ${PrejumpActionVisibility}" onclick="${Prejump}" >Prejump</button>
                     </div>
                 </div>
