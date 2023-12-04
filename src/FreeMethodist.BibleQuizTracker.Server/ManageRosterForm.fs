@@ -30,7 +30,8 @@ module ManageRosterForm =
 
     type Model =
         { Roster: ModelRoster
-          NewQuizzer: ModelNewQuizzer option }
+          NewQuizzer: ModelNewQuizzer option
+          Error: string option }
 
     type AsyncOperationOfCapacity<'success, 'error> =
         AsyncOperationStatus<unit -> AsyncResult<'success, 'error>, Result<'success, 'error>>
@@ -43,14 +44,17 @@ module ManageRosterForm =
             AsyncOperationStatus<unit -> AsyncResult<RemoveQuizzer.Event list, RemoveQuizzer.Error>, Result<RemoveQuizzer.Event list, RemoveQuizzer.Error>>
         | SetName of string
         | CancelNewQuizzer
+        | ClearError
 
     type ExternalMessage =
-        | Error of string
         | WorkflowSuccess of RunQuizEvent list
         | NoOp
 
     let init (capabilities: ManageRosterCapabilities) roster =
-        { Roster = roster; NewQuizzer = None }, Cmd.none
+        { Roster = roster
+          NewQuizzer = None
+          Error = None },
+        Cmd.none
 
     let private mapToAsyncOperationCmd asyncOperation resultAsync =
         resultAsync
@@ -82,7 +86,7 @@ module ManageRosterForm =
                     | RemoveQuizzer.QuizStateError _ -> "Quiz is in the wrong state"
                     | RemoveQuizzer.QuizzerNotParticipating error -> $"{error} is not participating in the quiz"
 
-                Some model, Cmd.none, ExternalMessage.Error errorText
+                Some {model with Error = Some errorText }, Cmd.none, ExternalMessage.NoOp
         | Message.NewQuizzer modelNewQuizzer ->
             Some
                 { model with
@@ -104,7 +108,7 @@ module ManageRosterForm =
                     | AddQuizzer.QuizState _ -> "Quiz is in the wrong state"
                     | AddQuizzer.QuizzerAlreadyAdded error -> $"{error} is not participating in the quiz"
 
-                Some model, Cmd.none, ExternalMessage.Error errorText
+                Some {model with Error = Some errorText }, Cmd.none, ExternalMessage.NoOp
         | Message.SetName s ->
             let newQuizzer =
                 match model.NewQuizzer with
@@ -114,6 +118,7 @@ module ManageRosterForm =
 
             Some { model with NewQuizzer = newQuizzer }, Cmd.none, ExternalMessage.NoOp
         | Message.CancelNewQuizzer -> Some { model with NewQuizzer = None }, Cmd.none, ExternalMessage.NoOp
+        | Message.ClearError -> Some { model with Error = None }, Cmd.none, ExternalMessage.NoOp
 
     let private renderQuizzers removeCap dispatch quizzers =
         ul {
@@ -134,9 +139,10 @@ module ManageRosterForm =
                         div {
                             attr.``class`` "column"
                             "data-tooltip" => $"Remove {quizzer}"
+
                             button {
                                 attr.``class`` "delete is-medium"
-                               
+
                                 removeCap |> Html.disabledIfNone
 
                                 on.click (fun _ ->
@@ -171,6 +177,7 @@ module ManageRosterForm =
                     div {
                         attr.``class`` "block"
                         "data-tooltip" => "Add a quizzer"
+
                         match newQuizzer with
                         | None ->
                             button {
@@ -332,14 +339,23 @@ module ManageRosterForm =
 
 
                     | None -> empty ()
-                //Add team rosters and buttons to "newquizzer" state
-                //NewQuizzer state - no new is a button to add a new quizzer for either team, or in individuals for the next quizzer.
-                //NewQuizzer state - adding is a field for the quizzer name, a button to save, and a button to cancel.
+                    cond (model |> Option.bind (fun m -> m.Error))
+                        <| function
+                            | None -> empty ()
+                            | Some err ->
+                                div {
+                                    attr.``class`` "notification is-warning"
+                                    button {
+                                        attr.``class`` "delete"
+                                        on.click (fun _ -> dispatch ClearError)
+                                    }
+                                    text err
+                                }
                 }
 
                 footer {
                     attr.``class`` "modal-card-foot"
-
+                   
                     div {
                         button {
                             attr.``class`` "button"
