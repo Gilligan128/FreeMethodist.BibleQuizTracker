@@ -47,8 +47,8 @@ let public emptyModel =
 
 let mapLoaded (mapper: 'T -> 'U) (model: Deferred<'T>) : Deferred<'U> =
     match model with
-    | NotYetStarted _ -> NotYetStarted
-    | InProgress _ -> InProgress
+    | NotYetStarted -> NotYetStarted
+    | InProgress -> InProgress
     | Resolved loaded -> Resolved(mapper loaded)
 
 let getAppealStateNew appeals quizzer =
@@ -360,8 +360,8 @@ let update
         { model with Info = info }, cmd |> Cmd.map Message.ManageRoster, NoMessage
     | ManageRoster message ->
         match model.Info with
-        | NotYetStarted _ -> model, Cmd.none, NoMessage
-        | InProgress _ -> model, Cmd.none, NoMessage
+        | NotYetStarted -> model, Cmd.none, NoMessage
+        | InProgress -> model, Cmd.none, NoMessage
         | Resolved loaded ->
             match loaded.ActiveModal with
             | Some(Modal.ManageRoster modal) ->
@@ -373,7 +373,6 @@ let update
 
                 let wflwCmd, externMsg =
                     match external with
-                    | ManageRosterForm.ExternalMessage.Error error -> Cmd.none, ExternalMessage.ErrorMessage error
                     | ManageRosterForm.ExternalMessage.WorkflowSuccess events ->
                         let cmd =
                             events
@@ -436,7 +435,7 @@ let update
                 model, (fun _ -> navigate Page.Home) |> Cmd.ofSub, "Quiz is not running" |> ExternalMessage.ErrorMessage
             | Result.Error(WorkflowError.Workflow SelectQuizzer.Error.QuizzerAlreadyCurrent) ->
                 model, Cmd.none, NoMessage
-            | Result.Error error ->
+            | Result.Error (error: WorkflowError<SelectQuizzer.Error>) ->
                 model, Cmd.none, error |> mapWorkflowErrors mapSelectError |> ExternalMessage.ErrorMessage
     | AnswerIncorrectly(Started _) ->
         let mapEvent event =
@@ -502,7 +501,7 @@ let update
         let mapAppealError error =
             match error with
             | ClearAppeal.Error.QuizState _ -> "Wrong Quiz state"
-            | ClearAppeal.Error.NoFailedAppeal _ -> "There is no failed appeal to clear"
+            | ClearAppeal.Error.NoFailedAppeal -> "There is no failed appeal to clear"
             | ClearAppeal.Error.DbError dbError -> dbError |> mapDbErrorToString
 
         quiz |> finishWorkflow mapAppealError
